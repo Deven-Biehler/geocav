@@ -25,7 +25,9 @@ SECRET_KEY = 'django-insecure-xio74%dql#@%=7t=b4kjodbtqg4a0%ls4_6vbbm-yz8az5q)3_
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'geocav.eecs.wsu.edu'
+]
 
 
 # Application definition
