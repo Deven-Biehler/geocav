@@ -31,6 +31,7 @@ export class DotDensityMap {
     }
 
     async renderMap(map) {
+        this.map = map;
         await this.fetchMapData();
         // Remove existing heatmap layers
         const layersToRemove = [];
@@ -133,13 +134,13 @@ export class DotDensityMap {
         `;
         
         // Add event listener for slider
+        console.log('Setting up percent slider event listener in DotDensityMap...');
         document.getElementById('percentSlider').addEventListener('input', (e) => {
             this.percent = e.target.value / 100;
             document.getElementById('percentValue').textContent = `${e.target.value}%`;
             // Trigger map update
-            if (this.onPercentChange) {
-                this.onPercentChange();
-            }
+            console.log('Percent change detected in DotDensityMap, updating map...');
+            this.updateMap(this.map);
         });
 
         document.getElementsByClassName('legend-box')[0].style.height = `auto`;

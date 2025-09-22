@@ -108,12 +108,6 @@ export class MapRenderer {
             window.regressionPlot.selectedFactor = this.selectedFilters.factor;
             window.regressionPlot.renderPlot();
         });
-        // Handle percent change for dot density map
-        if (MAP_TYPE === 'dotDensity') {
-            this.map_type.onPercentChange = () => {
-                this.updateMap();
-            };
-        }
     }
 
         
