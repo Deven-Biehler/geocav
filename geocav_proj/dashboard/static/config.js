@@ -1,10 +1,3 @@
-export const DASHBOARD_STATES = [
-    'CHOROPLETH',
-    'PIE CHART',
-    'DOT DENSITY'
-]
-
-
 export const DEFAULT_LEAFLET_CONFIG = {
     DEFAULT_CENTER: [39.8283, -98.5795],
     DEFAULT_ZOOM: 4,
@@ -16,33 +9,6 @@ export const DEFAULT_LEAFLET_CONFIG = {
         }
     }
 };
-
-export const US_STATE_DATA = 'data/us-states.json';
-export const US_COUNTY_DATA = 'data/counties.geojson';
-
-
-
-// Hardcoded factor and cancer type lists for now:
-export const FACTORS = [
-    'drinking',
-    'obesity',
-    'diabetes',
-    'heart_disease',
-    'poverty',
-    'noHealthIns',
-    'smoking'
-];
-export const CANCER_TYPES = [
-    'eso',
-    'kidney',
-    'liver',
-    'lung',
-    'pancreatic',
-    'prostate',
-    'skin'
-];
-
-
 
 
 // CHOROPLETH MAP CONFIGURATION

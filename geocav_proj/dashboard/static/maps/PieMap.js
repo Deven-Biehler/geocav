@@ -1,4 +1,4 @@
-import {CANCER_TYPES, cancerColorScale} from '../config.js';
+import {cancerColorScale} from '../config.js';
 
 export class PieMap {
     constructor(selectedFilters) {
