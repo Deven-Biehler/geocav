@@ -1,0 +1,40 @@
+from django.db import models
+
+class StateData(models.Model):
+    state = models.CharField(max_length=50)
+    cancer_rate = models.FloatField()
+    eso_rate = models.FloatField(null=True, blank=True)
+    kidney_rate = models.FloatField(null=True, blank=True)
+    liver_rate = models.FloatField(null=True, blank=True)
+    lung_rate = models.FloatField(null=True, blank=True)
+    pancreatic_rate = models.FloatField(null=True, blank=True)
+    prostate_rate = models.FloatField(null=True, blank=True)
+    skin_rate = models.FloatField(null=True, blank=True)
+    # Factor fields
+    drinking = models.FloatField(null=True, blank=True)
+    obesity = models.FloatField(null=True, blank=True)
+    diabetes = models.FloatField(null=True, blank=True)
+    heart_disease = models.FloatField(null=True, blank=True)
+    poverty = models.FloatField(null=True, blank=True)
+    noHealthIns = models.FloatField(null=True, blank=True)
+    smoking = models.FloatField(null=True, blank=True)
+
+class CountyData(models.Model):
+    state = models.CharField(max_length=50)
+    county = models.CharField(max_length=100)
+    cancer_rate = models.FloatField()
+    eso_rate = models.FloatField(null=True, blank=True)
+    kidney_rate = models.FloatField(null=True, blank=True)
+    liver_rate = models.FloatField(null=True, blank=True)
+    lung_rate = models.FloatField(null=True, blank=True)
+    pancreatic_rate = models.FloatField(null=True, blank=True)
+    prostate_rate = models.FloatField(null=True, blank=True)
+    skin_rate = models.FloatField(null=True, blank=True)
+    # Factor fields
+    drinking = models.FloatField(null=True, blank=True)
+    obesity = models.FloatField(null=True, blank=True)
+    diabetes = models.FloatField(null=True, blank=True)
+    heart_disease = models.FloatField(null=True, blank=True)
+    poverty = models.FloatField(null=True, blank=True)
+    noHealthIns = models.FloatField(null=True, blank=True)
+    smoking = models.FloatField(null=True, blank=True)

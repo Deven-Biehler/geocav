@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choropleth Map with Regression Plot</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+    
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'styles.css' %}">
+    <link rel="stylesheet" href="{% static 'map-styles.css' %}">
+    
+    <!-- JavaScript Libraries -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v3.min.js"></script>
+    <script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+</head>
+<body>
+    <div class="navigation">
+        <h1>Geospatial Dashboard</h1>
+    </div>
+
+    <div class="center-div">
+        <div id="map"></div>
+        <div class="filter-box">
+            <h3>Filters</h3>
+            <div class="filter-content">
+                <div class="filter-group">
+                    <label for="map-select">Map View:</label>
+                    <select id="map-select" name="map-type">
+                        <option value="choropleth">Choropleth</option>
+                        <option value="pie">Pie Chart</option>
+                        <option value="dotDensity">Dot Density</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="cancer-select">Cancer Type:</label>
+                    <select id="cancer-select" name="cancer-type">
+                        <option value="kidney">Kidney Cancer</option>
+                        <option value="liver">Liver Cancer</option>
+                        <option value="lung">Lung Cancer</option>
+                        <option value="pancreatic">Pancreatic Cancer</option>
+                        <option value="prostate">Prostate Cancer</option>
+                        <option value="skin">Skin Cancer</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="level-select">Geographic Level:</label>
+                    <select id="level-select" name="level">
+                        <option value="state">State</option>
+                        <option value="county">County</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="factor-select">Factor:</label>
+                    <select id="factor-select" name="factor">
+                        <option value="drinking">Drinking</option>
+                        <option value="obesity">Obesity</option>
+                        <option value="diabetes">Diabetes</option>
+                        <option value="heart_disease">Heart Disease</option>
+                        <option value="poverty">Poverty</option>
+                        <option value="noHealthIns">No Health Insurance</option>
+                        <option value="smoking">Smoking</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="regression-box">
+            <div id="regression-plot"></div>
+        </div>
+        <div class="legend-box">
+            <div id="legend"></div>
+        </div>
+    </div>
+
+    <script type="module" src="{% static 'main.js' %}"></script>
+</body>
+</html>
