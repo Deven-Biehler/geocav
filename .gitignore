@@ -1,5 +1,6 @@
 geocav_env/
 .venv/
+CDC Data/
 
 # Python
 __pycache__/
