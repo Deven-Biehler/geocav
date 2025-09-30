@@ -10,10 +10,10 @@ export class MapRenderer {
         console.log('Initializing MapRenderer');
         // Initialize properties
         this.selectedFilters = {
-            cancerType: 'kidney',
+            cancerType: 'Liver',
             level: 'state',
-            selectedCancerTypes: ['kidney'],
-            factor: 'drinking'
+            selectedCancerTypes: ['Liver'],
+            factor: 'Smoking'
         };
         if (MAP_TYPE == 'choropleth') {
             this.map_type = new ChoroplethMap(this.selectedFilters);

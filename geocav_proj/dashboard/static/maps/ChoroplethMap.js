@@ -16,6 +16,13 @@ export class ChoroplethMap {
         
         const response = await fetch(`/choropleth?${params.toString()}`);
         this.statesLayer = await response.json();
+        if (!this.statesLayer || !this.statesLayer.features) {
+            console.error('Invalid GeoJSON data received:', this.statesLayer);
+            throw new Error('Failed to load map data');
+        }
+        else {
+            console.log('Map data successfully fetched:', this.statesLayer);
+        }
     }
 
     async renderMap(map) {
@@ -29,7 +36,7 @@ export class ChoroplethMap {
         await this.fetchMapData();
         // Extract all values and filter out undefined/null values from the this.statesLayer features
         const values = this.statesLayer.features
-            .map(feature => feature.properties?.cancer_rate)
+            .map(feature => feature.properties?.incidence_rate)
             .filter(value => value != null);  // Filters out null and undefined
             
         // Set default min/max or calculate from values
@@ -107,7 +114,7 @@ export class ChoroplethMap {
     /* --- Styling --- */
 
     getMapStyle(feature) {
-        const value = feature.properties.cancer_rate;
+        const value = feature.properties.incidence_rate;
         const color = this.getColor(value, this.dataMin, this.dataMax);
         
         return {
@@ -141,7 +148,7 @@ export class ChoroplethMap {
         const county_name = feature.properties.NAME || '';
         const state_name = feature.properties.name || feature.properties.state_name || '';
         const name = county_name ? `${county_name}, ${state_name}` : state_name;
-        const value = feature.properties.cancer_rate;
+        const value = feature.properties.incidence_rate;
 
         return `
             <div class="map-popup">

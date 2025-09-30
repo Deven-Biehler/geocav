@@ -3,169 +3,236 @@ import json
 import pandas as pd
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.conf import settings
 from ...models import (
     CancerType,
-    EnvironmentalFactor,
+    Factor,
     Gender,
+    GeographicLevel,
     Race,
     CancerIncidence,
+    FactorMeasurement
 )
 
 class Command(BaseCommand):
     def __init__(self):
         super().__init__()
-        data_config_path = os.path.join(
-            os.path.dirname(__file__), '..', '..', 'data_config.json'
-        )
+        data_config_path = os.path.join(settings.BASE_DIR, 'data_config.json')
         with open(data_config_path, 'r') as f:
             self.data_config = json.load(f)
-        
-        self.cancer_types = {ct.name: ct for ct in CancerType.objects.all()}
-        self.environmental_factors = {ef.name: ef for ef in EnvironmentalFactor.objects.all()}
-        self.genders = {g.name: g for g in Gender.objects.all()}
-        self.races = {r.name: r for r in Race.objects.all()}
-        
-        self.data_dir = self.data_config.get('data_directory', 'CDC Data')
 
-        self.factor_lookup = self.load_all_factors()
-   
+        self.factor_files = self.data_config["factor_files"]
+        self.factor_columns = ["StateFIPS","State","CountyFIPS","County","Start Year","End Year","Value","Factor"]
+        self.cancer_incidence_files = self.data_config["cancer_incidence_files"]
+        self.cancer_incidence_columns = ["StateFIPS","State","CountyFIPS","County","Start Year","End Year","Pancreatic","Skin","Lung","Liver","Breast","Kidney","Prostate","Esophageal", "Sex", "Race Ethnicity"]
+        self.geographic_levels = ["county", "state"]
+    
     def handle(self, *args, **options):
-        with transaction.atomic():
-            self.load_data()
-            
+        self.load_data()
         self.stdout.write(self.style.SUCCESS('Successfully loaded all data'))
 
-    def load_all_factors(self):
-        """Load all environmental factor data into a lookup dictionary"""
-        factor_lookup = {}
-        
-        for geo_level in ['county', 'state']:
-            for factor_config in self.data_config['environmental_factors'][geo_level]:
-                filepath = os.path.join(self.data_dir, factor_config['filepath'])
-                
-                if not os.path.exists(filepath):
-                    self.stdout.write(self.style.WARNING(f"Factor file not found: {filepath}"))
-                    continue
-                
-                self.stdout.write(f"Loading factor: {factor_config['name']}")
-                df = pd.read_csv(filepath)
-                
-                # Create lookup key for each row: (geo_level, state, county, year_range) -> value
-                for _, row in df.iterrows():
-                    if geo_level == 'county':
-                        key = (geo_level, row['state'], row.get('county', ''), row['year_range'])
-                    else:
-                        key = (geo_level, row['state'], '', row['year_range'])
-                    
-                    # Store as: key -> {factor_name: value}
-                    if key not in factor_lookup:
-                        factor_lookup[key] = {}
-                    
-                    factor_lookup[key][factor_config['name']] = float(row.get('value', 0))
-        
-        return factor_lookup
-    
     def load_data(self):
-        records_to_create = []
+        self.clear_existing_data()
+        self.pre_process_data()
+        self.load_factors()
+        self.load_cancer_incidence()
+
+    def load_factors(self):
+        """Load environmental factor data into database"""
+        factors_path = os.path.join(settings.BASE_DIR, 'CDC Data/factors.csv')
+        df = pd.read_csv(factors_path)
+
+        # Pre-create lookups
+        factors_dict = {name: Factor.objects.get_or_create(name=name)[0] 
+                    for name in df['Factor'].unique()}
+        gender_all = Gender.objects.get_or_create(name='All')[0]
+        race_all = Race.objects.get_or_create(name='ALL')[0]
         
-        for geo_level in ['county', 'state']:
-            cancer_files = self.data_config['cancer_incidence_files'][geo_level]
+        # Add geo_level and factor_id columns
+        df['geo_level'] = df['County'].apply(
+            lambda x: GeographicLevel.STATE if x == 'All' else GeographicLevel.COUNTY
+        )
+        df['factor_id'] = df['Factor'].map(lambda x: factors_dict[x].id)
+        
+        # Convert to list of dicts for bulk_create
+        measurements = [
+            FactorMeasurement(
+                geographic_level=row['geo_level'],
+                state=row['State'],
+                statefp=row['StateFIPS'],
+                county=row['County'],
+                countyfp=row['CountyFIPS'],
+                factor_id=row['factor_id'],
+                start_year=int(row['Start Year']),
+                end_year=int(row['End Year']),
+                factor_value=float(row['Value']),
+                gender=gender_all, # default to 'All'
+                race=race_all # default to 'ALL'
+            )
+            for _, row in df.iterrows()
+        ]
+        
+        # Bulk insert
+        FactorMeasurement.objects.bulk_create(measurements, batch_size=10000)
+
+    def load_cancer_incidence(self):
+        """Load cancer incidence data into database"""
+        cancer_path = os.path.join(settings.BASE_DIR, 'CDC Data/cancer_incidence.csv')
+        df = pd.read_csv(cancer_path)
+        
+        self.stdout.write(f"Loading {len(df)} cancer incidence records...")
+        
+        # Pre-create all lookup objects
+        cancer_types_dict = {}
+        for cancer_name in df['Cancer Type'].unique():
+            cancer_type, _ = CancerType.objects.get_or_create(name=cancer_name)
+            cancer_types_dict[cancer_name] = cancer_type
+        
+        genders_dict = {}
+        for gender_name in df['Sex'].unique():
+            gender, _ = Gender.objects.get_or_create(name=gender_name)
+            genders_dict[gender_name] = gender
+        
+        races_dict = {}
+        for race_name in df['Race Ethnicity'].unique():
+            race, _ = Race.objects.get_or_create(name=race_name)
+            races_dict[race_name] = race
+        
+        # Build list of objects to bulk create
+        incidences = []
+        for idx, row in df.iterrows():
+            if idx % 10000 == 0:
+                self.stdout.write(f"  Prepared {idx} records...")
             
-            for file_type, filepath in cancer_files.items():
-                df = self._load_cancer_file(filepath)
-                if df is None:
-                    continue
+            geo_level = GeographicLevel.STATE if row['County'] == 'All' else GeographicLevel.COUNTY
+            statefp = row['StateFIPS']
+            countyfp = row['CountyFIPS']
+            
+            incidences.append(CancerIncidence(
+                geographic_level=geo_level,
+                state=row['State'],
+                statefp=statefp,
+                county=row['County'],
+                countyfp=countyfp,
+                cancer_type=cancer_types_dict[row['Cancer Type']],
+                gender=genders_dict[row['Sex']],
+                race=races_dict[row['Race Ethnicity']],
+                start_year=int(row['Start Year']),
+                end_year=int(row['End Year']),
+                incidence_rate=float(row['Incidence'])
+            ))
+        
+        # Bulk create in batches
+        with transaction.atomic():
+            CancerIncidence.objects.bulk_create(incidences, batch_size=10000)
+        
+        self.stdout.write(self.style.SUCCESS(f"Loaded {len(incidences)} cancer incidence records"))
+
+    def pre_process_data(self):
+        """Moves all data into 2 tables and standardizes columns"""
+        dfs = []
+        for file in self.factor_files:
+            file = os.path.join(settings.BASE_DIR, file)    
+            df = pd.read_csv(file)
+            df = self._standardize_factor_df(df=df, file=file)
+            dfs.append(df)
+        
+        merged_df = pd.concat(dfs, ignore_index=True)
+        merged_df.to_csv(os.path.join(settings.BASE_DIR, 'CDC Data/factors.csv'), index=False)
+
+        
+        dfs = []
+        for file in self.cancer_incidence_files:
+            file = os.path.join(settings.BASE_DIR, file)
+            df = pd.read_csv(file)
+            df = self._standardize_cancer_df(df=df)
+            dfs.append(df)
+        
+        merged_df = pd.concat(dfs, ignore_index=True)
+        merged_df.to_csv(os.path.join(settings.BASE_DIR, 'CDC Data/cancer_incidence.csv'), index=False)
                 
-                for _, row in df.iterrows():
-                    records = self._process_cancer_row(row, file_type, geo_level)
-                    records_to_create.extend(records)
-                    
-                    if len(records_to_create) >= 1000:
-                        self._bulk_create_records(records_to_create)
-                        records_to_create = []
-        
-        self._bulk_create_records(records_to_create)
 
-    def _load_cancer_file(self, filepath):
-        """Load a single cancer CSV file"""
-        full_path = os.path.join(self.data_dir, filepath)
+    def _standardize_factor_df(self, df, file):
+        df['Factor'] = os.path.basename(file)[:-4]  # Use filename (without .csv) as factor name
+        print("Processing file: ", file)
+        if "County" not in df.columns:
+            df["County"] = "All"
+            df['Geographic Level'] = "State"
+            df["CountyFIPS"] = 0
+        if "Year" in df.columns:
+            df["Start Year"] = df["Year"]
+            df["End Year"] = df["Year"]
+        # Remove any unecessary columns
+        df = df[self.factor_columns]
         
-        if not os.path.exists(full_path):
-            self.stdout.write(self.style.WARNING(f"Cancer file not found: {full_path}"))
-            return None
+        # Standardize units - convert non-numeric values and ensure consistent formatting
+        df['Value'] = pd.to_numeric(df['Value'].astype(str).str.replace(',', '', regex=False), errors='coerce')
+        df = df.dropna(subset=['Value'])
+        df['Factor'] = df['Factor'].str.strip()
+        df['County'] = df['County'].str.strip()
+        df['State'] = df['State'].str.strip()
         
-        return pd.read_csv(full_path)
+        return df
+    
+    def _standardize_cancer_df(self, df):
+        if "Sex" not in df.columns:
+            df['Sex'] = "All"
+        if "Race Ethnicity" not in df.columns:
+            df["Race Ethnicity"] = "ALL"
+        if "County" not in df.columns:
+            df["County"] = "All"
+            df['Geographic Level'] = "State"
+            df["CountyFIPS"] = 0
+        if "Year" in df.columns:
+            df["Start Year"] = df["Year"]
+            df["End Year"] = df["Year"]
+        if "Breast" not in df.columns:
+            df["Breast"] = "Suppressed"
+        if "Prostate" not in df.columns:
+            df["Prostate"] = "Suppressed"
 
-    def _process_cancer_row(self, row, file_type, geo_level):
-        cancer_type = self.cancer_types.get(row['cancer_type'])
-        if not cancer_type:
-            self.stdout.write(self.style.WARNING(f"Unknown cancer type: {row['cancer_type']}"))
-            return []
         
-        gender, race = self._get_demographics(row, file_type)
-        year_range = self._get_year_range(row)
+        # Remove any unecessary columns
+        df = df[self.cancer_incidence_columns]
         
-        if not year_range:
-            return []
+        # Convert cancer type columns to long format
+        cancer_columns = ["Pancreatic","Skin","Lung","Liver","Breast","Kidney","Prostate","Esophageal"]
+        id_vars = [col for col in df.columns if col not in cancer_columns]
+        df = pd.melt(df, id_vars=id_vars, value_vars=cancer_columns, 
+                     var_name='Cancer Type', value_name='Incidence')
         
-        return self._create_records_for_factors(row, cancer_type, gender, race, year_range, geo_level)
+        # Standardize units - convert non-numeric values and ensure consistent formatting
+        df['Incidence'] = pd.to_numeric(df['Incidence'].astype(str).str.replace(',', '', regex=False), errors='coerce')
+        df = df.dropna(subset=['Incidence'])
+        df['Sex'] = df['Sex'].str.strip().str.title()
+        df['Race Ethnicity'] = df['Race Ethnicity'].str.strip().str.upper()
+        df['Cancer Type'] = df['Cancer Type'].str.strip().str.title()
+        df['County'] = df['County'].str.strip()
+        df['State'] = df['State'].str.strip()
+        
+        return df
 
-    def _get_demographics(self, row, file_type):
-        if file_type == 'gender':
-            return (
-                self.genders.get(row.get('gender'), self.genders['All']),
-                self.races['All']
-            )
-        elif file_type == 'race':
-            return (
-                self.genders['All'],
-                self.races.get(row.get('race'), self.races['All'])
-            )
-        else:
-            return (self.genders['All'], self.races['All'])
 
-    def _get_year_range(self, row):
-        if 'year_range' in row and pd.notna(row['year_range']):
-            return row['year_range']
-        elif 'year' in row and pd.notna(row['year']):
-            return f"{row['year']}-{row['year']}"
-        else:
-            self.stdout.write(self.style.WARNING("No year information for row"))
-            return None
-
-    def _create_records_for_factors(self, row, cancer_type, gender, race, year_range, geo_level):
-        records = []
+    def clear_existing_data(self):
+        """Clear all existing data from the database"""
+        self.stdout.write('Clearing existing data...')
         
-        for factor_config in self.data_config['environmental_factors'][geo_level]:
-            factor = self.environmental_factors.get(factor_config['name'])
-            if not factor:
-                continue
+        with transaction.atomic():
+            CancerIncidence.objects.all().delete()
+            self.stdout.write('  Deleted CancerIncidence records')
             
-            lookup_key = self._create_lookup_key(row, geo_level, year_range)
-            factor_value = self.factor_lookup.get(lookup_key, {}).get(factor_config['name'], 0.0)
+            Race.objects.all().delete()
+            self.stdout.write('  Deleted Race records')
             
-            record = CancerIncidence(
-                geographic_level='County' if geo_level == 'county' else 'State',
-                state=row['state'],
-                county=row.get('county') if geo_level == 'county' else None,
-                cancer_type=cancer_type,
-                environmental_factor=factor,
-                gender=gender,
-                race=race,
-                incidence_rate=float(row['incidence_rate']),
-                factor_value=factor_value,
-                year_range=year_range
-            )
-            records.append(record)
+            Gender.objects.all().delete()
+            self.stdout.write('  Deleted Gender records')
+            
+            Factor.objects.all().delete()
+            self.stdout.write('  Deleted EnvironmentalFactor records')
+            
+            CancerType.objects.all().delete()
+            self.stdout.write('  Deleted CancerType records')
         
-        return records
+        self.stdout.write(self.style.SUCCESS('Successfully cleared all data'))
 
-    def _create_lookup_key(self, row, geo_level, year_range):
-        if geo_level == 'county':
-            return (geo_level, row['state'], row.get('county', ''), year_range)
-        else:
-            return (geo_level, row['state'], '', year_range)
-
-    def _bulk_create_records(self, records):
-        if records:
-            CancerIncidence.objects.bulk_create(records, ignore_conflicts=True)
+# TODO: add fuzzy cross-year handling between factors and cancer incidence

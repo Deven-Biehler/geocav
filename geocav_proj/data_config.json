@@ -1,15 +1,25 @@
 {
+  "column_mappings": {
+    "environmental_factors": {
+      "state": "State",
+      "county": "County",
+      "year_range": ["Start Year", "End Year"],
+      "value": "Value"
+    },
+    "cancer_incidence": {
+      "state": "State",
+      "county": "County",
+      "incidence_rate": "Value",
+      "year_range": ["Start Year", "End Year"],
+      "gender": "Sex",
+      "race": "Race Ethnicity"
+    }
+  },
   "cancer_types": [
-    {"name": "Pancreatic Cancer", "slug": "pancreatic"},
-    {"name": "Skin Cancer", "slug": "skin"},
-    {"name": "Lung Cancer", "slug": "lung"},
-    {"name": "Liver Cancer", "slug": "liver"},
-    {"name": "Breast Cancer", "slug": "breast"},
-    {"name": "Kidney Cancer", "slug": "kidney"},
-    {"name": "Prostate Cancer", "slug": "prostate"},
-    {"name": "Esophageal Cancer", "slug": "esophageal"}
+    "Pancreatic", "Skin", "Lung", "Liver", "Breast", "Kidney", "Prostate", "Esophageal"
   ],
-  "environmental_factors": {
+
+  "factors": {
     "county": [
       {
         "name": "Air Quality",
@@ -218,29 +228,59 @@
     {"name": "Health", "slug": "health"},
     {"name": "Lifestyle", "slug": "lifestyle"}
   ],
-  "genders": [
-    {"name": "Male", "slug": "male"},
-    {"name": "Female", "slug": "female"},
-    {"name": "All", "slug": "all"}
+  "genders": {
+    "Male": "Male",
+    "Female": "Female",
+    "All": "All"
+  },
+  "races": {
+    "White": "White",
+    "Black": "Black",
+    "Hispanic": "Hispanic",
+    "Asian/Pacific Islander": "Asian/Pacific Islander",
+    "American Indian/Alaska Native": "American Indian/Alaska Native",
+    "All": "All"
+  },
+  "cancer_incidence_files": [
+    "CDC Data/Cancer_Incidence/State_Level/Cancer_Incidence_State.csv",
+    "CDC Data/Cancer_Incidence/State_Level/Cancer_Incidence_State_Race.csv",
+    "CDC Data/Cancer_Incidence/State_Level/Cancer_Incidence_State_Gender.csv",
+    "CDC Data/Cancer_Incidence/County_Level/Cancer_Incidence_County.csv",
+    "CDC Data/Cancer_Incidence/County_Level/Cancer_Incidence_County_Race.csv",
+    "CDC Data/Cancer_Incidence/County_Level/Cancer_Incidence_County_Gender.csv"
   ],
-  "races": [
-    {"name": "White", "slug": "white"},
-    {"name": "Black", "slug": "black"},
-    {"name": "Hispanic", "slug": "hispanic"},
-    {"name": "Asian/Pacific Islander", "slug": "asian_pacific_islander"},
-    {"name": "American Indian/Alaska Native", "slug": "american_indian_alaska_native"},
-    {"name": "All", "slug": "all"}
-  ],
-  "cancer_incidence_files": {
-    "county": {
-      "base": "CDC Data/Cancer_Incidence/County_Level/Cancer_Incidence_County.csv",
-      "gender": "CDC Data/Cancer_Incidence/County_Level/Cancer_Incidence_County_Gender.csv",
-      "race": "CDC Data/Cancer_Incidence/County_Level/Cancer_Incidence_County_Race.csv"
-    },
-    "state": {
-      "base": "CDC Data/Cancer_Incidence/State_Level/Cancer_Incidence_State.csv",
-      "gender": "CDC Data/Cancer_Incidence/State_Level/Cancer_Incidence_State_Gender.csv",
-      "race": "CDC Data/Cancer_Incidence/State_Level/Cancer_Incidence_State_Race.csv"
-    }
-  }
+  "factor_files": [
+    "CDC Data/Factors/County_Level/Environment/Air_Quality.csv",
+    "CDC Data/Factors/County_Level/Environment/Air_Toxins_Concentration.csv",
+    "CDC Data/Factors/State_Level/Environment/Air_Toxins_Concentration.csv",
+    "CDC Data/Factors/County_Level/Environment/Annual_Sunlight_Exposure.csv",
+    "CDC Data/Factors/State_Level/Environment/Annual_Sunlight_Exposure.csv",
+    "CDC Data/Factors/County_Level/Environment/Annual_UV_DailyDose.csv",
+    "CDC Data/Factors/State_Level/Environment/Annual_UV_DailyDose.csv",
+    "CDC Data/Factors/County_Level/Environment/Radon_Levels_Pre_Mitigation_10Y.csv",
+    "CDC Data/Factors/County_Level/Environment/Radon_Tests_Pre_Mitigation_10Y.csv",
+    "CDC Data/Factors/State_Level/Environment/CO_Poisoning_Hospitalization.csv",
+    "CDC Data/Factors/State_Level/Environment/Pesticide_Exposure.csv",
+    "CDC Data/Factors/County_Level/Health/Coronary_Heart_Disease.csv",
+    "CDC Data/Factors/County_Level/Health/Depression.csv",
+    "CDC Data/Factors/County_Level/Health/Diabetes.csv",
+    "CDC Data/Factors/County_Level/Health/Heart_Stroke.csv",
+    "CDC Data/Factors/State_Level/Health/Heart_Stroke.csv",
+    "CDC Data/Factors/County_Level/Health/High_Blood_Pressure.csv",
+    "CDC Data/Factors/State_Level/Health/High_Blood_Pressure.csv",
+    "CDC Data/Factors/County_Level/Health/High_Cholesterol.csv",
+    "CDC Data/Factors/State_Level/Health/High_Cholesterol.csv",
+    "CDC Data/Factors/County_Level/Health/Hospitalization.csv",
+    "CDC Data/Factors/State_Level/Health/Hospitalization.csv",
+    "CDC Data/Factors/County_Level/Health/Hospitalization_Gender.csv",
+    "CDC Data/Factors/State_Level/Health/Hospitalization_Gender.csv",
+    "CDC Data/Factors/County_Level/Health/No_Health_Insurance.csv",
+    "CDC Data/Factors/State_Level/Health/No_Health_Insurance.csv",
+    "CDC Data/Factors/County_Level/Lifestyle/Binge_Drinking.csv",
+    "CDC Data/Factors/County_Level/Lifestyle/No_Physical_Activity.csv",
+    "CDC Data/Factors/County_Level/Lifestyle/Obesity.csv",
+    "CDC Data/Factors/County_Level/Lifestyle/Short_Sleep.csv",
+    "CDC Data/Factors/County_Level/Lifestyle/Smoking.csv",
+    "CDC Data/Factors/State_Level/Lifestyle/Smoking.csv"
+  ]
 }
