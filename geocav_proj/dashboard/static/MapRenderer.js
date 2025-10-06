@@ -108,6 +108,22 @@ export class MapRenderer {
             window.regressionPlot.selectedFactor = this.selectedFilters.factor;
             window.regressionPlot.renderPlot();
         });
+        // Gender filter
+        const genderSelect = document.getElementById('gender-select');
+        genderSelect.addEventListener('change', (e) => {
+            this.selectedFilters.gender = e.target.value || 'all'; // Default to all
+            this.renderMap();
+            window.regressionPlot.selectedGender = this.selectedFilters.gender;
+            window.regressionPlot.renderPlot();
+        });
+        // Race filter
+        const raceSelect = document.getElementById('race-select');
+        raceSelect.addEventListener('change', (e) => {
+            this.selectedFilters.race = e.target.value || 'all'; // Default to all
+            this.renderMap();
+            window.regressionPlot.selectedRace = this.selectedFilters.race;
+            window.regressionPlot.renderPlot();
+        });
     }
 
         

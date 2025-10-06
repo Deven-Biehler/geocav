@@ -6,5 +6,5 @@ urlpatterns = [
     path('choropleth', views.choropleth, name='choropleth'),
     # path('pie', views.pie, name='pie'),
     # path('dotDensity', views.dotDensity, name='dotDensity'),
-    # path('dashboard/regression-data', views.regression_data, name='regression_data'),
+    path('dashboard/regression-data', views.regression_data, name='regression_data'),
 ]

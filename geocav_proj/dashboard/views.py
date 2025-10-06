@@ -4,7 +4,7 @@ import json
 from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from .models import CancerIncidence, CancerType, Factor, Gender, Race, GeographicLevel
+from .models import CancerIncidence, CancerType, Factor, Gender, Race, GeographicLevel, FactorMeasurement
 from django.db.models import Min
 
 
@@ -14,15 +14,6 @@ STATE_COLUMN = 'name'  # Column name in GeoJSON for state names
 def dashboard_view(request):
     """View function for the dashboard homepage."""
     return render(request, 'geospatial_dashboard.html')
-
-
-
-import os
-import json
-from django.conf import settings
-from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
-from .models import CancerIncidence, CancerType, Gender, Race
 
 
 @require_http_methods(["GET"])
@@ -41,37 +32,36 @@ def choropleth(request):
         cancer_type = CancerType.objects.get(name__iexact=cancer_type_name)
        
         # Build query
-        queryset = CancerIncidence.objects.filter(cancer_type=cancer_type)
+        cancer_queryset = CancerIncidence.objects.filter(cancer_type=cancer_type)
        
         # Filter by geographic level
         if level == 'state':
-            queryset = queryset.filter(county='All')
+            cancer_queryset = cancer_queryset.filter(county='All')
         else:
-            queryset = queryset.exclude(county='All')
+            cancer_queryset = cancer_queryset.exclude(county='All')
        
         # Apply demographic filters
         if gender_name:
             gender = Gender.objects.get(name__iexact=gender_name)
-            queryset = queryset.filter(gender=gender)
+            cancer_queryset = cancer_queryset.filter(gender=gender)
        
         if race_name:
             race = Race.objects.get(name__iexact=race_name)
-            queryset = queryset.filter(race=race)
-       
+            cancer_queryset = cancer_queryset.filter(race=race)
         # Filter by year
         if year:
-            queryset = queryset.filter(start_year__lte=int(year), end_year__gte=int(year))
+            cancer_queryset = cancer_queryset.filter(start_year__lte=int(year), end_year__gte=int(year))
         else:
             # Get most recent year if not specified
             from django.db.models import Max
-            latest_year = queryset.aggregate(Max('start_year'))['start_year__max']
+            latest_year = cancer_queryset.aggregate(Max('start_year'))['start_year__max']
             if latest_year:
-                queryset = queryset.filter(start_year=latest_year)
+                cancer_queryset = cancer_queryset.filter(start_year=latest_year)
        
         # Aggregate data by location
         cancer_data = {}
         debug_records = []
-        for record in queryset:
+        for record in cancer_queryset:
             # Collect debug info for first 5 records
             if len(debug_records) < 5:
                 debug_records.append({
@@ -122,7 +112,7 @@ def choropleth(request):
         
         debug_info = {
             'level': level,
-            'query_count': queryset.count(),
+            'query_count': cancer_queryset.count(),
             'sample_db_keys': list(cancer_data.keys())[:5],
             'sample_geojson_ids': sample_geoids,
             'sample_records': debug_records  # Add this line
@@ -140,197 +130,130 @@ def choropleth(request):
         return JsonResponse({'error': str(e), 'traceback': traceback.format_exc()}, status=500)
 
 
-# def pie(request):
-#     """Django view to get geospatial data with all cancer rates for pie charts."""
-#     level = request.GET.get('level', 'county')
+@require_http_methods(["GET"])
+def regression_data(request):
+    """View to return data for the regression plot."""
     
-#     # Get absolute paths for GeoJSON files
-#     if level == 'county':
-#         geojson_path = os.path.join(settings.BASE_DIR, 'dashboard', 'static', 'data', 'counties.geojson')
-#     else:
-#         geojson_path = os.path.join(settings.BASE_DIR, 'dashboard', 'static', 'data', 'us-states.json')
+    cancer_type_name = request.GET.get('cancer_type', 'Kidney')
+    factor_name = request.GET.get('factor', 'Air_Quality')
+    level = request.GET.get('level', 'state')
+    gender_name = request.GET.get('gender', 'All')
+    race_name = request.GET.get('race', 'ALL')
+    year = request.GET.get('year')
     
-#     # Check if file exists
-#     if not os.path.exists(geojson_path):
-#         return JsonResponse({"error": f"GeoJSON file not found: {geojson_path}"}, status=404)
-    
-#     try:
-#         # Load shape data
-#         with open(geojson_path, 'r') as f:
-#             geojson = json.load(f)
+    try:
+        # Get related objects with better error handling
+        cancer_type = CancerType.objects.get(name__iexact=cancer_type_name)
         
-#         # Query database for state or county values
-#         if level == 'county':
-#             data = CountyData.objects.all()
-#         else:
-#             data = StateData.objects.all()
+        # Try to get factor - check what the actual name format is
+        try:
+            factor = Factor.objects.get(name__iexact=factor_name)
+        except Factor.DoesNotExist:
+            # Try with underscores replaced by spaces
+            factor_name_alt = factor_name.replace('_', ' ')
+            try:
+                factor = Factor.objects.get(name__iexact=factor_name_alt)
+            except Factor.DoesNotExist:
+                available_factors = list(Factor.objects.values_list('name', flat=True))
+                return JsonResponse({
+                    'data': [],
+                    'debug': {
+                        'error': f'Factor "{factor_name}" not found',
+                        'tried': [factor_name, factor_name_alt],
+                        'available_factors': available_factors
+                    }
+                })
         
-#         # Create mapping dictionaries for faster lookups
-#         if level == 'county':
-#             # Create county mapping with multiple variations for faster lookups
-#             county_name_mapping = {}
-#             for county_data in data:
-#                 # Original county name
-#                 county_name_mapping[county_data.county] = county_data
-#                 # Lowercase version
-#                 county_name_mapping[county_data.county.lower()] = county_data
-#                 # Version without "County" suffix if present
-#                 clean_name = county_data.county.replace(" County", "")
-#                 if clean_name != county_data.county:
-#                     county_name_mapping[clean_name] = county_data
-#                     county_name_mapping[clean_name.lower()] = county_data
-#         else:
-#             # Create a dictionary of state names
-#             state_name_mapping = {}
-#             for state_data in data:
-#                 # Add both lowercase and regular versions
-#                 state_name_mapping[state_data.state.lower()] = state_data
-#                 state_name_mapping[state_data.state] = state_data
-    
-#         # Define cancer types
-#         cancer_types = ['eso', 'kidney', 'liver', 'lung', 'pancreatic', 'prostate', 'skin']
-    
-#         # Merge shape with values
-#         for feature in geojson['features']:
-#             # Extract name using optimized property lookup
-#             props = feature['properties']
-            
-#             # Use global constants for property names based on level
-#             primary_column = COUNTY_COLUMN if level == 'county' else STATE_COLUMN
-#             name = props.get(primary_column) or props.get('STATE_NAME') or props.get('COUNTY')
-            
-#             if not name:
-#                 continue
-
-#             props['county_name'] = name
-                
-#             # Try to find a match in database using fast dictionary lookups
-#             db_record = None
-#             if level == 'state':
-#                 # State level - use existing state mapping
-#                 db_record = state_name_mapping.get(name) or state_name_mapping.get(name.lower())
-#             else:
-#                 # County level - use optimized county mapping
-#                 db_record = (county_name_mapping.get(name) or 
-#                            county_name_mapping.get(name.lower()) or
-#                            county_name_mapping.get(name.replace(" County", "")) or
-#                            county_name_mapping.get(name.replace(" County", "").lower()))
-            
-#             # Add all cancer rates to the feature properties
-#             if db_record:
-#                 for cancer_type in cancer_types:
-#                     rate_field = f'{cancer_type}_rate'
-#                     if hasattr(db_record, rate_field):
-#                         value = getattr(db_record, rate_field)
-#                         feature['properties'][cancer_type] = value if value is not None else 0
-#                     else:
-#                         feature['properties'][cancer_type] = 0
-#             else:
-#                 # No matching record, set default values for all cancer types
-#                 for cancer_type in cancer_types:
-#                     feature['properties'][cancer_type] = 0
+        gender = Gender.objects.get(name__iexact=gender_name)
+        race = Race.objects.get(name__iexact=race_name)
         
-#         return JsonResponse(geojson)
-#     except Exception as e:
-#         return JsonResponse({"error": str(e)}, status=500)
-
-# def dotDensity(request):
-#     """Django view to get geospatial data with cancer rates."""
-#     start_time = time.time()
-    
-#     level = request.GET.get('level', 'county')
-#     cancer_type = request.GET.get('cancer_type', 'lung')
-#     factor = request.GET.get('factor', 'smoking') 
-    
-#     # Get absolute paths for GeoJSON files
-#     file_setup_start = time.time()
-#     if level == 'county':
-#         geojson_path = os.path.join(settings.BASE_DIR, 'dashboard', 'static', 'data', 'counties.geojson')
-#     else:
-#         geojson_path = os.path.join(settings.BASE_DIR, 'dashboard', 'static', 'data', 'us-states.json')
-    
-#     file_setup_time = time.time() - file_setup_start
-    
-#     # Load shape data
-#     file_load_start = time.time()
-#     with open(geojson_path, 'r') as f:
-#         geojson = json.load(f)
-#     file_load_time = time.time() - file_load_start
-    
-#     # Query database for state or county values
-#     db_query_start = time.time()
-#     if level == 'county':
-#         data = CountyData.objects.all()
-#         # Create simple mapping dictionary assuming clean data
-#         county_name_mapping = {county_data.county: county_data for county_data in data}
-#     else:
-#         data = StateData.objects.all()
-#         # Create simple mapping dictionary assuming clean data
-#         state_name_mapping = {state_data.state: state_data for state_data in data}
-#     db_query_time = time.time() - db_query_start
-
-#     # Merge shape with values
-#     merge_start = time.time()
-#     for feature in geojson['features']:
-#         # Direct property access assuming clean data
-#         props = feature['properties']
-#         primary_column = COUNTY_COLUMN if level == 'county' else STATE_COLUMN
-#         name = props.get(primary_column)
-#         if not name:
-#             continue
+        # Build queries
+        cancer_queryset = CancerIncidence.objects.filter(
+            cancer_type=cancer_type,
+            gender=gender,
+            race=race,
+            geographic_level=level
+        )
+        
+        factor_queryset = FactorMeasurement.objects.filter(
+            factor=factor,
+            gender=gender,
+            race=race,
+            geographic_level=level
+        )
+        
+        # Apply year filtering
+        if year:
+            year_int = int(year)
+            cancer_queryset = cancer_queryset.filter(start_year__lte=year_int, end_year__gte=year_int)
+            factor_queryset = factor_queryset.filter(start_year__lte=year_int, end_year__gte=year_int)
+        else:
+            from django.db.models import Max
+            latest_cancer_year = cancer_queryset.aggregate(Max('start_year'))['start_year__max']
+            latest_factor_year = factor_queryset.aggregate(Max('start_year'))['start_year__max']
             
-#         props['county_name'] = name
+            if latest_cancer_year and latest_factor_year:
+                latest_year = min(latest_cancer_year, latest_factor_year)
+                cancer_queryset = cancer_queryset.filter(start_year=latest_year)
+                factor_queryset = factor_queryset.filter(start_year=latest_year)
+        
+        # Build dictionaries
+        cancer_data = {}
+        for record in cancer_queryset:
+            key = str(record.statefp).zfill(2) if record.statefp else None
+            if level == 'county':
+                key = str(record.countyfp).zfill(5) if record.countyfp else None
             
-#         # Direct dictionary lookup with minimal fallback
-#         mapping = state_name_mapping if level == 'state' else county_name_mapping
-#         db_record = mapping.get(name)
-#         if db_record:
-#             props['cancer_rate'] = getattr(db_record, f'{cancer_type}_rate')
-#             props['factor_value'] = getattr(db_record, factor)
-#         else:
-#             props['cancer_rate'] = 0
-#             props['factor_value'] = 0
-#     merge_time = time.time() - merge_start
-    
-#     total_time = time.time() - start_time
-    
-#     # Log timing information
-#     print(f"dotDensity timing - File setup: {file_setup_time:.4f}s, File load: {file_load_time:.4f}s, DB query: {db_query_time:.4f}s, Merge: {merge_time:.4f}s, Total: {total_time:.4f}s")
-    
-#     return JsonResponse(geojson)
-
-# def regression_data(request):
-#     """View to return data for the regression plot."""
-#     cancer_type = request.GET.get('cancer_type', 'kidney')
-#     factor = request.GET.get('factor', 'smoking')  # Default to smoking
-#     level = request.GET.get('level', 'county')  # Match the same level parameter as map
-    
-#     # Get data for regression analysis based on the same level as the map
-#     if level == 'county':
-#         regions = CountyData.objects.all()
-#     else:
-#         regions = StateData.objects.all()
-    
-#     # Create a list of data points for the regression plot
-#     data = []
-#     for region in regions:
-#         cancer_field = f'{cancer_type}_rate'
-#         if hasattr(region, cancer_field):
-#             cancer_value = getattr(region, cancer_field)
-#             factor_value = getattr(region, factor, None)
+            if key and record.incidence_rate is not None:
+                cancer_data[key] = {
+                    'state': record.state,
+                    'rate': record.incidence_rate
+                }
+                if level == 'county' and record.county:
+                    cancer_data[key]['county'] = record.county
+        
+        factor_data = {}
+        for record in factor_queryset:
+            key = str(record.statefp).zfill(2) if record.statefp else None
+            if level == 'county':
+                key = str(record.countyfp).zfill(5) if record.countyfp else None
             
-#             if cancer_value is not None and factor_value is not None:
-#                 # Initialize with basic data
-#                 region_data = {
-#                     'state': region.state,
-#                     cancer_type: cancer_value,
-#                     factor: factor_value
-#                 }
+            if key and record.factor_value is not None:
+                factor_data[key] = record.factor_value
+        
+        # Merge data
+        result = []
+        for key, cancer_info in cancer_data.items():
+            if key in factor_data:
+                data_point = {
+                    'state': cancer_info['state'],
+                    cancer_type_name.lower(): cancer_info['rate'],
+                    factor_name.lower().replace(' ', '_'): factor_data[key]
+                }
                 
-#                 # Add county name if it's county level data
-#                 if level == 'county':
-#                     region_data['county'] = region.county
+                if level == 'county' and 'county' in cancer_info:
+                    data_point['county'] = cancer_info['county']
                 
-#                 data.append(region_data)
-    
-#     return JsonResponse(data, safe=False)
+                result.append(data_point)
+        
+        return JsonResponse({
+            'data': result,
+            'debug': {
+                'level': level,
+                'cancer_count': len(cancer_data),
+                'factor_count': len(factor_data),
+                'matched_count': len(result),
+                'sample_cancer_keys': list(cancer_data.keys())[:5],
+                'sample_factor_keys': list(factor_data.keys())[:5]
+            }
+        })
+        
+    except Exception as e:
+        import traceback
+        return JsonResponse({
+            'data': [],
+            'debug': {
+                'error': str(e),
+                'traceback': traceback.format_exc()
+            }
+        }, status=500)

@@ -13,6 +13,8 @@ export class ChoroplethMap {
         const params = new URLSearchParams();
         params.append('level', this.selectedFilters.level);
         params.append('cancer_type', this.selectedFilters.cancerType);
+        params.append('gender', this.selectedFilters.gender || 'all');
+        params.append('race', this.selectedFilters.race || 'all');
         
         const response = await fetch(`/choropleth?${params.toString()}`);
         this.statesLayer = await response.json();
