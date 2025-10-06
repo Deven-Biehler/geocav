@@ -1,3 +1,7 @@
+geocav_env/
+.venv/
+CDC Data/
+
 # Python
 __pycache__/
 *.py[cod]

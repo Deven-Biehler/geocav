@@ -1,0 +1,286 @@
+{
+  "column_mappings": {
+    "environmental_factors": {
+      "state": "State",
+      "county": "County",
+      "year_range": ["Start Year", "End Year"],
+      "value": "Value"
+    },
+    "cancer_incidence": {
+      "state": "State",
+      "county": "County",
+      "incidence_rate": "Value",
+      "year_range": ["Start Year", "End Year"],
+      "gender": "Sex",
+      "race": "Race Ethnicity"
+    }
+  },
+  "cancer_types": [
+    "Pancreatic", "Skin", "Lung", "Liver", "Breast", "Kidney", "Prostate", "Esophageal"
+  ],
+
+  "factors": {
+    "county": [
+      {
+        "name": "Air Quality",
+        "slug": "air_quality",
+        "category": "environment",
+        "filepath": "CDC Data/Factors/County_Level/Environment/Air_Quality.csv"
+      },
+      {
+        "name": "Air Toxins Concentration",
+        "slug": "air_toxins_concentration",
+        "category": "environment",
+        "filepath": "CDC Data/Factors/County_Level/Environment/Air_Toxins_Concentration.csv"
+      },
+      {
+        "name": "Annual Sunlight Exposure",
+        "slug": "annual_sunlight_exposure",
+        "category": "environment",
+        "filepath": "CDC Data/Factors/County_Level/Environment/Annual_Sunlight_Exposure.csv"
+      },
+      {
+        "name": "Annual UV Daily Dose",
+        "slug": "annual_uv_dailydose",
+        "category": "environment",
+        "filepath": "CDC Data/Factors/County_Level/Environment/Annual_UV_DailyDose.csv"
+      },
+      {
+        "name": "Radon Levels Pre-Mitigation",
+        "slug": "radon_levels_pre_mitigation",
+        "category": "environment",
+        "filepath": "CDC Data/Factors/County_Level/Environment/Radon_Levels_Pre_Mitigation_10Y.csv"
+      },
+      {
+        "name": "Radon Tests Pre-Mitigation",
+        "slug": "radon_tests_pre_mitigation",
+        "category": "environment",
+        "filepath": "CDC Data/Factors/County_Level/Environment/Radon_Tests_Pre_Mitigation_10Y.csv"
+      },
+      {
+        "name": "Coronary Heart Disease",
+        "slug": "coronary_heart_disease",
+        "category": "health",
+        "filepath": "CDC Data/Factors/County_Level/Health/Coronary_Heart_Disease.csv"
+      },
+      {
+        "name": "Depression",
+        "slug": "depression",
+        "category": "health",
+        "filepath": "CDC Data/Factors/County_Level/Health/Depression.csv"
+      },
+      {
+        "name": "Diabetes",
+        "slug": "diabetes",
+        "category": "health",
+        "filepath": "CDC Data/Factors/County_Level/Health/Diabetes.csv"
+      },
+      {
+        "name": "Heart Stroke",
+        "slug": "heart_stroke",
+        "category": "health",
+        "filepath": "CDC Data/Factors/County_Level/Health/Heart_Stroke.csv"
+      },
+      {
+        "name": "High Blood Pressure",
+        "slug": "high_blood_pressure",
+        "category": "health",
+        "filepath": "CDC Data/Factors/County_Level/Health/High_Blood_Pressure.csv"
+      },
+      {
+        "name": "High Cholesterol",
+        "slug": "high_cholesterol",
+        "category": "health",
+        "filepath": "CDC Data/Factors/County_Level/Health/High_Cholesterol.csv"
+      },
+      {
+        "name": "Hospitalization",
+        "slug": "hospitalization",
+        "category": "health",
+        "filepath": "CDC Data/Factors/County_Level/Health/Hospitalization.csv"
+      },
+      {
+        "name": "Hospitalization Gender",
+        "slug": "hospitalization_gender",
+        "category": "health",
+        "filepath": "CDC Data/Factors/County_Level/Health/Hospitalization_Gender.csv"
+      },
+      {
+        "name": "No Health Insurance",
+        "slug": "no_health_insurance",
+        "category": "health",
+        "filepath": "CDC Data/Factors/County_Level/Health/No_Health_Insurance.csv"
+      },
+      {
+        "name": "Binge Drinking",
+        "slug": "binge_drinking",
+        "category": "lifestyle",
+        "filepath": "CDC Data/Factors/County_Level/Lifestyle/Binge_Drinking.csv"
+      },
+      {
+        "name": "Lifestyle Merged",
+        "slug": "lifestyle_merged",
+        "category": "lifestyle",
+        "filepath": "CDC Data/Factors/County_Level/Lifestyle/Lifestyle_County_Merged.csv"
+      },
+      {
+        "name": "No Physical Activity",
+        "slug": "no_physical_activity",
+        "category": "lifestyle",
+        "filepath": "CDC Data/Factors/County_Level/Lifestyle/No_Physical_Activity.csv"
+      },
+      {
+        "name": "Obesity",
+        "slug": "obesity",
+        "category": "lifestyle",
+        "filepath": "CDC Data/Factors/County_Level/Lifestyle/Obesity.csv"
+      },
+      {
+        "name": "Short Sleep",
+        "slug": "short_sleep",
+        "category": "lifestyle",
+        "filepath": "CDC Data/Factors/County_Level/Lifestyle/Short_Sleep.csv"
+      },
+      {
+        "name": "Smoking",
+        "slug": "smoking",
+        "category": "lifestyle",
+        "filepath": "CDC Data/Factors/County_Level/Lifestyle/Smoking.csv"
+      }
+    ],
+    "state": [
+      {
+        "name": "Air Toxins Concentration",
+        "slug": "air_toxins_concentration",
+        "category": "environment",
+        "filepath": "CDC Data/Factors/State_Level/Environment/Air_Toxins_Concentration.csv"
+      },
+      {
+        "name": "Annual Sunlight Exposure",
+        "slug": "annual_sunlight_exposure",
+        "category": "environment",
+        "filepath": "CDC Data/Factors/State_Level/Environment/Annual_Sunlight_Exposure.csv"
+      },
+      {
+        "name": "Annual UV Daily Dose",
+        "slug": "annual_uv_dailydose",
+        "category": "environment",
+        "filepath": "CDC Data/Factors/State_Level/Environment/Annual_UV_DailyDose.csv"
+      },
+      {
+        "name": "CO Poisoning Hospitalization",
+        "slug": "co_poisoning_hospitalization",
+        "category": "environment",
+        "filepath": "CDC Data/Factors/State_Level/Environment/CO_Poisoning_Hospitalization.csv"
+      },
+      {
+        "name": "Pesticide Exposure",
+        "slug": "pesticide_exposure",
+        "category": "environment",
+        "filepath": "CDC Data/Factors/State_Level/Environment/Pesticide_Exposure.csv"
+      },
+      {
+        "name": "Heart Stroke",
+        "slug": "heart_stroke",
+        "category": "health",
+        "filepath": "CDC Data/Factors/State_Level/Health/Heart_Stroke.csv"
+      },
+      {
+        "name": "High Blood Pressure",
+        "slug": "high_blood_pressure",
+        "category": "health",
+        "filepath": "CDC Data/Factors/State_Level/Health/High_Blood_Pressure.csv"
+      },
+      {
+        "name": "High Cholesterol",
+        "slug": "high_cholesterol",
+        "category": "health",
+        "filepath": "CDC Data/Factors/State_Level/Health/High_Cholesterol.csv"
+      },
+      {
+        "name": "Hospitalization",
+        "slug": "hospitalization",
+        "category": "health",
+        "filepath": "CDC Data/Factors/State_Level/Health/Hospitalization.csv"
+      },
+      {
+        "name": "Hospitalization Gender",
+        "slug": "hospitalization_gender",
+        "category": "health",
+        "filepath": "CDC Data/Factors/State_Level/Health/Hospitalization_Gender.csv"
+      },
+      {
+        "name": "No Health Insurance",
+        "slug": "no_health_insurance",
+        "category": "health",
+        "filepath": "CDC Data/Factors/State_Level/Health/No_Health_Insurance.csv"
+      },
+      {
+        "name": "Smoking",
+        "slug": "smoking",
+        "category": "lifestyle",
+        "filepath": "CDC Data/Factors/State_Level/Lifestyle/Smoking.csv"
+      }
+    ]
+  },
+  "categories": [
+    {"name": "Environment", "slug": "environment"},
+    {"name": "Health", "slug": "health"},
+    {"name": "Lifestyle", "slug": "lifestyle"}
+  ],
+  "genders": {
+    "Male": "Male",
+    "Female": "Female",
+    "All": "All"
+  },
+  "races": {
+    "White": "White",
+    "Black": "Black",
+    "Hispanic": "Hispanic",
+    "Asian/Pacific Islander": "Asian/Pacific Islander",
+    "American Indian/Alaska Native": "American Indian/Alaska Native",
+    "All": "All"
+  },
+  "cancer_incidence_files": [
+    "CDC Data/Cancer_Incidence/State_Level/Cancer_Incidence_State.csv",
+    "CDC Data/Cancer_Incidence/State_Level/Cancer_Incidence_State_Race.csv",
+    "CDC Data/Cancer_Incidence/State_Level/Cancer_Incidence_State_Gender.csv",
+    "CDC Data/Cancer_Incidence/County_Level/Cancer_Incidence_County.csv",
+    "CDC Data/Cancer_Incidence/County_Level/Cancer_Incidence_County_Race.csv",
+    "CDC Data/Cancer_Incidence/County_Level/Cancer_Incidence_County_Gender.csv"
+  ],
+  "factor_files": [
+    "CDC Data/Factors/County_Level/Environment/Air_Quality.csv",
+    "CDC Data/Factors/County_Level/Environment/Air_Toxins_Concentration.csv",
+    "CDC Data/Factors/State_Level/Environment/Air_Toxins_Concentration.csv",
+    "CDC Data/Factors/County_Level/Environment/Annual_Sunlight_Exposure.csv",
+    "CDC Data/Factors/State_Level/Environment/Annual_Sunlight_Exposure.csv",
+    "CDC Data/Factors/County_Level/Environment/Annual_UV_DailyDose.csv",
+    "CDC Data/Factors/State_Level/Environment/Annual_UV_DailyDose.csv",
+    "CDC Data/Factors/County_Level/Environment/Radon_Levels_Pre_Mitigation_10Y.csv",
+    "CDC Data/Factors/County_Level/Environment/Radon_Tests_Pre_Mitigation_10Y.csv",
+    "CDC Data/Factors/State_Level/Environment/CO_Poisoning_Hospitalization.csv",
+    "CDC Data/Factors/State_Level/Environment/Pesticide_Exposure.csv",
+    "CDC Data/Factors/County_Level/Health/Coronary_Heart_Disease.csv",
+    "CDC Data/Factors/County_Level/Health/Depression.csv",
+    "CDC Data/Factors/County_Level/Health/Diabetes.csv",
+    "CDC Data/Factors/County_Level/Health/Heart_Stroke.csv",
+    "CDC Data/Factors/State_Level/Health/Heart_Stroke.csv",
+    "CDC Data/Factors/County_Level/Health/High_Blood_Pressure.csv",
+    "CDC Data/Factors/State_Level/Health/High_Blood_Pressure.csv",
+    "CDC Data/Factors/County_Level/Health/High_Cholesterol.csv",
+    "CDC Data/Factors/State_Level/Health/High_Cholesterol.csv",
+    "CDC Data/Factors/County_Level/Health/Hospitalization.csv",
+    "CDC Data/Factors/State_Level/Health/Hospitalization.csv",
+    "CDC Data/Factors/County_Level/Health/Hospitalization_Gender.csv",
+    "CDC Data/Factors/State_Level/Health/Hospitalization_Gender.csv",
+    "CDC Data/Factors/County_Level/Health/No_Health_Insurance.csv",
+    "CDC Data/Factors/State_Level/Health/No_Health_Insurance.csv",
+    "CDC Data/Factors/County_Level/Lifestyle/Binge_Drinking.csv",
+    "CDC Data/Factors/County_Level/Lifestyle/No_Physical_Activity.csv",
+    "CDC Data/Factors/County_Level/Lifestyle/Obesity.csv",
+    "CDC Data/Factors/County_Level/Lifestyle/Short_Sleep.csv",
+    "CDC Data/Factors/County_Level/Lifestyle/Smoking.csv",
+    "CDC Data/Factors/State_Level/Lifestyle/Smoking.csv"
+  ]
+}
