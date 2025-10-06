@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from .models import CancerIncidence, CancerType, Factor, Gender, Race, GeographicLevel, FactorMeasurement
 from django.db.models import Min
+from django.db.models import Max
 
 
 COUNTY_COLUMN = 'NAME'  # Column name in GeoJSON for county names
@@ -142,28 +143,11 @@ def regression_data(request):
     year = request.GET.get('year')
     
     try:
-        # Get related objects with better error handling
+        # Get CancerType object
         cancer_type = CancerType.objects.get(name__iexact=cancer_type_name)
         
-        # Try to get factor - check what the actual name format is
-        try:
-            factor = Factor.objects.get(name__iexact=factor_name)
-        except Factor.DoesNotExist:
-            # Try with underscores replaced by spaces
-            factor_name_alt = factor_name.replace('_', ' ')
-            try:
-                factor = Factor.objects.get(name__iexact=factor_name_alt)
-            except Factor.DoesNotExist:
-                available_factors = list(Factor.objects.values_list('name', flat=True))
-                return JsonResponse({
-                    'data': [],
-                    'debug': {
-                        'error': f'Factor "{factor_name}" not found',
-                        'tried': [factor_name, factor_name_alt],
-                        'available_factors': available_factors
-                    }
-                })
-        
+        # Get Factor object
+        factor = Factor.objects.get(name__iexact=factor_name)
         gender = Gender.objects.get(name__iexact=gender_name)
         race = Race.objects.get(name__iexact=race_name)
         
@@ -171,15 +155,11 @@ def regression_data(request):
         cancer_queryset = CancerIncidence.objects.filter(
             cancer_type=cancer_type,
             gender=gender,
-            race=race,
-            geographic_level=level
+            race=race
         )
         
         factor_queryset = FactorMeasurement.objects.filter(
-            factor=factor,
-            gender=gender,
-            race=race,
-            geographic_level=level
+            factor=factor
         )
         
         # Apply year filtering
@@ -188,65 +168,50 @@ def regression_data(request):
             cancer_queryset = cancer_queryset.filter(start_year__lte=year_int, end_year__gte=year_int)
             factor_queryset = factor_queryset.filter(start_year__lte=year_int, end_year__gte=year_int)
         else:
-            from django.db.models import Max
             latest_cancer_year = cancer_queryset.aggregate(Max('start_year'))['start_year__max']
             latest_factor_year = factor_queryset.aggregate(Max('start_year'))['start_year__max']
             
-            if latest_cancer_year and latest_factor_year:
-                latest_year = min(latest_cancer_year, latest_factor_year)
-                cancer_queryset = cancer_queryset.filter(start_year=latest_year)
-                factor_queryset = factor_queryset.filter(start_year=latest_year)
+            # if latest_cancer_year and latest_factor_year:
+            #     latest_year = min(latest_cancer_year, latest_factor_year)
+            #     cancer_queryset = cancer_queryset.filter(start_year=latest_year)
+            #     factor_queryset = factor_queryset.filter(start_year=latest_year)
         
         # Build dictionaries
         cancer_data = {}
         for record in cancer_queryset:
-            key = str(record.statefp).zfill(2) if record.statefp else None
             if level == 'county':
-                key = str(record.countyfp).zfill(5) if record.countyfp else None
-            
+                key = record.countyfp
+            else:
+                key = record.statefp
             if key and record.incidence_rate is not None:
                 cancer_data[key] = {
                     'state': record.state,
+                    'county': record.county if level == 'county' else None,
                     'rate': record.incidence_rate
                 }
-                if level == 'county' and record.county:
-                    cancer_data[key]['county'] = record.county
         
         factor_data = {}
         for record in factor_queryset:
-            key = str(record.statefp).zfill(2) if record.statefp else None
             if level == 'county':
-                key = str(record.countyfp).zfill(5) if record.countyfp else None
-            
+                key = record.countyfp
+            else:
+                key = record.statefp
             if key and record.factor_value is not None:
                 factor_data[key] = record.factor_value
         
         # Merge data
         result = []
-        for key, cancer_info in cancer_data.items():
+        for key in cancer_data:
             if key in factor_data:
-                data_point = {
-                    'state': cancer_info['state'],
-                    cancer_type_name.lower(): cancer_info['rate'],
-                    factor_name.lower().replace(' ', '_'): factor_data[key]
+                entry = {
+                    'state': cancer_data[key]['state'],
+                    'county': cancer_data[key]['county'],
+                    'cancer_rate': cancer_data[key]['rate'],
+                    'factor_value': factor_data[key]
                 }
-                
-                if level == 'county' and 'county' in cancer_info:
-                    data_point['county'] = cancer_info['county']
-                
-                result.append(data_point)
+                result.append(entry)
         
-        return JsonResponse({
-            'data': result,
-            'debug': {
-                'level': level,
-                'cancer_count': len(cancer_data),
-                'factor_count': len(factor_data),
-                'matched_count': len(result),
-                'sample_cancer_keys': list(cancer_data.keys())[:5],
-                'sample_factor_keys': list(factor_data.keys())[:5]
-            }
-        })
+        return JsonResponse({"data": result})
         
     except Exception as e:
         import traceback

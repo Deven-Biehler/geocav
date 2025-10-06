@@ -1,7 +1,7 @@
 /* CSS Variables */
 :root {
     /* Filter Box */
-    --filter-box-height: 400px;
+    --filter-box-height: 500px;
     --filter-box-width: 300px;
     --filter-box-background: #f8f9fa;
     
@@ -17,8 +17,13 @@
 
     /* Navigation Box */
     --navigation-box-height: 80px;
-    --navigation-box-width: 100vw;
+    --navigation-box-width: 50vw;
     --navigation-box-background: #343a40;
+
+    /* Title */
+    --title-box-height: 80px;
+    --title-box-width: 100vw;
+    --title-box-background: #343a40;
 
     /* Center Div */
     --center-div-background: #f0f0f0;
@@ -43,11 +48,23 @@
     left: 0;
     width: var(--navigation-box-width);
     height: var(--navigation-box-height);
-    background-color: var(--navigation-box-background);
     color: white;
-    display: flex;
-    align-items: center;
     padding: 0 20px;
+    align-items: center;
+}
+
+.title {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: var(--title-box-width);
+    height: var(--title-box-height);
+    background-color: var(--title-box-background);
+    color: white;
+    padding: 0 20px;
+    align-items: center;
+    display: flex;
+    justify-content: center;
 }
 
 .center-div {
@@ -65,7 +82,8 @@
     top: 20px;
     left: 20px;
     width: var(--filter-box-width);
-    height: var(--filter-box-height);
+    height: fit-content;
+    max-height: var(--filter-box-height);
     background-color: var(--filter-box-background);
     z-index: 1000;
     border: 1px solid #ddd;
@@ -93,7 +111,8 @@
 .legend-box {
     position: absolute;
     width: var(--legend-box-width);
-    height: var(--legend-box-height);
+    height: fit-content;
+    max-height: var(--legend-box-height);
     right: 20px;
     top: 20px;
     background-color: var(--legend-box-background);

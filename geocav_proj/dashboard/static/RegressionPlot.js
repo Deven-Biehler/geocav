@@ -64,21 +64,14 @@ export class RegressionPlot {
             params.append('level', this.level);
             
             const response = await fetch(`/dashboard/regression-data?${params.toString()}`);
-            
-            const data = await response.json();
-            
-            if (!data || data.length === 0) {
-                svg.append("text")
-                    .attr("x", this.width / 2)
-                    .attr("y", this.height / 2)
-                    .style("text-anchor", "middle")
-                    .text("No data available");
-                return;
-            }
+
+            const result = await response.json();
+            const data = result.data;
+            console.log('Regression plot data fetched:', data);
 
             // Calculate actual data domains
-            const xExtent = d3.extent(data, d => +d[selectedFactor]);
-            const yExtent = d3.extent(data, d => +d[selectedCancerType]);
+            const xExtent = d3.extent(data, d => +d["factor_value"]);
+            const yExtent = d3.extent(data, d => +d["cancer_rate"]);
             
             const x = d3.scaleLinear()
                 .domain(xExtent)
@@ -88,7 +81,7 @@ export class RegressionPlot {
                 .domain(yExtent)
                 .range([this.height, 0]);
 
-            const regressionLine = this.calculateLinearRegression(data, selectedFactor, selectedCancerType);
+            const regressionLine = this.calculateLinearRegression(data, "factor_value", "cancer_rate");
 
             const line = d3.line()
                 .x(d => x(d.x))
@@ -117,7 +110,7 @@ export class RegressionPlot {
                 .attr("y", this.height + this.margin.bottom - 5)
                 .style("text-anchor", "middle")
                 .style("font-size", "12px")
-                .text(this.formatLabel(selectedFactor));
+                .text(this.formatLabel("factor_value"));
 
             svg.append("text")
                 .attr("transform", "rotate(-90)")
@@ -125,7 +118,7 @@ export class RegressionPlot {
                 .attr("x", -this.height / 2)
                 .style("text-anchor", "middle")
                 .style("font-size", "12px")
-                .text(this.formatLabel(selectedCancerType));
+                .text(this.formatLabel("cancer_rate"));
 
             svg.append('g')
                 .call(d3.axisLeft(y));
@@ -136,7 +129,7 @@ export class RegressionPlot {
                 .attr("y", -5)
                 .style("text-anchor", "middle")
                 .style("font-size", "14px")
-                .text(`${this.formatLabel(selectedCancerType)} vs ${this.formatLabel(selectedFactor)}`);
+                .text(`${this.selectedCancerType} vs ${this.selectedFactor} (${this.level.charAt(0).toUpperCase() + this.level.slice(1)})`);
 
             // Add dots
             svg.append('g')
@@ -144,8 +137,8 @@ export class RegressionPlot {
                 .data(data)
                 .enter()
                 .append('circle')
-                    .attr('cx', (d) => x(+d[selectedFactor]))
-                    .attr('cy', (d) => y(+d[selectedCancerType]))
+                    .attr('cx', (d) => x(+d["factor_value"]))
+                    .attr('cy', (d) => y(+d["cancer_rate"]))
                     .attr('r', 3)
                     .style('fill', (d) => this.colorScale(d.state));
 
@@ -229,16 +222,15 @@ export class RegressionPlot {
             locationName = `${feature.county}, ${feature.state}`;
         }
         
-        const factorValue = feature[this.selectedFactor] != null ? 
-            (+feature[this.selectedFactor]).toFixed(2) : 'No data';
-            
-        const cancerValue = feature[this.selectedCancerType] != null ? 
-            (+feature[this.selectedCancerType]).toFixed(2) : 'No data';
+        const factorValue = feature["factor_value"] != null ? 
+            (+feature["factor_value"]).toFixed(2) : 'No data';
+        const cancerValue = feature["cancer_rate"] != null ?
+            (+feature["cancer_rate"]).toFixed(2) : 'No data';
         
         const tooltipContent = `
             <strong style="color: ${color};">${locationName}</strong><br>
-            ${this.formatLabel(this.selectedFactor)}: ${factorValue}<br>
-            ${this.formatLabel(this.selectedCancerType)}: ${cancerValue}
+            ${this.formatLabel("factor_value")}: ${factorValue}<br>
+            ${this.formatLabel("cancer_rate")}: ${cancerValue}
         `;
         return tooltipContent;
     }

@@ -29,6 +29,7 @@ export class ChoroplethMap {
 
     async renderMap(map) {
         console.log('Rendering choropleth map with cancer type:', this.selectedFilters.cancerType, 'and level:', this.selectedFilters.level);
+        this.createTitle();
         const layersToRemove = [];
         map.eachLayer((layer) => {
             if (layer instanceof L.GeoJSON) {
@@ -44,45 +45,17 @@ export class ChoroplethMap {
         // Set default min/max or calculate from values
         this.dataMin = values.length ? Math.min(...values) : 0;
         this.dataMax = values.length ? Math.max(...values) : 100;
-        
-        // Create the choropleth layer
-        const layer = L.geoJson(this.statesLayer, {
-            style: (feature) => this.getMapStyle(feature),
-            onEachFeature: (feature, layer) => {
-                layer.on({
-                    mouseover: (e) => {
-                        this.highlightFeature(e);
-                        // Show tooltip on hover
-                        e.target.openTooltip();
-                    },
-                    mouseout: (e) => {
-                        this.resetHighlight(e);
-                        // Hide tooltip when mouse leaves
-                        e.target.closeTooltip();
-                    }
-                });
-                
-                // Add tooltip with state/county name and value (shown on hover)
-                const popupContent = this.createPopupContent(feature);
-                layer.bindTooltip(popupContent, {
-                    sticky: true,  // Makes tooltip follow the mouse
-                    opacity: 0.9,
-                    className: 'map-tooltip'
-                });
-            }
-        }).addTo(map);
 
         // Store the layer for later updates
-        this.layer = layer;
+        this.layer = await this.createChoroplethLayer(map);
         this.createLegend();
         layersToRemove.forEach(layer => map.removeLayer(layer));
-        return layer;
     }
 
-    updateMap(map, geoData) {
+    updateMap(map) {
 
         // Render the new layer with updated data
-        this.renderMap(map, geoData);
+        this.renderMap(map);
         this.createLegend();
     }
 
@@ -111,6 +84,44 @@ export class ChoroplethMap {
         
             const legendContainer = document.getElementsByClassName('legend-box')[0];
             legendContainer.style.height = `auto`;
+    }
+
+    createTitle() {
+        const titleElement = document.getElementById('page-title');
+        if (titleElement) {
+            titleElement.textContent = `Choropleth Map - ${this.selectedFilters.cancerType} (${this.selectedFilters.level.charAt(0).toUpperCase() + this.selectedFilters.level.slice(1)})`;
+        }
+    }
+
+    /* --- Helpers --- */
+    async createChoroplethLayer(map) {
+        // Create the choropleth layer
+        const layer = L.geoJson(this.statesLayer, {
+            style: (feature) => this.getMapStyle(feature),
+            onEachFeature: (feature, layer) => {
+                layer.on({
+                    mouseover: (e) => {
+                        this.highlightFeature(e);
+                        // Show tooltip on hover
+                        e.target.openTooltip();
+                    },
+                    mouseout: (e) => {
+                        this.resetHighlight(e, null); // Pass required second parameter
+                        // Hide tooltip when mouse leaves
+                        e.target.closeTooltip();
+                    }
+                });
+                
+                // Add tooltip with state/county name and value (shown on hover)
+                const popupContent = this.createPopupContent(feature);
+                layer.bindTooltip(popupContent, {
+                    sticky: true,  // Makes tooltip follow the mouse
+                    opacity: 0.9,
+                    className: 'map-tooltip'
+                });
+            }
+        }).addTo(map);
+        return layer;
     }
 
     /* --- Styling --- */
