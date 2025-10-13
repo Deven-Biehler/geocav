@@ -1,46 +1,30 @@
-import { FACTORS } from './config.js';
-
 export class RegressionPlot {
-    constructor(mapRenderer) {
-        this.mapRenderer = mapRenderer;
-        this.selectedFactor = FACTORS[0]; // Default to first factor
-        this.selectedCancerType = 'kidney'; // Default cancer type
-        this.level = 'state'; // Default to state level to match the map's initial level
+    constructor(filters) {
+        this.selectedFilters = filters;
         
         // Set up margins and dimensions
         this.margin = {top: 20, right: 30, bottom: 40, left: 50};
         this.width = 300;
         this.height = 280;
         this.colorScale = d3.scaleOrdinal(d3.schemeCategory10);
-        
-        // Connect factor selector from filter box
-        const factorSelect = document.getElementById('factor-select');
-        if (factorSelect) {
-            factorSelect.addEventListener('change', (e) => {
-                this.selectedFactor = e.target.value;
-                this.renderPlot();
-            });
-        }
-        
-        this.renderPlot();
     }
     
     update(cancerType) {
         // If cancerType is an array (from multi-select), use the first one
-        this.selectedCancerType = Array.isArray(cancerType) && cancerType.length > 0 
+        this.selectedFilters.cancerType = Array.isArray(cancerType) && cancerType.length > 0 
             ? cancerType[0] 
-            : (cancerType || 'kidney');
+            : (cancerType);
         
         // Get the current level from the mapRenderer
-        console.log('Updating regression plot with cancer type:', this.selectedCancerType, this.mapRenderer);
-        if (this.mapRenderer) {
-            console.log('Map renderer level:', this.mapRenderer.level);
-            this.level = this.mapRenderer.level;
+        console.log('[Regression Plot] Updating regression plot with cancer type:', this.selectedFilters.cancerType, this);
+        if (this) {
+            console.log('[Regression Plot] Map renderer level:', this.level);
+            this.selectedFilters.level = this.level;
         }
         this.renderPlot();
     }
 
-    async renderPlot() {
+    async renderPlot(data) {
         // Clear any existing plot
         d3.select('#regression-plot').selectAll('*').remove();
 
@@ -52,22 +36,12 @@ export class RegressionPlot {
                 .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
 
         // Store reference to this for use in callback
-        const selectedFactor = this.selectedFactor;
-        const selectedCancerType = this.mapRenderer.selectedFilters.cancerType;
-        console.log('[Regression Plot] Rendering regression plot for factor:', selectedFactor, 'and cancer type:', selectedCancerType, 'at level:', this.level);
+        const selectedFactor = this.selectedFilters.factor;
+        const selectedCancerType = this.selectedFilters.cancerType;
+        console.log('[Regression Plot] Rendering regression plot for factor:', selectedFactor, 'and cancer type:', selectedCancerType, 'at level:', this.selectedFilters.level);
 
         try {
-            // Build query parameters for data fetch
-            const params = new URLSearchParams();
-            params.append('cancer_type', selectedCancerType);
-            params.append('factor', selectedFactor);
-            params.append('level', this.level);
-            
-            const response = await fetch(`/dashboard/regression-data?${params.toString()}`);
-
-            const result = await response.json();
-            const data = result.data;
-            console.log('Regression plot data fetched:', data);
+            console.log('[Regression Plot] Regression plot data fetched:', data);
 
             // Calculate actual data domains
             const xExtent = d3.extent(data, d => +d["factor_value"]);
@@ -82,6 +56,10 @@ export class RegressionPlot {
                 .range([this.height, 0]);
 
             const regressionLine = this.calculateLinearRegression(data, "factor_value", "cancer_rate");
+            const gender = this.selectedFilters.gender
+            const race = this.selectedFilters.race
+            const cancerLabel = this.selectedFilters.cancerType + " Cancer Rate Per 100,000" + (gender && gender !== 'all' ? ` (${gender})` : '') + (race && race !== 'all' ? ` (${race})` : '');
+            const factorLabel = this.selectedFilters.factor.replace(/_/g, ' ');
 
             const line = d3.line()
                 .x(d => x(d.x))
@@ -110,7 +88,7 @@ export class RegressionPlot {
                 .attr("y", this.height + this.margin.bottom - 5)
                 .style("text-anchor", "middle")
                 .style("font-size", "12px")
-                .text(this.formatLabel("factor_value"));
+                .text(factorLabel);
 
             svg.append("text")
                 .attr("transform", "rotate(-90)")
@@ -118,7 +96,7 @@ export class RegressionPlot {
                 .attr("x", -this.height / 2)
                 .style("text-anchor", "middle")
                 .style("font-size", "12px")
-                .text(this.formatLabel("cancer_rate"));
+                .text(cancerLabel);
 
             svg.append('g')
                 .call(d3.axisLeft(y));
@@ -129,7 +107,7 @@ export class RegressionPlot {
                 .attr("y", -5)
                 .style("text-anchor", "middle")
                 .style("font-size", "14px")
-                .text(`${this.selectedCancerType} vs ${this.selectedFactor} (${this.level.charAt(0).toUpperCase() + this.level.slice(1)})`);
+                .text(`${this.selectedFilters.cancerType} vs ${this.selectedFilters.factor} (${this.selectedFilters.level.charAt(0).toUpperCase() + this.selectedFilters.level.slice(1)})`);
 
             // Add dots
             svg.append('g')

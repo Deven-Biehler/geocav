@@ -5,20 +5,6 @@ export class DotDensityMap {
         this.percent = 0.2; // Top 20% cases
     }
 
-    async fetchMapData() {
-        const time = performance.now();
-        console.log('Fetching map data for cancer type:', this.selectedFilters.cancerType, ', factor:', this.selectedFilters.factor, 'and level:', this.selectedFilters.level);
-        // Send default query parameters
-        const params = new URLSearchParams();
-        params.append('level', this.selectedFilters.level);
-        params.append('cancer_type', this.selectedFilters.cancerType);
-        params.append('factor', this.selectedFilters.factor);
-        
-        const response = await fetch(`/dotDensity?${params.toString()}`);
-        this.statesLayer = await response.json();
-        console.log(`Map data fetched in ${(performance.now() - time).toFixed(2)} ms`);
-    }
-
     async updateMap(map) {
         // clear dots layer
         map.eachLayer((layer) => {
@@ -30,9 +16,9 @@ export class DotDensityMap {
         this.renderDots(map);
     }
 
-    async renderMap(map) {
+    async renderMap(map, data) {
         this.map = map;
-        await this.fetchMapData();
+        this.statesLayer = data;
         // Remove existing heatmap layers
         const layersToRemove = [];
         map.eachLayer((layer) => {
@@ -41,7 +27,7 @@ export class DotDensityMap {
             }
         });
 
-        console.log('Rendering dot density map with cancer type:', this.selectedFilters.cancerType, ', factor:', this.selectedFilters.factor, 'and level:', this.selectedFilters.level);
+        console.log('[Heat Map] Rendering dot density map with cancer type:', this.selectedFilters.cancerType, ', factor:', this.selectedFilters.factor, 'and level:', this.selectedFilters.level);
         this.createLegend(this.selectedFilters.cancerType);
         this.renderDots(map);
         this.renderHeatmap(map);
@@ -49,7 +35,7 @@ export class DotDensityMap {
     }
 
     async renderHeatmap(map) {
-        console.log('Rendering heatmap for cancer type:', this.selectedFilters.cancerType);
+        console.log('[Heat Map] Rendering heatmap for cancer type:', this.selectedFilters.cancerType);
         const heatData = await this.prepareHeatmapData();
         L.heatLayer(heatData, {
                 radius: 25,
@@ -67,7 +53,7 @@ export class DotDensityMap {
     }
 
     async renderDots(map) {
-        console.log('Rendering top cases for factor:', this.selectedFilters.factor);
+        console.log('[Heat Map] Rendering top cases for factor:', this.selectedFilters.factor);
         const topCases = await this.prepareTopCasesData();
         topCases.forEach((point) => {
             const marker = L.circleMarker([point[0], point[1]], {
@@ -134,12 +120,12 @@ export class DotDensityMap {
         `;
         
         // Add event listener for slider
-        console.log('Setting up percent slider event listener in DotDensityMap...');
+        console.log('[Heat Map] Setting up percent slider event listener in DotDensityMap...');
         document.getElementById('percentSlider').addEventListener('input', (e) => {
             this.percent = e.target.value / 100;
             document.getElementById('percentValue').textContent = `${e.target.value}%`;
             // Trigger map update
-            console.log('Percent change detected in DotDensityMap, updating map...');
+            console.log('[Heat Map] Percent change detected in DotDensityMap, updating map...');
             this.updateMap(this.map);
         });
 

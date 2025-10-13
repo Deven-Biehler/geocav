@@ -154,7 +154,7 @@ class Command(BaseCommand):
 
     def _standardize_factor_df(self, df, file):
         df['Factor'] = os.path.basename(file)[:-4]  # Use filename (without .csv) as factor name
-        print("Processing file: ", file)
+        print("Processing file: ", file, "With shape: ", df.shape)
         if "County" not in df.columns:
             df["County"] = "All"
             df['Geographic Level'] = "State"
@@ -166,11 +166,17 @@ class Command(BaseCommand):
         df = df[self.factor_columns]
         
         # Standardize units - convert non-numeric values and ensure consistent formatting
-        df['Value'] = pd.to_numeric(df['Value'].astype(str).str.replace(',', '', regex=False), errors='coerce')
+        df['Value'] = df['Value'].astype(str).str.replace(',', '', regex=False).str.replace('%', '', regex=False) # Remove commas and percent signs
+        df['Value'] = pd.to_numeric(df['Value'], errors='coerce')
         df = df.dropna(subset=['Value'])
         df['Factor'] = df['Factor'].str.strip()
         df['County'] = df['County'].str.strip()
         df['State'] = df['State'].str.strip()
+        df['StateFIPS'] = df['StateFIPS'].apply(lambda x: int(x))
+        df['CountyFIPS'] = df['CountyFIPS'].apply(lambda x: int(x))
+
+        if len(df) == 0:
+            raise ValueError(f"No valid records in {file}")
         
         return df
     
@@ -209,6 +215,8 @@ class Command(BaseCommand):
         df['Cancer Type'] = df['Cancer Type'].str.strip().str.title()
         df['County'] = df['County'].str.strip()
         df['State'] = df['State'].str.strip()
+        df['StateFIPS'] = df['StateFIPS'].apply(lambda x: int(x))
+        df['CountyFIPS'] = df['CountyFIPS'].apply(lambda x: int(x))
         
         return df
 

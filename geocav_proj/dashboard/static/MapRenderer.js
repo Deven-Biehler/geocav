@@ -1,20 +1,22 @@
-import {DEFAULT_LEAFLET_CONFIG} from './config.js';
+import {DEFAULT_LEAFLET_CONFIG, DEFAULTS, COUNTY_FILTERS, STATE_FILTERS, 
+    STATE_CANCER_AVAILABLE_YEARS, COUNTY_CANCER_AVAILABLE_YEARS,
+    COUNTY_FACTORS_AVAILABLE_YEARS, STATE_FACTORS_AVAILABLE_YEARS
+} from './config.js';
 import {ChoroplethMap} from './maps/ChoroplethMap.js';
 import {PieMap} from './maps/PieMap.js';
 import { DotDensityMap } from './maps/DotDensityMap.js';
+import { RegressionPlot } from './RegressionPlot.js';
+import { DataManager } from './DataManager.js';
 
 const MAP_TYPE = 'choropleth'; // Change to 'pie', 'choropleth', or 'dotDensity' as needed
 
 export class MapRenderer {
     constructor () {
-        console.log('Initializing MapRenderer');
+        console.log('[Map Renderer] Initializing MapRenderer');
+
+        this.dataManager = new DataManager();
         // Initialize properties
-        this.selectedFilters = {
-            cancerType: 'Liver',
-            level: 'state',
-            selectedCancerTypes: ['Liver'],
-            factor: 'Smoking'
-        };
+        this.selectedFilters = DEFAULTS;
         if (MAP_TYPE == 'choropleth') {
             this.map_type = new ChoroplethMap(this.selectedFilters);
         }
@@ -26,6 +28,8 @@ export class MapRenderer {
             this.map_type = new DotDensityMap(this.selectedFilters);
         }
         
+        this.regressionPlot = new RegressionPlot(this.selectedFilters);
+        
         this.statesLayer = null;
         
         this.map = L.map('map').setView(DEFAULT_LEAFLET_CONFIG.DEFAULT_CENTER, DEFAULT_LEAFLET_CONFIG.DEFAULT_ZOOM);
@@ -36,15 +40,24 @@ export class MapRenderer {
         }).addTo(this.map);
         
         this.addEventListeners();
+        this.updateAvailableFilters();
+        this.updateAvailableYears();
         this.renderMap();
+        this.renderPlot();
+    }
+
+    async renderPlot() {
+        const data = await this.dataManager.fetchRegressionData(this.selectedFilters);
+        this.regressionPlot.renderPlot(data);
     }
     
-    renderMap() {
+    async renderMap() {
         console.log('[MapRenderer] Rendering map with cancer type:', this.selectedFilters.cancerType, 'and level:', this.selectedFilters.level);
-        this.map_type.selectedFilters = this.selectedFilters;
+        
+        const statesLayer = await this.dataManager.fetchStatesLayer(this.selectedFilters)
         
         // Render the choropleth map
-        this.map_type.renderMap(this.map);
+        this.map_type.renderMap(this.map, statesLayer);
     }
 
     async updateMap() {
@@ -61,6 +74,83 @@ export class MapRenderer {
                 this.map.removeLayer(layer);
             }
         });
+    }
+
+    updateAvailableFilters() {
+        const factorFilters = document.getElementById('factor-select');
+        const cancerFilters = document.getElementById('cancer-select');
+        factorFilters.innerHTML = ''; // Clear existing options
+        // Set cancer filter options to available cancer types for the selected geographic level
+        if (this.selectedFilters.level === 'state') {
+            for (const factor of STATE_FILTERS) {
+                const option = document.createElement('option');
+                option.value = factor;
+                option.text = factor.replace(/_/g, ' ');
+                factorFilters.appendChild(option);
+            }
+            // Set default factor
+            if (!this.selectedFilters.factor || !STATE_FILTERS.includes(this.selectedFilters.factor)) {
+                this.update_selected_factors(STATE_FILTERS[0]);
+                factorFilters.value = this.selectedFilters.factor;
+            }
+        } else if (this.selectedFilters.level === 'county') {
+            for (const factor of COUNTY_FILTERS) {
+                const option = document.createElement('option');
+                option.value = factor;
+                option.text = factor.replace(/_/g, ' ');
+                factorFilters.appendChild(option);
+            }
+            // Set default factor
+            if (!this.selectedFilters.factor || !COUNTY_FILTERS.includes(this.selectedFilters.factor)) {
+                this.update_selected_cancers(COUNTY_FILTERS[0]);
+                factorFilters.value = this.selectedFilters.factor;
+            }
+        }
+
+        // Make sure the visual selector reflects the current filter
+        factorFilters.value = this.selectedFilters.factor;
+        cancerFilters.value = this.selectedFilters.cancerType;
+    }
+
+    updateAvailableYears() {
+        const cancerYearFilter = document.getElementById('cancer-year-selector');
+        const factorYearFilter = document.getElementById('factor-year-selector');
+        cancerYearFilter.innerHTML = ''; // Clear existing options
+        factorYearFilter.innerHTML = ''; // Clear existing options
+        let availableYears = [];
+        let factorAvailableYears = [];
+        if (this.selectedFilters.level === 'state') {
+            console.log(this.selectedFilters.factor)
+            availableYears = STATE_CANCER_AVAILABLE_YEARS[this.selectedFilters.cancerType]; 
+            factorAvailableYears = STATE_FACTORS_AVAILABLE_YEARS[this.selectedFilters.factor];
+        } else if (this.selectedFilters.level === 'county') {
+            availableYears = COUNTY_CANCER_AVAILABLE_YEARS[this.selectedFilters.cancerType];
+            factorAvailableYears = COUNTY_FACTORS_AVAILABLE_YEARS[this.selectedFilters.factor];
+        }
+        console.log('[MapRenderer] Available years for cancer type', this.selectedFilters.cancerType, 'at level', this.selectedFilters.level, ':', availableYears);
+        console.log('[MapRenderer] Available years for factor', this.selectedFilters.factor, 'at level', this.selectedFilters.level, ':', factorAvailableYears);
+        for (const year of availableYears) {
+            const option = document.createElement('option');
+            option.value = year;
+            option.text = year;
+            cancerYearFilter.appendChild(option);
+        }
+        for (const year of factorAvailableYears) {
+            const option = document.createElement('option');
+            option.value = year;
+            option.text = year;
+            factorYearFilter.appendChild(option);
+        }
+        // Set default year
+        if (!this.selectedFilters.cancer_year || !availableYears.includes(this.selectedFilters.cancer_year)) {
+            this.selectedFilters.cancer_year = availableYears[0];
+            document.getElementById('cancer-year-selector').value = this.selectedFilters.cancer_year;
+        }
+        if (!this.selectedFilters.factor_year || !factorAvailableYears.includes(this.selectedFilters.factor_year)) {
+            this.selectedFilters.factor_year = factorAvailableYears[0];
+            document.getElementById('factor-year-selector').value = this.selectedFilters.factor_year;
+        }
+
     }
     
     addEventListeners() {
@@ -83,48 +173,86 @@ export class MapRenderer {
         // Cancer type filter
         const cancerSelect = document.getElementById('cancer-select');
         cancerSelect.addEventListener('change', (e) => {
-            if (this.map_type instanceof PieMap) {
-                // For pie map, handle multi-select
-                this.selectedFilters.selectedCancerTypes = Array.from(cancerSelect.selectedOptions).map(option => option.value) || ['kidney'];
-            } else {
-                this.selectedFilters.cancerType = e.target.value || 'kidney'; // Default to kidney
-            }
-            this.renderMap();
-            window.regressionPlot.renderPlot();
+            this.update_selected_cancer(e);
         });
         // Level filter
         const levelSelect = document.getElementById('level-select');
         levelSelect.addEventListener('change', (e) => {
-            this.selectedFilters.level = e.target.value || 'state'; // Default to state
-            this.renderMap();
-            window.regressionPlot.level = this.selectedFilters.level;
-            window.regressionPlot.renderPlot();
+            this.update_selected_level(e);
         });
         // Factor filter
         const factorSelect = document.getElementById('factor-select');
         factorSelect.addEventListener('change', (e) => {
-            this.selectedFilters.factor = e.target.value || 'drinking'; // Default to drinking
-            this.renderMap();
-            window.regressionPlot.selectedFactor = this.selectedFilters.factor;
-            window.regressionPlot.renderPlot();
+            this.update_selected_factor(e);
         });
         // Gender filter
         const genderSelect = document.getElementById('gender-select');
         genderSelect.addEventListener('change', (e) => {
             this.selectedFilters.gender = e.target.value || 'all'; // Default to all
             this.renderMap();
-            window.regressionPlot.selectedGender = this.selectedFilters.gender;
-            window.regressionPlot.renderPlot();
+            this.regressionPlot.selectedGender = this.selectedFilters.gender;
+            this.renderPlot();
         });
         // Race filter
         const raceSelect = document.getElementById('race-select');
         raceSelect.addEventListener('change', (e) => {
             this.selectedFilters.race = e.target.value || 'all'; // Default to all
             this.renderMap();
-            window.regressionPlot.selectedRace = this.selectedFilters.race;
-            window.regressionPlot.renderPlot();
+            this.regressionPlot.selectedRace = this.selectedFilters.race;
+            this.renderPlot();
         });
+
+        
+        const slider = document.getElementById('cancer-year-selector');
+            slider.addEventListener('change', (e) => {
+            this.updateSelectedCancerYear(e.target.value);
+        });
+
+        const factorSlider = document.getElementById('factor-year-selector');
+            factorSlider.addEventListener('change', (e) => {
+            this.updateSelectedFactorYear(e.target.value);
+        });
+
     }
+
+    update_selected_cancer(e) {
+        this.updateAvailableYears();
+        if (this.map_type instanceof PieMap) {
+            // For pie map, handle multi-select
+            this.selectedFilters.selectedCancerTypes = Array.from(cancerSelect.selectedOptions).map(option => option.value);
+        } else {
+            this.selectedFilters.cancerType = e.target.value;
+        }
+        this.renderMap();
+        this.renderPlot();
+    }
+
+    update_selected_factor(e) {
+        this.updateAvailableYears();
+        this.selectedFilters.factor = e.target.value;
+        this.renderMap();
+        this.renderPlot();
+    }
+
+    update_selected_level(e) {
+        this.selectedFilters.level = e.target.value;
+        this.updateAvailableFilters();
+        this.updateAvailableYears();
+        this.renderMap();
+        this.renderPlot();
+    }
+
+    updateSelectedCancerYear(year) {
+        this.selectedFilters.cancer_year = year;
+        this.renderMap();
+        this.renderPlot();
+    };
+
+    updateSelectedFactorYear(year) {
+        this.selectedFilters.factor_year = year;
+        this.renderMap();
+        this.renderPlot();
+    };
 
         
     setupMultiSelect() {

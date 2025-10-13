@@ -1,6 +1,7 @@
 geocav_env/
 .venv/
 CDC Data/
+geocav_proj/db.sqlite3
 
 # Python
 __pycache__/

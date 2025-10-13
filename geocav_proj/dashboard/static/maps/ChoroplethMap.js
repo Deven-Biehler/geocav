@@ -2,19 +2,21 @@ import { DEFAULT_CHOROPLETH_STYLE } from '../config.js';
 
 export class ChoroplethMap {
     constructor(selectedFilters) {
-        console.log('ChoroplethMap constructor called with level:', selectedFilters.level, 'and cancer type:', selectedFilters.cancerType);
+        console.log('[Choropleth Map] ChoroplethMap constructor called with level:', selectedFilters.level, 'and cancer type:', selectedFilters.cancerType);
         this.layer = null; // Initialize layer property
         this.selectedFilters = selectedFilters
     }
 
     async fetchMapData() {
-        console.log('Fetching map data for cancer type:', this.selectedFilters.cancerType, 'and level:', this.selectedFilters.level);
+        console.log('[Choropleth Map] Fetching map data for cancer type:', this.selectedFilters.cancerType, 'and level:', this.selectedFilters.level);
         // Send default query parameters
         const params = new URLSearchParams();
         params.append('level', this.selectedFilters.level);
         params.append('cancer_type', this.selectedFilters.cancerType);
         params.append('gender', this.selectedFilters.gender || 'all');
         params.append('race', this.selectedFilters.race || 'all');
+        params.append('cancer_year', this.selectedFilters.cancer_year);
+        params.append('factor_year', this.selectedFilters.factor_year);
         
         const response = await fetch(`/choropleth?${params.toString()}`);
         this.statesLayer = await response.json();
@@ -23,12 +25,31 @@ export class ChoroplethMap {
             throw new Error('Failed to load map data');
         }
         else {
-            console.log('Map data successfully fetched:', this.statesLayer);
+            console.log('[Choropleth Map] Map data successfully fetched:', this.statesLayer);
         }
     }
 
-    async renderMap(map) {
-        console.log('Rendering choropleth map with cancer type:', this.selectedFilters.cancerType, 'and level:', this.selectedFilters.level);
+    async getDataRange() {
+        const params = new URLSearchParams();
+        params.append('level', this.selectedFilters.level);
+        params.append('cancer_type', this.selectedFilters.cancerType);
+        params.append('gender', this.selectedFilters.gender || 'all');
+        params.append('race', this.selectedFilters.race || 'all');
+        const response = await fetch(`/choropleth?${params.toString()}`);
+        const statesLayer = await response.json();
+        const values = statesLayer.features
+            .map(feature => feature.properties?.incidence_rate)
+            .filter(value => value != null);  // Filters out null and undefined
+        // Set default min/max or calculate from values
+        this.dataMin = values.length ? Math.min(...values) : 0;
+        this.dataMax = values.length ? Math.max(...values) : 100;
+        console.log('[Choropleth Map] Data range - Min:', this.dataMin, 'Max:', this.dataMax);
+    }
+
+    async renderMap(map, data) {
+        console.log('[Choropleth Map] Rendering choropleth map with cancer type:', this.selectedFilters.cancerType, 'and level:', this.selectedFilters.level);
+        console.log('[Choropleth Map] Data received for rendering:', data);
+        this.statesLayer = data;
         this.createTitle();
         const layersToRemove = [];
         map.eachLayer((layer) => {
@@ -36,20 +57,12 @@ export class ChoroplethMap {
             layersToRemove.push(layer);
             }
         });
-        await this.fetchMapData();
-        // Extract all values and filter out undefined/null values from the this.statesLayer features
-        const values = this.statesLayer.features
-            .map(feature => feature.properties?.incidence_rate)
-            .filter(value => value != null);  // Filters out null and undefined
-            
-        // Set default min/max or calculate from values
-        this.dataMin = values.length ? Math.min(...values) : 0;
-        this.dataMax = values.length ? Math.max(...values) : 100;
-
+        await this.getDataRange(); // Get data range consistent throughout years to avoid color scale changes
         // Store the layer for later updates
         this.layer = await this.createChoroplethLayer(map);
         this.createLegend();
         layersToRemove.forEach(layer => map.removeLayer(layer));
+        console.log('[Choropleth Map] Choropleth map rendered.');
     }
 
     updateMap(map) {

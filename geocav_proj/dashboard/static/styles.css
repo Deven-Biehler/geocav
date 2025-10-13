@@ -29,6 +29,11 @@
     --center-div-background: #f0f0f0;
     --center-div-width: 100vw;
     --center-div-height: calc(100vh - 200px);
+
+    /* Timeline Box */
+    --timeline-box-height: 200px;
+    --timeline-box-width: 400px;
+    --timeline-box-background: #ffffff;
 }
 
 /* Map Styles */
@@ -100,6 +105,23 @@
     right: 20px;
     bottom: 20px;
     background-color: var(--regression-box-background);
+    z-index: 1000;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    padding: 10px;
+    opacity: 0.9;
+}
+
+.timeline-box {
+    position: absolute;
+    width: fit-content;
+    max-width: var(--timeline-box-width);
+    height: fit-content;
+    max-height: var(--timeline-box-height);
+    left: 20px;
+    bottom: 20px;
+    background-color: var(--timeline-box-background);
     z-index: 1000;
     border: 1px solid #ddd;
     border-radius: 4px;
