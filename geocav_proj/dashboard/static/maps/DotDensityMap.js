@@ -9,7 +9,7 @@ export class DotDensityMap {
         // clear dots layer
         map.eachLayer((layer) => {
             if (layer instanceof L.CircleMarker) {
-                map.removeLayer(layer);
+                map.removeLayer(layer); 
             }
         });
         // Add back the dots layer
@@ -17,24 +17,16 @@ export class DotDensityMap {
     }
 
     async renderMap(map, data) {
-        this.map = map;
         this.statesLayer = data;
-        // Remove existing heatmap layers
-        const layersToRemove = [];
-        map.eachLayer((layer) => {
-            if (layer instanceof L.HeatLayer || layer instanceof L.CircleMarker) {
-            layersToRemove.push(layer);
-            }
-        });
-
+        this.map = map;
         console.log('[Heat Map] Rendering dot density map with cancer type:', this.selectedFilters.cancerType, ', factor:', this.selectedFilters.factor, 'and level:', this.selectedFilters.level);
+        console.log('[Heat Map] Data received for rendering:', data);
         this.createLegend(this.selectedFilters.cancerType);
-        this.renderDots(map);
-        this.renderHeatmap(map);
-        layersToRemove.forEach(layer => map.removeLayer(layer));
+        this.renderDots();
+        this.renderHeatmap();
     }
 
-    async renderHeatmap(map) {
+    async renderHeatmap() {
         console.log('[Heat Map] Rendering heatmap for cancer type:', this.selectedFilters.cancerType);
         const heatData = await this.prepareHeatmapData();
         L.heatLayer(heatData, {
@@ -49,10 +41,10 @@ export class DotDensityMap {
                     0.7: 'yellow',
                     1.0: 'red'
                 }
-            }).addTo(map);
+            }).addTo(this.map);
     }
 
-    async renderDots(map) {
+    async renderDots() {
         console.log('[Heat Map] Rendering top cases for factor:', this.selectedFilters.factor);
         const topCases = await this.prepareTopCasesData();
         topCases.forEach((point) => {
@@ -73,7 +65,7 @@ export class DotDensityMap {
                 });
             }
             
-            marker.addTo(map);
+            marker.addTo(this.map);
         });
     }
 
@@ -84,7 +76,7 @@ export class DotDensityMap {
         
         this.statesLayer.features.forEach(row => {
             const centroid = L.geoJSON(row).getBounds().getCenter();
-            const factor = parseFloat(row.properties.factor_value);
+            const factor = parseFloat(row.factor_value);
             if (!isNaN(centroid.lat) && !isNaN(centroid.lng) && !isNaN(factor)) {
                 heatData.push([centroid.lat, centroid.lng, factor]);
             }
@@ -97,7 +89,7 @@ export class DotDensityMap {
         let topCases = [];
         this.statesLayer.features.forEach(row => {
             const centroid = L.geoJSON(row).getBounds().getCenter();
-            const cancer = parseFloat(row.properties.cancer_rate);
+            const cancer = parseFloat(row.cancer_rate);
             if (!isNaN(centroid.lat) && !isNaN(centroid.lng) && !isNaN(cancer)) {
                 // Include feature data directly to avoid expensive lookups later
                 topCases.push([centroid.lat, centroid.lng, cancer, row]);

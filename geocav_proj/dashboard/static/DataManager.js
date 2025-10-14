@@ -8,34 +8,70 @@ export class DataManager {
         // Send default query parameters
         const params = new URLSearchParams();
         params.append('level', filters.level);
-        params.append('cancer_type', filters.cancerType);
-        params.append('gender', filters.gender || 'all');
-        params.append('race', filters.race || 'all');
-        params.append('cancer_year', filters.cancer_year);
-        params.append('factor_year', filters.factor_year);
-        const response = await fetch(`/choropleth?${params.toString()}`);
-        
-        const statesLayer = await response.json();
+        const response = await fetch(`/get_geojson?${params.toString()}`);
+        const geojson = await response.json();
+        const statesLayer = this.addGeoJSONProperties(geojson, filters.level, this.cancer_data, this.factor_data);
         console.log('[DataManager] Data fetched with filters:', filters, 'Data:', statesLayer);
         return statesLayer;
     }
 
-    async fetchRegressionData(filters) {
+    async fetchRegressionData() {
+        // Use saved data to fetch regression data
+        const result = Object.keys(this.cancer_data).reduce((acc, key) => {
+            if (key in this.factor_data) {
+                acc.push({
+                    state: this.cancer_data[key].state,
+                    county: this.cancer_data[key].county,
+                    cancer_rate: this.cancer_data[key].rate,
+                    factor_value: this.factor_data[key].rate
+                });
+            }
+            return acc;
+        }, []);
+        console.log('[DataManager] Regression data prepared:', result);
+        return result;
+    }
+
+    async loadData(filters) {
         const params = new URLSearchParams();
+        params.append('level', filters.level);
         params.append('cancer_type', filters.cancerType);
         params.append('factor', filters.factor);
-        params.append('level', filters.level);
         params.append('cancer_year', filters.cancer_year);
         params.append('factor_year', filters.factor_year);
         params.append('gender', filters.gender || 'all');
         params.append('race', filters.race || 'all');
-        const response = await fetch(`/dashboard/regression-data?${params.toString()}`);
-
+        const response = await fetch(`/get_data?${params.toString()}`);
         const result = await response.json();
         if (result.error) {
             throw new Error(result.error + (result.debug ? ' | Debug info: ' + JSON.stringify(result.debug) : ''));
         }
-        console.log('[DataManager] Regression data fetched with filters:', filters, 'Data:', result.data);
-        return result.data;
+        console.log('[DataManager] Data fetched with filters:', filters, 'Data:', result.data);
+        this.cancer_data = result.cancer_data;
+        this.factor_data = result.factor_data;
+    }
+
+    addGeoJSONProperties(geojson, level, cancerData, factorData) {
+        console.log('[DataManager] Merging GeoJSON with cancer and factor data for level:', level);
+        console.log('[DataManager] Cancer Data Sample:', Object.entries(cancerData).slice(0, 5));
+        console.log('[DataManager] Factor Data Sample:', Object.entries(factorData).slice(0, 5));
+        geojson.features.forEach((feature, i) => {
+            const statefp = level === 'county' 
+                ? feature.properties.STATEFP 
+                : feature.id;
+            
+            const countyfp = level === 'county' 
+                ? feature.properties.COUNTYFP.slice(-3) 
+                : 'All';
+            
+            const key = level === 'state' 
+                ? statefp 
+                : statefp + countyfp;
+            
+            geojson.features[i].cancer_rate = cancerData[key]?.rate;
+            geojson.features[i].factor_value = factorData[key]?.rate;
+        });
+        
+        return geojson;
     }
 }

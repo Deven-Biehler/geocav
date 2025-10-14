@@ -43,21 +43,25 @@ export class MapRenderer {
         this.updateAvailableFilters();
         this.updateAvailableYears();
         this.renderMap();
-        this.renderPlot();
     }
 
-    async renderPlot() {
-        const data = await this.dataManager.fetchRegressionData(this.selectedFilters);
-        this.regressionPlot.renderPlot(data);
-    }
     
     async renderMap() {
         console.log('[MapRenderer] Rendering map with cancer type:', this.selectedFilters.cancerType, 'and level:', this.selectedFilters.level);
+
+        // promise to clear map
+        const layers = this.getMapLayers();
         
+        await this.dataManager.loadData(this.selectedFilters);
         const statesLayer = await this.dataManager.fetchStatesLayer(this.selectedFilters)
+        const data = await this.dataManager.fetchRegressionData(this.selectedFilters);
         
         // Render the choropleth map
         this.map_type.renderMap(this.map, statesLayer);
+        this.regressionPlot.renderPlot(data);
+
+        // Clear previous layers
+        this.clearMap(layers);
     }
 
     async updateMap() {
@@ -66,14 +70,20 @@ export class MapRenderer {
         this.map_type.updateMap(this.map, this.selectedFilters.level);
     }
 
-
-    clearMap() {
-        // Remove all layers except the tile layer
+    getMapLayers() {
+        const layers = [];
         this.map.eachLayer((layer) => {
             if (!(layer instanceof L.TileLayer)) {
-                this.map.removeLayer(layer);
+                layers.push(layer);
             }
         });
+        return layers;
+    }
+
+    clearMap(layers) {
+        if (layers && layers.length) {
+            layers.forEach(layer => this.map.removeLayer(layer));
+        }
     }
 
     updateAvailableFilters() {
@@ -188,18 +198,12 @@ export class MapRenderer {
         // Gender filter
         const genderSelect = document.getElementById('gender-select');
         genderSelect.addEventListener('change', (e) => {
-            this.selectedFilters.gender = e.target.value || 'all'; // Default to all
-            this.renderMap();
-            this.regressionPlot.selectedGender = this.selectedFilters.gender;
-            this.renderPlot();
+            this.updateSelectedGender(e.target.value); // Default to all
         });
         // Race filter
         const raceSelect = document.getElementById('race-select');
         raceSelect.addEventListener('change', (e) => {
-            this.selectedFilters.race = e.target.value || 'all'; // Default to all
-            this.renderMap();
-            this.regressionPlot.selectedRace = this.selectedFilters.race;
-            this.renderPlot();
+            this.updateSelectedRace(e.target.value); // Default to all
         });
 
         
@@ -224,14 +228,12 @@ export class MapRenderer {
             this.selectedFilters.cancerType = e.target.value;
         }
         this.renderMap();
-        this.renderPlot();
     }
 
     update_selected_factor(e) {
         this.updateAvailableYears();
         this.selectedFilters.factor = e.target.value;
         this.renderMap();
-        this.renderPlot();
     }
 
     update_selected_level(e) {
@@ -239,20 +241,50 @@ export class MapRenderer {
         this.updateAvailableFilters();
         this.updateAvailableYears();
         this.renderMap();
-        this.renderPlot();
     }
 
     updateSelectedCancerYear(year) {
         this.selectedFilters.cancer_year = year;
         this.renderMap();
-        this.renderPlot();
     };
 
     updateSelectedFactorYear(year) {
         this.selectedFilters.factor_year = year;
         this.renderMap();
-        this.renderPlot();
     };
+
+    updateSelectedGender(gender) {
+        this.selectedFilters.gender = gender;
+        this.renderMap();
+
+        const raceSelect = document.getElementById('race-select');
+        if (gender !== 'all') {
+            raceSelect.value = 'all';
+            raceSelect.disabled = true;
+            this.selectedFilters.race = 'all';
+        }
+        else {
+            raceSelect.disabled = false;
+        }
+
+    };
+
+    updateSelectedRace(race) {
+        this.selectedFilters.race = race;
+        this.renderMap();
+
+        console.log('[MapRenderer] Race selected:', race);
+        const genderSelect = document.getElementById('gender-select');
+        if (race !== 'all') {
+            genderSelect.value = 'all';
+            genderSelect.disabled = true;
+            this.selectedFilters.gender = 'all';
+        }
+        else {
+            genderSelect.disabled = false;
+        }
+    };
+
 
         
     setupMultiSelect() {

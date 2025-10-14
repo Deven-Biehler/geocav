@@ -7,49 +7,20 @@ export class ChoroplethMap {
         this.selectedFilters = selectedFilters
     }
 
-    async fetchMapData() {
-        console.log('[Choropleth Map] Fetching map data for cancer type:', this.selectedFilters.cancerType, 'and level:', this.selectedFilters.level);
-        // Send default query parameters
-        const params = new URLSearchParams();
-        params.append('level', this.selectedFilters.level);
-        params.append('cancer_type', this.selectedFilters.cancerType);
-        params.append('gender', this.selectedFilters.gender || 'all');
-        params.append('race', this.selectedFilters.race || 'all');
-        params.append('cancer_year', this.selectedFilters.cancer_year);
-        params.append('factor_year', this.selectedFilters.factor_year);
-        
-        const response = await fetch(`/choropleth?${params.toString()}`);
-        this.statesLayer = await response.json();
-        if (!this.statesLayer || !this.statesLayer.features) {
-            console.error('Invalid GeoJSON data received:', this.statesLayer);
-            throw new Error('Failed to load map data');
-        }
-        else {
-            console.log('[Choropleth Map] Map data successfully fetched:', this.statesLayer);
-        }
-    }
-
-    async getDataRange() {
-        const params = new URLSearchParams();
-        params.append('level', this.selectedFilters.level);
-        params.append('cancer_type', this.selectedFilters.cancerType);
-        params.append('gender', this.selectedFilters.gender || 'all');
-        params.append('race', this.selectedFilters.race || 'all');
-        const response = await fetch(`/choropleth?${params.toString()}`);
-        const statesLayer = await response.json();
-        const values = statesLayer.features
-            .map(feature => feature.properties?.incidence_rate)
+    async getDataRange(data) {
+        const values = data.features
+            .map(feature => feature.cancer_rate)
             .filter(value => value != null);  // Filters out null and undefined
         // Set default min/max or calculate from values
-        this.dataMin = values.length ? Math.min(...values) : 0;
-        this.dataMax = values.length ? Math.max(...values) : 100;
+        this.dataMin = Math.min(...values);
+        this.dataMax = Math.max(...values);
         console.log('[Choropleth Map] Data range - Min:', this.dataMin, 'Max:', this.dataMax);
     }
 
     async renderMap(map, data) {
         console.log('[Choropleth Map] Rendering choropleth map with cancer type:', this.selectedFilters.cancerType, 'and level:', this.selectedFilters.level);
         console.log('[Choropleth Map] Data received for rendering:', data);
-        this.statesLayer = data;
+        this.statesLayer = data
         this.createTitle();
         const layersToRemove = [];
         map.eachLayer((layer) => {
@@ -57,7 +28,7 @@ export class ChoroplethMap {
             layersToRemove.push(layer);
             }
         });
-        await this.getDataRange(); // Get data range consistent throughout years to avoid color scale changes
+        await this.getDataRange(data); // Get data range consistent throughout years to avoid color scale changes
         // Store the layer for later updates
         this.layer = await this.createChoroplethLayer(map);
         this.createLegend();
@@ -107,7 +78,7 @@ export class ChoroplethMap {
     }
 
     /* --- Helpers --- */
-    async createChoroplethLayer(map) {
+    async createChoroplethLayer(map) {  
         // Create the choropleth layer
         const layer = L.geoJson(this.statesLayer, {
             style: (feature) => this.getMapStyle(feature),
@@ -140,7 +111,7 @@ export class ChoroplethMap {
     /* --- Styling --- */
 
     getMapStyle(feature) {
-        const value = feature.properties.incidence_rate;
+        const value = feature.cancer_rate;
         const color = this.getColor(value, this.dataMin, this.dataMax);
         
         return {
@@ -174,12 +145,12 @@ export class ChoroplethMap {
         const county_name = feature.properties.NAME || '';
         const state_name = feature.properties.name || feature.properties.state_name || '';
         const name = county_name ? `${county_name}, ${state_name}` : state_name;
-        const value = feature.properties.incidence_rate;
+        const value = feature.cancer_rate;
 
         return `
             <div class="map-popup">
                 <h4>${name}</h4>
-                <p>${value !== null ? `Value: ${value.toFixed(2)}` : 'No data available'}</p>
+                <p>${value != null ? `Value: ${value.toFixed(2)}` : 'No data available'}</p>
             </div>
         `;
     }

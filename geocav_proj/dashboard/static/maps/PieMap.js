@@ -7,31 +7,31 @@ export class PieMap {
         this.selectedFilters = selectedFilters;
     }
 
-    async fetchMapData() {
-        console.log('[Pie] Fetching pie map data for level:', this.selectedFilters.level);
-        // Send default query parameters
-        const params = new URLSearchParams();
-        params.append('level', this.selectedFilters.level);
+    // async fetchMapData() {
+    //     console.log('[Pie] Fetching pie map data for level:', this.selectedFilters.level);
+    //     // Send default query parameters
+    //     const params = new URLSearchParams();
+    //     params.append('level', this.selectedFilters.level);
         
-        const response = await fetch(`/pie?${params.toString()}`);
+    //     const response = await fetch(`/pie?${params.toString()}`);
         
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+    //     if (!response.ok) {
+    //         throw new Error(`HTTP error! status: ${response.status}`);
+    //     }
         
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
-            console.error('Response is not JSON:', text);
-            throw new Error('Server did not return JSON');
-        }
+    //     const contentType = response.headers.get('content-type');
+    //     if (!contentType || !contentType.includes('application/json')) {
+    //         const text = await response.text();
+    //         console.error('Response is not JSON:', text);
+    //         throw new Error('Server did not return JSON');
+    //     }
         
-        this.statesLayer = await response.json();
-    }
+    //     this.statesLayer = await response.json();
+    // }
 
-    async renderMap(map) {
+    async renderMap(map, data) {
         console.log('[Pie] Rendering pie map with filters:', this.selectedFilters);
-        await this.fetchMapData();
+        this.statesLayer = data;
         this.updateMap(map);
     }
 
