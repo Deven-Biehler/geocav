@@ -38,6 +38,25 @@ export class MapRenderer {
             maxZoom: DEFAULT_LEAFLET_CONFIG.TILE_LAYER.options.maxZoom,
             attribution: DEFAULT_LEAFLET_CONFIG.TILE_LAYER.options.attribution
         }).addTo(this.map);
+
+
+        this.cancerSelect = document.getElementById('cancer-select');
+        this.factorSelect = document.getElementById('factor-select');
+        this.levelSelect = document.getElementById('level-select');
+        this.genderSelect = document.getElementById('gender-select');
+        this.raceSelect = document.getElementById('race-select');
+        this.slider = document.getElementById('cancer-year-selector');
+        this.factorSlider = document.getElementById('factor-year-selector');
+
+        // Set default selections
+        this.cancerSelect.value = this.selectedFilters.cancerType;
+        this.factorSelect.value = this.selectedFilters.factor;
+        this.levelSelect.value = this.selectedFilters.level;
+        this.genderSelect.value = this.selectedFilters.gender;
+        this.raceSelect.value = this.selectedFilters.race;
+        this.slider.value = this.selectedFilters.cancer_year;
+        this.factorSlider.value = this.selectedFilters.factor_year;
+
         
         this.addEventListeners();
         this.updateAvailableFilters();
@@ -51,10 +70,16 @@ export class MapRenderer {
 
         // promise to clear map
         const layers = this.getMapLayers();
-        
         await this.dataManager.loadData(this.selectedFilters);
-        const statesLayer = await this.dataManager.fetchStatesLayer(this.selectedFilters)
         const data = await this.dataManager.fetchRegressionData(this.selectedFilters);
+        let statesLayer = null;
+        if (this.map_type instanceof PieMap) {
+            // For pie map, handle multi-select
+            statesLayer = await this.dataManager.getPieData(this.selectedFilters);
+        }
+        else {
+            statesLayer = await this.dataManager.fetchStatesLayer(this.selectedFilters);
+        }   
         
         // Render the choropleth map
         this.map_type.renderMap(this.map, statesLayer);
@@ -100,7 +125,7 @@ export class MapRenderer {
             }
             // Set default factor
             if (!this.selectedFilters.factor || !STATE_FILTERS.includes(this.selectedFilters.factor)) {
-                this.update_selected_factors(STATE_FILTERS[0]);
+                this.selectedFilters.factor = STATE_FILTERS[0];
                 factorFilters.value = this.selectedFilters.factor;
             }
         } else if (this.selectedFilters.level === 'county') {
@@ -112,7 +137,7 @@ export class MapRenderer {
             }
             // Set default factor
             if (!this.selectedFilters.factor || !COUNTY_FILTERS.includes(this.selectedFilters.factor)) {
-                this.update_selected_cancers(COUNTY_FILTERS[0]);
+                this.selectedFilters.factor = COUNTY_FILTERS[0];
                 factorFilters.value = this.selectedFilters.factor;
             }
         }
@@ -181,39 +206,34 @@ export class MapRenderer {
             this.renderMap();
         });
         // Cancer type filter
-        const cancerSelect = document.getElementById('cancer-select');
-        cancerSelect.addEventListener('change', (e) => {
+        this.cancerSelect.addEventListener('change', (e) => {
             this.update_selected_cancer(e);
         });
         // Level filter
-        const levelSelect = document.getElementById('level-select');
-        levelSelect.addEventListener('change', (e) => {
+        this.levelSelect.addEventListener('change', (e) => {
             this.update_selected_level(e);
         });
         // Factor filter
-        const factorSelect = document.getElementById('factor-select');
-        factorSelect.addEventListener('change', (e) => {
+        this.factorSelect.addEventListener('change', (e) => {
             this.update_selected_factor(e);
         });
         // Gender filter
-        const genderSelect = document.getElementById('gender-select');
-        genderSelect.addEventListener('change', (e) => {
+        
+        this.genderSelect.addEventListener('change', (e) => {
             this.updateSelectedGender(e.target.value); // Default to all
         });
         // Race filter
-        const raceSelect = document.getElementById('race-select');
-        raceSelect.addEventListener('change', (e) => {
+        this.raceSelect.addEventListener('change', (e) => {
             this.updateSelectedRace(e.target.value); // Default to all
         });
 
         
-        const slider = document.getElementById('cancer-year-selector');
-            slider.addEventListener('change', (e) => {
+        
+        this.slider.addEventListener('change', (e) => {
             this.updateSelectedCancerYear(e.target.value);
         });
 
-        const factorSlider = document.getElementById('factor-year-selector');
-            factorSlider.addEventListener('change', (e) => {
+        this.factorSlider.addEventListener('change', (e) => {
             this.updateSelectedFactorYear(e.target.value);
         });
 
@@ -223,7 +243,7 @@ export class MapRenderer {
         this.updateAvailableYears();
         if (this.map_type instanceof PieMap) {
             // For pie map, handle multi-select
-            this.selectedFilters.selectedCancerTypes = Array.from(cancerSelect.selectedOptions).map(option => option.value);
+            this.selectedFilters.selectedCancerTypes = Array.from(this.cancerSelect.selectedOptions).map(option => option.value);
         } else {
             this.selectedFilters.cancerType = e.target.value;
         }
@@ -256,15 +276,13 @@ export class MapRenderer {
     updateSelectedGender(gender) {
         this.selectedFilters.gender = gender;
         this.renderMap();
-
-        const raceSelect = document.getElementById('race-select');
         if (gender !== 'all') {
-            raceSelect.value = 'all';
-            raceSelect.disabled = true;
+            this.raceSelect.value = 'all';
+            this.raceSelect.disabled = true;
             this.selectedFilters.race = 'all';
         }
         else {
-            raceSelect.disabled = false;
+            this.raceSelect.disabled = false;
         }
 
     };
@@ -274,62 +292,55 @@ export class MapRenderer {
         this.renderMap();
 
         console.log('[MapRenderer] Race selected:', race);
-        const genderSelect = document.getElementById('gender-select');
         if (race !== 'all') {
-            genderSelect.value = 'all';
-            genderSelect.disabled = true;
+            this.genderSelect.value = 'all';
+            this.genderSelect.disabled = true;
             this.selectedFilters.gender = 'all';
         }
         else {
-            genderSelect.disabled = false;
+            this.genderSelect.disabled = false;
         }
     };
 
 
         
     setupMultiSelect() {
-        // Convert the cancer-select to a multi-select for pie map
-        const cancerSelect = document.getElementById('cancer-select');
         
         // Save the current options
-        const currentOptions = Array.from(cancerSelect.options).map(opt => ({
+        const currentOptions = Array.from(this.cancerSelect.options).map(opt => ({
             value: opt.value,
             text: opt.text
         }));
         
         // Clear the select element
-        cancerSelect.innerHTML = '';
+        this.cancerSelect.innerHTML = '';
         
         // Set multiple attribute
-        cancerSelect.setAttribute('multiple', 'multiple');
-        cancerSelect.style.height = '120px'; // Make it taller to show multiple options
+        this.cancerSelect.setAttribute('multiple', 'multiple');
+        this.cancerSelect.style.height = '120px'; // Make it taller to show multiple options
         
         // Restore the options
         currentOptions.forEach(opt => {
             const option = document.createElement('option');
             option.value = opt.value;
             option.text = opt.text;
-            if (opt.value === 'kidney') {
-                option.selected = true;
-            }
-            cancerSelect.appendChild(option);
+            this.cancerSelect.appendChild(option);
         });
     }
 
     setupSingleSelect() {
         // Convert the cancer-select back to single-select for non-pie maps
-        const cancerSelect = document.getElementById('cancer-select');
         // Save the current options
-        const currentOptions = Array.from(cancerSelect.options).map(opt => ({
+        const currentOptions = Array.from(this.cancerSelect.options).map(opt => ({
             value: opt.value,
             text: opt.text,
             selected: opt.selected
         }));
         // Clear the select element
-        cancerSelect.innerHTML = '';
+        this.cancerSelect.innerHTML = '';
         // Remove multiple attribute
-        cancerSelect.removeAttribute('multiple');
-        cancerSelect.style.height = 'auto'; // Reset height
+        this.cancerSelect.removeAttribute('multiple');
+        this.cancerSelect.style.height = 'auto'; // Reset height
         // Restore the options
         currentOptions.forEach(opt => {
             const option = document.createElement('option');
@@ -338,15 +349,15 @@ export class MapRenderer {
             if (opt.selected) {
                 option.selected = true;
             }
-            cancerSelect.appendChild(option);
+            this.cancerSelect.appendChild(option);
         });
         // Ensure only one option is selected
-        if (cancerSelect.selectedOptions.length === 0 && currentOptions.length > 0) {
-            cancerSelect.options[0].selected = true;
-            this.selectedFilters.cancerType = cancerSelect.options[0].value;
-        } else if (cancerSelect.selectedOptions.length > 1) {
+        if (this.cancerSelect.selectedOptions.length === 0 && currentOptions.length > 0) {
+            this.cancerSelect.options[0].selected = true;
+            this.selectedFilters.cancerType = this.cancerSelect.options[0].value;
+        } else if (this.cancerSelect.selectedOptions.length > 1) {
             // If multiple were selected, keep only the first
-            Array.from(cancerSelect.options).forEach((opt, idx) => {
+            Array.from(this.cancerSelect.options).forEach((opt, idx) => {
                 opt.selected = idx === 0;
                 if (opt.selected) {
                     this.selectedFilters.cancerType = opt.value;

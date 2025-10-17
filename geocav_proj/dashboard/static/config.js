@@ -22,8 +22,8 @@ export const DEFAULT_CHOROPLETH_STYLE = {
 
 
 export const cancerColorScale = d3.scaleOrdinal()
-    .domain(['eso', 'kidney', 'liver', 'lung', 'pancreatic', 'prostate', 'skin'])
-    .range(['#FF8000', '#00FF00', '#0000FF', '#FF0000', '#00FFFF', '#FF00FF', '#FFFF00']);
+    .domain(['Breast', 'Esophageal', 'Kidney', 'Liver', 'Lung', 'Pancreatic', 'Prostate', 'Skin'])
+    .range(['#FF8000', '#00FF00', '#0000FF', '#FF0000', '#00FFFF', '#FF00FF', '#FFFF00', '#800080']);
 
 export const FACTORS = [
     "Air_Quality",

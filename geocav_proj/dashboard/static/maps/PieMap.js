@@ -2,35 +2,11 @@ import {cancerColorScale} from '../config.js';
 
 export class PieMap {
     constructor(selectedFilters) {
-        console.log('[Pie] PieMap constructor called with:', selectedFilters);
         this.markers = [];
         this.selectedFilters = selectedFilters;
     }
 
-    // async fetchMapData() {
-    //     console.log('[Pie] Fetching pie map data for level:', this.selectedFilters.level);
-    //     // Send default query parameters
-    //     const params = new URLSearchParams();
-    //     params.append('level', this.selectedFilters.level);
-        
-    //     const response = await fetch(`/pie?${params.toString()}`);
-        
-    //     if (!response.ok) {
-    //         throw new Error(`HTTP error! status: ${response.status}`);
-    //     }
-        
-    //     const contentType = response.headers.get('content-type');
-    //     if (!contentType || !contentType.includes('application/json')) {
-    //         const text = await response.text();
-    //         console.error('Response is not JSON:', text);
-    //         throw new Error('Server did not return JSON');
-    //     }
-        
-    //     this.statesLayer = await response.json();
-    // }
-
     async renderMap(map, data) {
-        console.log('[Pie] Rendering pie map with filters:', this.selectedFilters);
         this.statesLayer = data;
         this.updateMap(map);
     }
@@ -39,21 +15,15 @@ export class PieMap {
         if (level) {
             this.selectedFilters.level = level;
         }
-        // Update selected cancer types if they were passed in selectedFilters
-        if (this.selectedFilters && this.selectedFilters.selectedCancerTypes) {
-            this.selectedFilters.selectedCancerTypes = this.selectedFilters.selectedCancerTypes;
-        }
+        
         // Remove existing markers
-        if (this.markers && this.markers.length) {
-            this.markers.forEach(marker => map.removeLayer(marker));
-            this.markers = [];
-        }
+        this.markers.forEach(marker => map.removeLayer(marker));
+        this.markers = [];
         
         this.createLegend();
         
         this.statesLayer.features.forEach(feature => {
-            const values = feature.properties;
-            const pieData = this.generatePieChart(values);
+            const pieData = this.generatePieChart(feature);
             const centroid = L.geoJSON(feature).getBounds().getCenter();
 
             // Create pie chart SVG
@@ -75,10 +45,26 @@ export class PieMap {
                 iconAnchor: [50, 50]
             });
 
-            const tooltipContent = this.createTooltip(feature);
-
-            const marker = L.marker([centroid.lat, centroid.lng], {icon: icon}).addTo(map).bindTooltip(tooltipContent);
+            const marker = L.marker([centroid.lat, centroid.lng], {icon: icon}).addTo(map);
             this.markers.push(marker);
+            
+            const leafletTooltip = L.tooltip({direction: 'top', offset: [0, -20], className: 'pie-tooltip'})
+                .setContent(this.createTooltip(feature));
+
+            const attachPathListeners = () => {
+                const el = marker.getElement();
+                if (!el) return;
+                
+                el.style.pointerEvents = 'none';
+                el.querySelectorAll('path').forEach(path => {
+                    path.style.pointerEvents = 'auto';
+                    path.style.cursor = 'pointer';
+                    path.addEventListener('mouseenter', () => map.openTooltip(leafletTooltip, marker.getLatLng()));
+                    path.addEventListener('mouseleave', () => map.closeTooltip(leafletTooltip));
+                });
+            };
+
+            marker.getElement() ? attachPathListeners() : marker.on('add', attachPathListeners);
         });
     }
 
@@ -86,56 +72,82 @@ export class PieMap {
         const legend = document.getElementById('legend');
         
         // Use selectedCancerTypes instead of all CANCER_TYPES for the legend
-        const typesToShow = this.selectedFilters.selectedCancerTypes && this.selectedFilters.selectedCancerTypes.length > 0 
-            ? this.selectedFilters.selectedCancerTypes 
-            : ['kidney']; // Default to kidney if nothing selected
-            
+        const typesToShow = this.selectedFilters.selectedCancerTypes && this.selectedFilters.selectedCancerTypes.length > 0
+            ? this.selectedFilters.selectedCancerTypes
+            : ['Pancreatic']; // Default to Pancreatic if nothing selected (matches data capitalization)
+
         legend.innerHTML = '<h4>Selected Cancer Types</h4>' +
             typesToShow.map((type) =>
                 `<div><span style="background: ${cancerColorScale(type)}; width: 15px; height: 15px; display: inline-block; margin-right: 5px;"></span>${type}</div>`
             ).join('');
 
         const legendContainer = document.getElementsByClassName('legend-box')[0];
-        legendContainer.style.height = `auto`;
+        if (legendContainer) legendContainer.style.height = `auto`;
     }
 
     /* --- Helpers --- */
 
     generatePieChart(values) {
-        // Use selectedCancerTypes instead of all CANCER_TYPES
-        const selectedTypes = this.selectedFilters.selectedCancerTypes && this.selectedFilters.selectedCancerTypes.length > 0 
-            ? this.selectedFilters.selectedCancerTypes 
-            : ['kidney']; // Default to kidney if nothing selected
+        // values may be a feature object: prefer feature.cancer_rate but fall back to feature.properties
+        const rates = this.getCancerRates(values);
 
-        var pieData = selectedTypes
-            .filter(type => values[type] !== null && typeof values[type] === 'number')
-            .map(type => ({
-                key: type,
-                value: values[type]
-            }));
-        
-        var pie = d3.pie()
+        const selectedTypes = this.selectedFilters.selectedCancerTypes && this.selectedFilters.selectedCancerTypes.length > 0
+            ? this.selectedFilters.selectedCancerTypes
+            : ['Kidney']; // Default to Kidney (match data capitalization)
+
+        const pieData = selectedTypes
+            .map(type => {
+                // support case-insensitive keys in the rates object
+                const rate = this.lookupRate(rates, type);
+                return { key: type, value: rate };
+            })
+            .filter(d => d.value !== null && typeof d.value === 'number');
+
+        const pie = d3.pie()
             .value(d => d.value);
-        
+
         return pie(pieData);
     }
 
     createTooltip(feature) {
-        const county_name = feature.properties.NAME || '';
-        const state_name = feature.properties.name || feature.properties.state_name || '';
-        const name = county_name ? `${county_name}, ${state_name}` : state_name;
-        const value = feature.properties.cancer_rate;
+        const county_name = (feature.properties && (feature.properties.NAME || feature.properties.name)) || '';
+        const state_name = feature.properties && (feature.properties.state_name || feature.properties.name) || '';
+        const name = county_name ? `${county_name}, ${state_name}` : state_name || (feature.id || '');
         var tooltipContent = `<strong>${name}</strong><br/>`;
-        const values = feature.properties;
-        
-        // Use selectedCancerTypes instead of all CANCER_TYPES for the tooltip
-        const typesToShow = this.selectedFilters.selectedCancerTypes && this.selectedFilters.selectedCancerTypes.length > 0 
-            ? this.selectedFilters.selectedCancerTypes 
-            : ['kidney']; // Default to kidney if nothing selected
-            
+
+        const rates = this.getCancerRates(feature);
+
+        const typesToShow = this.selectedFilters.selectedCancerTypes && this.selectedFilters.selectedCancerTypes.length > 0
+            ? this.selectedFilters.selectedCancerTypes
+            : ['Kidney'];
+
         for (const type of typesToShow) {
-            tooltipContent += `<div>${type}: ${values[type] !== null ? Math.round(10*values[type])/10 : 'N/A'}</div>`;
+            const rate = this.lookupRate(rates, type);
+            tooltipContent += `<div>${type}: ${rate !== null && typeof rate === 'number' ? Math.round(10*rate)/10 : 'N/A'}</div>`;
         }
         return tooltipContent;
+    }
+
+    // Returns the cancer rates object for a feature; the new data stores rates in feature.cancer_rate
+    getCancerRates(feature) {
+        if (!feature) return {};
+        if (feature.cancer_rate && typeof feature.cancer_rate === 'object') return feature.cancer_rate;
+        if (feature.properties && feature.properties.cancer_rate && typeof feature.properties.cancer_rate === 'object') return feature.properties.cancer_rate;
+        // fallback: maybe rates are at top-level of properties
+        return feature.properties || {};
+    }
+
+    // Case-insensitive lookup of a cancer type in rates object
+    lookupRate(ratesObj, type) {
+        if (!ratesObj || !type) return null;
+        // direct lookup
+        if (ratesObj.hasOwnProperty(type)) return ratesObj[type];
+        // try lowercase/uppercase variants and short keys
+        const lower = type.toLowerCase();
+        for (const k of Object.keys(ratesObj)) {
+            if (k.toLowerCase() === lower) return ratesObj[k];
+        }
+        // try matching prefixes (e.g., 'Pancreatic' -> 'Pancreatic')
+        return null;
     }
 }

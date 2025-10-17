@@ -87,7 +87,7 @@
     top: 20px;
     left: 20px;
     width: var(--filter-box-width);
-    height: fit-content;
+    height: auto;
     max-height: var(--filter-box-height);
     background-color: var(--filter-box-background);
     z-index: 1000;

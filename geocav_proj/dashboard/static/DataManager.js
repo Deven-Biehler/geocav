@@ -74,4 +74,29 @@ export class DataManager {
         
         return geojson;
     }
+
+    async getPieData(filters) {
+        // Gets all cancer types for pie chart
+        const params = new URLSearchParams();
+        params.append('level', filters.level);
+        params.append('cancer_year', filters.cancer_year);
+        params.append('factor', filters.factor);
+        params.append('factor_year', filters.factor_year);
+        params.append('gender', filters.gender || 'all');
+        params.append('race', filters.race || 'all');
+        const response = await fetch(`/get_pie_data?${params.toString()}`);
+        const result = await response.json();
+        if (result.error) {
+            throw new Error(result.error + (result.debug ? ' | Debug info: ' + JSON.stringify(result.debug) : ''));
+        }
+
+        console.log('[DataManager] Pie data fetched with filters:', filters, 'Data:', result.data);
+        this.cancer_data = result.cancer_data;
+
+        // Add geojson properties
+        const geojsonResponse = await fetch(`/get_geojson?level=${filters.level}`);
+        const geojson = await geojsonResponse.json();
+        const statesLayer = this.addGeoJSONProperties(geojson, filters.level, this.cancer_data, {});
+        return statesLayer;
+    }
 }
