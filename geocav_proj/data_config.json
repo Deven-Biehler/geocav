@@ -46,18 +46,6 @@
         "filepath": "CDC Data/Factors/County_Level/Environment/Annual_UV_DailyDose.csv"
       },
       {
-        "name": "Radon Levels Pre-Mitigation",
-        "slug": "radon_levels_pre_mitigation",
-        "category": "environment",
-        "filepath": "CDC Data/Factors/County_Level/Environment/Radon_Levels_Pre_Mitigation_10Y.csv"
-      },
-      {
-        "name": "Radon Tests Pre-Mitigation",
-        "slug": "radon_tests_pre_mitigation",
-        "category": "environment",
-        "filepath": "CDC Data/Factors/County_Level/Environment/Radon_Tests_Pre_Mitigation_10Y.csv"
-      },
-      {
         "name": "Coronary Heart Disease",
         "slug": "coronary_heart_disease",
         "category": "health",
@@ -257,8 +245,6 @@
     "CDC Data/Factors/State_Level/Environment/Annual_Sunlight_Exposure.csv",
     "CDC Data/Factors/County_Level/Environment/Annual_UV_DailyDose.csv",
     "CDC Data/Factors/State_Level/Environment/Annual_UV_DailyDose.csv",
-    "CDC Data/Factors/County_Level/Environment/Radon_Levels_Pre_Mitigation_10Y.csv",
-    "CDC Data/Factors/County_Level/Environment/Radon_Tests_Pre_Mitigation_10Y.csv",
     "CDC Data/Factors/State_Level/Environment/CO_Poisoning_Hospitalization.csv",
     "CDC Data/Factors/State_Level/Environment/Pesticide_Exposure.csv",
     "CDC Data/Factors/County_Level/Health/Coronary_Heart_Disease.csv",

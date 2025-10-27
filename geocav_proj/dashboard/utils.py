@@ -76,9 +76,14 @@ def load_geojson(level):
 
 def generate_key(record, level, statefp_field='statefp', countyfp_field='countyfp'):
     """Generate key for data aggregation based on geographic level."""
-    if level == 'county':
-        return str(int(getattr(record, countyfp_field))).zfill(5)
-    return str(int(getattr(record, statefp_field))).zfill(2)
+    if isinstance(record, dict):
+        if level == 'county':
+            return str(int(record[countyfp_field])).zfill(5)
+        return str(int(record[statefp_field])).zfill(2)
+    else:
+        if level == 'county':
+            return str(int(getattr(record, countyfp_field))).zfill(5)
+        return str(int(getattr(record, statefp_field))).zfill(2)
 
 def handle_errors(view_func):
     """Decorator for consistent error handling."""

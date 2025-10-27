@@ -21,9 +21,26 @@ export const DEFAULT_CHOROPLETH_STYLE = {
 };
 
 
+
+// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Manual Data Specific Configurations
+// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export const cancerColorScale = d3.scaleOrdinal()
     .domain(['Breast', 'Esophageal', 'Kidney', 'Liver', 'Lung', 'Pancreatic', 'Prostate', 'Skin'])
     .range(['#FF8000', '#00FF00', '#0000FF', '#FF0000', '#00FFFF', '#FF00FF', '#FFFF00', '#800080']);
+
+export const DEFAULT_FILTERS = {
+    mapType: 'choropleth',
+    cancer_type: 'Pancreatic',
+    level: 'state',
+    selectedCancerTypes: ['Pancreatic'],
+    factor: 'Annual_Sunlight_Exposure',
+    cancer_year: 2016,
+    factor_year: 2016,
+    gender: 'All',
+    race: 'ALL'
+};
 
 export const FACTORS = [
     "Air_Quality",
@@ -33,8 +50,6 @@ export const FACTORS = [
     "Annual_Sunlight_Exposure",
     "Annual_UV_DailyDose",
     "Annual_UV_DailyDose",
-    "Radon_Levels_Pre_Mitigation_10Y",
-    "Radon_Tests_Pre_Mitigation_10Y",
     "CO_Poisoning_Hospitalization",
     "Pesticide_Exposure",
     "Coronary_Heart_Disease",
@@ -60,37 +75,46 @@ export const FACTORS = [
     "Smoking"
 ];
 
-export const DEFAULTS = {
-    cancerType: 'Pancreatic',
-    level: 'state',
-    selectedCancerTypes: ['Pancreatic'],
-    factor: 'Air_Toxins_Concentration',
-    cancer_year: 2016,
-    factor_year: 2016
+export const FACTORS_UNITS = {
+    "Air_Quality": "AQI",
+    "Air_Toxins_Concentration": "Micrograms per cubic meter (µg/m³)",
+    "Annual_Sunlight_Exposure": "Hours",
+    "Annual_UV_DailyDose": "Joules per square meter (J/m²)",
+    "CO_Poisoning_Hospitalization": "Hospitalizations per 100,000",
+    "Pesticide_Exposure": "Percentage (%)",
+    "Coronary_Heart_Disease": "Percentage (%)",
+    "Depression": "Percentage (%)",
+    "Diabetes": "Percentage (%)",
+    "Heart_Stroke": "Percentage (%)",
+    "High_Blood_Pressure": "Percentage (%)",
+    "High_Cholesterol": "Percentage (%)",
+    "Hospitalization": "Hospitalizations per 100,000",
+    "Hospitalization_Gender": "Hospitalizations per 100,000",
+    "No_Health_Insurance": "Percentage (%)",
+    "Binge_Drinking": "Percentage (%)",
+    "No_Physical_Activity": "Percentage (%)",
+    "Obesity": "Percentage (%)",
+    "Short_Sleep": "Percentage (%)",
+    "Smoking": "Percentage (%)"
 };
 
-export const STATE_FILTERS = [
-    'Air_Toxins_Concentration',
+export const STATE_FACTOR_FILTERS = [
     'Annual_Sunlight_Exposure',
     'Annual_UV_DailyDose',
     'CO_Poisoning_Hospitalization',
     'Pesticide_Exposure',
     'Heart_Stroke',
-    'High_Blood_Pressure',
-    'High_Cholesterol',
     'Hospitalization_Gender',
     'Hospitalization',
     'No_Health_Insurance',
     'Smoking'
 ];
 
-export const COUNTY_FILTERS = [
+export const COUNTY_FACTOR_FILTERS = [
     'Air_Quality',
     'Air_Toxins_Concentration',
     'Annual_Sunlight_Exposure',
     'Annual_UV_DailyDose',
-    'Radon_Levels_Pre_Mitigation_10Y',
-    'Radon_Tests_Pre_Mitigation_10Y',
     'Coronary_Heart_Disease',
     'Depression',
     'Diabetes',
@@ -106,9 +130,6 @@ export const COUNTY_FILTERS = [
     'Short_Sleep',
     'Smoking'
 ];
-
-
-
 
 export const STATE_CANCER_AVAILABLE_YEARS = {
     "Breast": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
@@ -132,34 +153,6 @@ export const COUNTY_CANCER_AVAILABLE_YEARS = {
     "Skin": [2011, 2016]
 };
 
-export const COUNTY_FACTORS_AVAILABLE_YEARS = {
-    // Environment
-    "Air_Quality": [2011, 2016],
-    "Air_Toxins_Concentration": [2011, 2016],
-    "Annual_Sunlight_Exposure": [2011, 2016],
-    "Annual_UV_DailyDose": [2011, 2016],
-    "Radon_Levels_Pre_Mitigation_10Y": [2011, 2016],
-    "Radon_Tests_Pre_Mitigation_10Y": [2011, 2016],
-    
-    // Health status
-    "Coronary_Heart_Disease": [2016],
-    "Depression": [2016],
-    "Diabetes": [2016],
-    "Heart_Stroke": [2016],
-    "High_Blood_Pressure": [2016],
-    "High_Cholesterol": [2016],
-    "Hospitalization": [2011, 2016],
-    "Hospitalization_Gender": [2011, 2016],
-    "No_Health_Insurance": [2011, 2016],
-    
-    // Lifestyle
-    "Binge_Drinking": [2016],
-    "No_Physical_Activity": [2016],
-    "Obesity": [2016],
-    "Short_Sleep": [2016],
-    "Smoking": [2016]
-};
-
 export const STATE_FACTORS_AVAILABLE_YEARS = {
     // Environment
     "Air_Toxins_Concentration": [2011, 2014, 2017, 2018, 2019],
@@ -178,4 +171,30 @@ export const STATE_FACTORS_AVAILABLE_YEARS = {
     
     // Lifestyle
     "Smoking": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021]
+};
+
+export const COUNTY_FACTORS_AVAILABLE_YEARS = {
+    // Environment
+    "Air_Quality": [2011, 2016],
+    "Air_Toxins_Concentration": [2011, 2016],
+    "Annual_Sunlight_Exposure": [2011, 2016],
+    "Annual_UV_DailyDose": [2011, 2016],
+    
+    // Health status
+    "Coronary_Heart_Disease": [2016],
+    "Depression": [2016],
+    "Diabetes": [2016],
+    "Heart_Stroke": [2016],
+    "High_Blood_Pressure": [2016],
+    "High_Cholesterol": [2016],
+    "Hospitalization": [2011, 2016],
+    "Hospitalization_Gender": [2011, 2016],
+    "No_Health_Insurance": [2011, 2016],
+    
+    // Lifestyle
+    "Binge_Drinking": [2016],
+    "No_Physical_Activity": [2016],
+    "Obesity": [2016],
+    "Short_Sleep": [2016],
+    "Smoking": [2016]
 };

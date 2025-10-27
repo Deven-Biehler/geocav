@@ -19,15 +19,15 @@ export class DotDensityMap {
     async renderMap(map, data) {
         this.statesLayer = data;
         this.map = map;
-        console.log('[Heat Map] Rendering dot density map with cancer type:', this.selectedFilters.cancerType, ', factor:', this.selectedFilters.factor, 'and level:', this.selectedFilters.level);
+        console.log('[Heat Map] Rendering dot density map with cancer type:', this.selectedFilters.cancer_type, ', factor:', this.selectedFilters.factor, 'and level:', this.selectedFilters.level);
         console.log('[Heat Map] Data received for rendering:', data);
-        this.createLegend(this.selectedFilters.cancerType);
+        this.createLegend(this.selectedFilters.cancer_type);
         this.renderDots();
         this.renderHeatmap();
     }
 
     async renderHeatmap() {
-        console.log('[Heat Map] Rendering heatmap for cancer type:', this.selectedFilters.cancerType);
+        console.log('[Heat Map] Rendering heatmap for cancer type:', this.selectedFilters.cancer_type);
         const heatData = await this.prepareHeatmapData();
         L.heatLayer(heatData, {
                 radius: 25,
@@ -69,18 +69,46 @@ export class DotDensityMap {
         });
     }
 
-    // Prepares heatmap data based on selected factor and cancer type
-    async prepareHeatmapData() {
-        // Each object: { latitude, longitude, ...factors, ...cancerTypes }
-        const heatData = [];
+    calculateArea(latlngs) {
+        let area = 0;
+        const len = latlngs.length;
         
+        for (let i = 0; i < len; i++) {
+            const j = (i + 1) % len;
+            area += latlngs[i].lng * latlngs[j].lat;
+            area -= latlngs[j].lng * latlngs[i].lat;
+        }
+        
+        area = Math.abs(area / 2);
+        
+        // Convert to square meters (approximate)
+        return area * 111320 * 111320 * Math.cos(latlngs[0].lat * Math.PI / 180);
+    }
+
+    async prepareHeatmapData() {
+        let heatData = [];
+    
         this.statesLayer.features.forEach(row => {
             const centroid = L.geoJSON(row).getBounds().getCenter();
-            const factor = parseFloat(row.factor_value);
+            const factor = parseFloat(row.factor_value); // Already per 100k
+            
             if (!isNaN(centroid.lat) && !isNaN(centroid.lng) && !isNaN(factor)) {
                 heatData.push([centroid.lat, centroid.lng, factor]);
             }
         });
+    
+        // Normalize to 0-1 for heatmap
+        const values = heatData.map(d => d[2]);
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const range = max - min;
+        
+        heatData = heatData.map(d => [
+            d[0],
+            d[1],
+            range > 0 ? ((d[2] - min) * 10) / range : 0
+        ]);
+        
         return heatData;
     }
 
@@ -101,12 +129,12 @@ export class DotDensityMap {
         return topCases;
     }
 
-    createLegend(selectedCancerType) {
+    createLegend() {
         const legend = document.getElementById('legend');
         legend.innerHTML = `
             <h4>Heat Map</h4>
             <div style="margin-top: 10px;">
-                <label for="percentSlider">Top Cases of ${selectedCancerType}: <span id="percentValue">${(this.percent * 100).toFixed(0)}%</span></label>
+                <label for="percentSlider">Top Cases of ${this.selectedFilters.cancer_type}: <span id="percentValue">${(this.percent * 100).toFixed(0)}%</span></label>
                 <input type="range" id="percentSlider" min="5" max="100" value="${this.percent * 100}" step="5" style="width: 100%; margin-top: 5px;">
             </div>
         `;
@@ -128,7 +156,7 @@ export class DotDensityMap {
         const county_name = feature.properties.NAME || '';
         const state_name = feature.properties.name || feature.properties.state_name || '';
         const name = county_name ? `${county_name}, ${state_name}` : state_name;
-        const value = feature.properties.cancer_rate;
+        const value = feature.cancer_rate;
         var tooltipContent = `<strong>${name}</strong><br/>`;
         tooltipContent += `Cancer Rate: ${value !== null && !isNaN(value) ? value.toFixed(2) : 'N/A'}`;
         return tooltipContent;

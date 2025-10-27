@@ -1,8 +1,10 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
     <title>Choropleth Map with Regression Plot</title>
     
     <!-- Leaflet CSS -->
@@ -38,9 +40,9 @@
                 <div class="filter-group">
                     <label for="map-select">Map View:</label>
                     <select id="map-select" name="map-type">
-                        <option value="choropleth">Choropleth</option>
-                        <option value="pie">Pie Chart</option>
-                        <option value="dotDensity">Dot Density</option>
+                        <option value="choropleth">Bivariate Choropleth Map</option>
+                        <option value="pie">Pie Chart Map</option>
+                        <option value="dotDensity">Heat Map</option>
                     </select>
                 </div>
                 <div class="filter-group">
@@ -66,39 +68,35 @@
                 <div class="filter-group">
                     <label for="factor-select">Factor:</label>
                     <select id="factor-select" name="factor">
-                        <option value="coronary_heart_disease">Coronary Heart Disease</option>
-                        <option value="depression">Depression</option>
-                        <option value="diabetes">Diabetes</option>
-                        <option value="heart_stroke">Heart Stroke</option>
-                        <option value="high_blood_pressure">High Blood Pressure</option>
-                        <option value="high_cholesterol">High Cholesterol</option>
-                        <option value="hospitalization_gender">Hospitalization Gender</option>
-                        <option value="hospitalization">Hospitalization</option>
-                        <option value="excessive_drinking">Excessive Drinking</option>
-                        <option value="binge_drinking">Binge Drinking</option>
-                        <option value="no_physical_inactivity">No Physical Activity</option>
-                        <option value="obesity">Obesity</option>
-                        <option value="short_sleep">Short Sleep</option>
-                        <option value="smoking">Smoking</option>
+                        <option value="Annual Sunlight Exposure">Annual Sunlight Exposure</option>
+                        <option value="Annual_UV_DailyDose">Annual UV DailyDose</option>
+                        <option value="CO_Poisoning_Hospitalization">CO Poisoning Hospitalization</option>
+                        <option value="Pesticide_Exposure">Pesticide Exposure</option>
+                        <option value="Heart_Stroke">Heart Stroke</option>
+                        <option value="High_Cholesterol">High Cholesterol</option>
+                        <option value="Hospitalization_Gender">Hospitalization Gender</option>
+                        <option value="Hospitalization">Hospitalization</option>
+                        <option value="No_Health_Insurance">No Health Insurance</option>
+                        <option value="Smoking">Smoking</option>
                     </select>
                 </div>
                 <div class="filter-group">
                     <label for="gender-select">Gender:</label>
                     <select id="gender-select" name="gender">
-                        <option value="all">All</option>
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
+                        <option value="All">All</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
                     </select>
                 </div>
                 <div class="filter-group">
                     <label for="race-select">Race:</label>
                     <select id="race-select" name="race">
-                        <option value="all">All</option>
-                        <option value="White (includes Hispanic)">White (includes Hispanic)</option>
-                        <option value="Black (includes Hispanic)">Black (includes Hispanic)</option>
-                        <option value="Hispanic (all races)">Hispanic (all races)</option>
-                        <option value="Asian/Pacific Islander (includes Hispanic)">Asian/Pacific Islander (includes Hispanic)</option>
-                        <option value="American Indian/Alaskan Native (includes Hispanic)">American Indian/Alaskan Native (includes Hispanic)</option>
+                        <option value="ALL">All</option>
+                        <option value="WHITE (INCLUDES HISPANIC)">White (includes Hispanic)</option>
+                        <option value="BLACK (INCLUDES HISPANIC)">Black (includes Hispanic)</option>
+                        <option value="HISPANIC (ALL RACES)">Hispanic (all races)</option>
+                        <option value="ASIAN/PACIFIC ISLANDER (INCLUDES HISPANIC)">Asian/Pacific Islander (includes Hispanic)</option>
+                        <option value="AMERICAN INDIAN/ALASKAN NATIVE (INCLUDES HISPANIC)">American Indian/Alaskan Native (includes Hispanic)</option>
                     </select>
                 </div>
             </div>
