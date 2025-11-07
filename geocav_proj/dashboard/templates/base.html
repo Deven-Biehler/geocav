@@ -1,0 +1,25 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>{% block title %}GeoCAV{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="{% static 'sidebar.css' %}" rel="stylesheet" />
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">GeoCAV</div>
+    <nav class="nav">
+      <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'home' %}">Home</a>
+      <a class="nav-link {% if request.resolver_match.url_name == 'dashboard_view' %}active{% endif %}" href="{% url 'dashboard_view' %}">Geospatial Dashboard</a>
+      <a class="nav-link {% if request.resolver_match.url_name == 'network_analysis' %}active{% endif %}" href="{% url 'network_analysis' %}">Network Analysis</a>
+      <a class="nav-link {% if request.resolver_match.url_name == 'molecular_analysis' %}active{% endif %}" href="{% url 'molecular_analysis' %}">Molecular Analysis</a>
+    </nav>
+  </aside>
+
+  <main class="content">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
