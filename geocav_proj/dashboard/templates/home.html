@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Home | GeoCAV{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 1rem;">Welcome to GeoCAV</h1>
+<p style="color:#6c757d; margin-bottom: 1.5rem;">
+  Explore cancer data through geospatial insights, network structures, and molecular patterns.
+</p>
+
+<!-- Responsive card grid -->
+<div class="feature-grid">
+  <!-- Geospatial Dashboard -->
+  <article class="feature-card">
+    <div class="feature-media">
+      <img src="{% static 'img/geospatial.jpg' %}" alt="Geospatial dashboard preview" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+      <!-- Fallback if image is missing -->
+      <div class="fallback">
+        <span>🗺️</span>
+      </div>
+    </div>
+    <div class="feature-body">
+      <h2>Geospatial Dashboard</h2>
+      <p>
+        Map cancer incidence at state/county levels and overlay lifestyle, socio-economic, and environmental factors
+        to uncover spatial patterns and drivers.
+      </p>
+      <a href="{% url 'dashboard_view' %}" class="btn-primary">Geospatial Dashboard</a>
+    </div>
+  </article>
+
+  <!-- Network Analysis -->
+  <article class="feature-card">
+    <div class="feature-media">
+      <img src="{% static 'img/network.jpg' %}" alt="Network analysis preview" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+      <div class="fallback">
+        <span>🕸️</span>
+      </div>
+    </div>
+    <div class="feature-body">
+      <h2>Network Analysis</h2>
+      <p>
+        Visualize gene/sequence interaction networks. Select cancer types, render large graphs fast, and prepare
+        for metadata-driven coloring and filters.
+      </p>
+      <a href="{% url 'network_analysis' %}" class="btn-primary">Network Analysis</a>
+    </div>
+  </article>
+
+  <!-- Molecular Analysis -->
+  <article class="feature-card">
+    <div class="feature-media">
+      <img src="{% static 'img/molecular.jpg' %}" alt="Molecular analysis preview" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+      <div class="fallback">
+        <span>🧬</span>
+      </div>
+    </div>
+    <div class="feature-body">
+      <h2>Molecular Analysis</h2>
+      <p>
+        Explore mutation landscapes, variant classifications, and clinical associations to connect molecular signals
+        with patient outcomes.
+      </p>
+      <a href="{% url 'molecular_analysis' %}" class="btn-primary">Molecular Analysis</a>
+    </div>
+  </article>
+</div>
+
+<style>
+/* --- Home cards (light theme) --- */
+.feature-grid{
+  display:grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 18px;
+}
+@media (max-width: 1200px){
+  .feature-grid{ grid-template-columns: repeat(8, 1fr); }
+}
+@media (max-width: 768px){
+  .feature-grid{ grid-template-columns: repeat(4, 1fr); }
+}
+.feature-card{
+  grid-column: span 4; /* 3-up on desktop */
+  display:flex; flex-direction:column;
+  background:#ffffff; border:1px solid #e9ecef; border-radius:14px;
+  overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,0.04);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+@media (max-width: 1200px){
+  .feature-card{ grid-column: span 4; } /* 2-up on tablets */
+}
+@media (max-width: 768px){
+  .feature-card{ grid-column: span 4; } /* 1-up on phones */
+}
+.feature-card:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.06);
+}
+.feature-media{
+  position:relative; width:100%; aspect-ratio: 16/9; background:#f8f9fa;
+}
+.feature-media img{
+  width:100%; height:100%; object-fit:cover; display:block;
+}
+.fallback{
+  position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+  background: linear-gradient(135deg,#eef4ff,#f8f9ff);
+  font-size: 42px;
+}
+.feature-body{
+  padding:14px 16px 16px 16px;
+  display:flex; flex-direction:column; gap:10px;
+}
+.feature-body h2{
+  font-size: 1.1rem; margin:0; color:#212529;
+}
+.feature-body p{
+  margin:0; color:#5c6770; line-height:1.45;
+}
+.btn-primary{
+  align-self:flex-start;
+  display:inline-block; margin-top:6px; padding:8px 12px;
+  background:#0d6efd; color:#fff; text-decoration:none; border-radius:8px;
+  border:1px solid #0b5ed7; font-weight:600; font-size:.95rem;
+}
+.btn-primary:hover{ background:#0b5ed7; }
+</style>
+
+{% endblock %}
