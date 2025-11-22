@@ -15,11 +15,30 @@ export class ChoroplethMap {
         const factorValues = data.features
             .map(feature => feature.factor_value)
             .filter(value => value != null);
+        
+        // Calculate min/max for normalization
         this.dataMin = Math.min(...values);
         this.dataMax = Math.max(...values);
         this.factorMin = Math.min(...factorValues);
         this.factorMax = Math.max(...factorValues);
-        console.log('[Choropleth Map] Data range - Min:', this.dataMin, 'Max:', this.dataMax);
+        
+        // Calculate correlation values (product of normalized values) for range
+        const correlationValues = data.features
+            .map(feature => {
+                if (feature.cancer_rate != null && feature.factor_value != null) {
+                    const cancerRange = this.dataMax - this.dataMin || 1;
+                    const factorRange = this.factorMax - this.factorMin || 1;
+                    const normalizedCancer = (feature.cancer_rate - this.dataMin) / cancerRange;
+                    const normalizedFactor = (feature.factor_value - this.factorMin) / factorRange;
+                    return normalizedCancer * normalizedFactor;
+                }
+                return null;
+            })
+            .filter(value => value != null);
+        
+        this.correlationMin = Math.min(...correlationValues);
+        this.correlationMax = Math.max(...correlationValues);
+        console.log('[Choropleth Map] Data range - Cancer Min:', this.dataMin, 'Cancer Max:', this.dataMax, 'Factor Min:', this.factorMin, 'Factor Max:', this.factorMax, 'Correlation Min:', this.correlationMin, 'Correlation Max:', this.correlationMax);
     }
 
     async renderMap(map, data) {
@@ -34,6 +53,7 @@ export class ChoroplethMap {
             }
         });
         await this.getDataRange(data);
+        console.log('[Choropleth Map] Data range calculated - Correlation Min:', this.correlationMin, 'Correlation Max:', this.correlationMax);
         this.layer = await this.createChoroplethLayer(map);
         this.createLegend();
         layersToRemove.forEach(layer => map.removeLayer(layer));
@@ -43,42 +63,17 @@ export class ChoroplethMap {
     createLegend() {
         const legend = document.getElementById('legend');
     
-        const colors = [
-            ['#350617', '#781217', '#ba1c1c'],
-            ['#3a207e', '#835f7f', '#cb9a9a'],
-            ['#4533c6', '#9d96c8', '#f3f3f3']
-        ];
-    
-        const dataBinSize = (this.dataMax - this.dataMin) / 3;
-        const factorBinSize = (this.factorMax - this.factorMin) / 3;
-    
-        const dataBins = [0, 1, 2, 3].map(i => (this.dataMin + i * dataBinSize).toFixed(1));
-        const factorBins = [0, 1, 2, 3].map(i => (this.factorMin + i * factorBinSize).toFixed(1));
-    
         legend.innerHTML = `
-            <h4>Legend</h4>
-            <div style="display: flex;">
-                <div style="display: flex; flex-direction: column-reverse; margin-right: 5px; justify-content: space-between; font-size: 10px; font-weight: bold;">
-                    ${dataBins.slice(0, 3).reverse().map(bin => `<div style="height: 35px; display: flex; align-items: center;">${bin}</div>`).join('')}
+            <h4>Correlation</h4>
+            <div style="display: flex; gap: 15px; font-size: 12px;">
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <div style="background: white; width: 30px; height: 30px; border: 2px solid #999;"></div>
+                    <span>0</span>
                 </div>
-                <div>
-                    <div style="display: flex; flex-direction: column-reverse;">
-                        ${colors.map(row => `
-                            <div style="display: flex;">
-                                ${row.map(color => `
-                                    <div style="background: ${color}; width: 35px; height: 35px; border: 1px solid #999;"></div>
-                                `).join('')}
-                            </div>
-                        `).join('')}
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-top: 5px;">
-                        ${factorBins.slice(0, 3).map(bin => `<div style="width: 35px; text-align: center;">${bin}</div>`).join('')}
-                    </div>
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <div style="background: red; width: 30px; height: 30px; border: 2px solid #999;"></div>
+                    <span>1.0</span>
                 </div>
-            </div>
-            <div style="margin-top: 10px; font-size: 14px;">
-                <div><strong>Cancer Rate:</strong> Incidence per 100,000</div>
-                <div><strong>Factor:</strong> ${FACTORS_UNITS[this.selectedFilters.factor]}</div>
             </div>
         `;
     }
@@ -121,35 +116,51 @@ export class ChoroplethMap {
     getBivariateMapStyle(feature) {
         const cancerValue = feature.cancer_rate;
         const factorValue = feature.factor_value;
-        const color = this.getBivariateColor(cancerValue, factorValue);
+        const color = this.getCorrelationColor(cancerValue, factorValue);
         
         return {
             ...DEFAULT_CHOROPLETH_STYLE,
             fillColor: color,
-            fillOpacity: (cancerValue !== null && factorValue !== null) ? 0.7 : 0.1
+            fillOpacity: (cancerValue !== null && factorValue !== null) ? 0.8 : 0.1
         };
     }
 
-    getBivariateColor(cancerValue, factorValue) {
-        // console.log(`[Bivariate Color] Calculating color for Cancer Value: ${cancerValue}, Factor Value: ${factorValue}`);
+    getCorrelationColor(cancerValue, factorValue) {
+        // Calculate correlation-like value by normalizing both values independently
+        let correlationValue;
         
-        const cancerRange = this.dataMax - this.dataMin || 1;
-        const factorRange = this.factorMax - this.factorMin || 1;
+        if (typeof cancerValue === 'number' && typeof factorValue === 'number') {
+            // Normalize cancer value
+            const cancerRange = this.dataMax - this.dataMin || 1;
+            const normalizedCancer = (cancerValue - this.dataMin) / cancerRange;
+            
+            // Normalize factor value
+            const factorRange = this.factorMax - this.factorMin || 1;
+            const normalizedFactor = (factorValue - this.factorMin) / factorRange;
+            
+            // Calculate correlation as product of normalized values (both must be high for high correlation)
+            correlationValue = normalizedCancer * normalizedFactor;
+        } else {
+            // When only one value is provided (for legend gradient)
+            correlationValue = cancerValue;
+        }
         
-        const cancerNorm = Math.max(0, Math.min(1, (cancerValue - this.dataMin) / cancerRange)) || 0;
-        const factorNorm = Math.max(0, Math.min(1, (factorValue - this.factorMin) / factorRange)) || 0;
+        if (correlationValue == null) {
+            return '#cccccc'; // Gray for missing data
+        }
         
-        const cancerBin = Math.min(2, Math.floor(cancerNorm * 3)) || 0;
-        const factorBin = Math.min(2, Math.floor(factorNorm * 3)) || 0;
-
-        const colors = [
-            ['#350617', '#781217', '#ba1c1c'],
-            ['#3a207e', '#835f7f', '#cb9a9a'],
-            ['#4533c6', '#9d96c8', '#f3f3f3']
-        ];
+        // Normalize to 0-1 range based on actual min/max of correlation values
+        const range = this.correlationMax - this.correlationMin || 1;
+        const normalized = Math.max(0, Math.min(1, (correlationValue - this.correlationMin) / range));
         
-        // console.log(`[Bivariate Color] Cancer Value: ${cancerValue}, Factor Value: ${factorValue}, Cancer Bin: ${cancerBin}, Factor Bin: ${factorBin}, Color: ${colors[cancerBin][factorBin]}`);
-        return colors[cancerBin][factorBin];
+        // White to red gradient
+        // White: #ffffff (255, 255, 255)
+        // Red: #ff0000 (255, 0, 0)
+        const r = 255;
+        const g = Math.round(255 * (1 - normalized));
+        const b = Math.round(255 * (1 - normalized));
+        
+        return `rgb(${r}, ${g}, ${b})`;
     }
 
     createBivariatePopupContent(feature) {
@@ -158,12 +169,22 @@ export class ChoroplethMap {
         const name = county_name ? `${county_name}, ${state_name}` : state_name;
         const cancerValue = feature.cancer_rate;
         const factorValue = feature.factor_value;
+        
+        let correlationValue = 'N/A';
+        if (cancerValue != null && factorValue != null) {
+            const cancerRange = this.dataMax - this.dataMin || 1;
+            const factorRange = this.factorMax - this.factorMin || 1;
+            const normalizedCancer = (cancerValue - this.dataMin) / cancerRange;
+            const normalizedFactor = (factorValue - this.factorMin) / factorRange;
+            correlationValue = (normalizedCancer * normalizedFactor).toFixed(2);
+        }
 
         return `
             <div class="map-popup">
                 <h4>${name}</h4>
-                <p>Cancer Rate: ${cancerValue != null ? cancerValue.toFixed(2) : 'N/A'}</p>
-                <p>Factor: ${factorValue != null ? factorValue.toFixed(2) : 'N/A'}</p>
+                <p><strong>${this.selectedFilters.cancer_type}:</strong> ${cancerValue != null ? cancerValue.toFixed(2) : 'N/A'}</p>
+                <p><strong>${this.selectedFilters.factor}:</strong> ${factorValue != null ? factorValue.toFixed(2) : 'N/A'}</p>
+                <p><strong>Correlation:</strong> ${correlationValue}</p>
             </div>
         `;
     }
