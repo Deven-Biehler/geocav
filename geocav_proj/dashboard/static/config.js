@@ -107,7 +107,8 @@ export const STATE_FACTOR_FILTERS = [
     'Hospitalization_Gender',
     'Hospitalization',
     'No_Health_Insurance',
-    'Smoking'
+    'Smoking',
+    'None'
 ];
 
 export const COUNTY_FACTOR_FILTERS = [
@@ -128,7 +129,8 @@ export const COUNTY_FACTOR_FILTERS = [
     'No_Physical_Activity',
     'Obesity',
     'Short_Sleep',
-    'Smoking'
+    'Smoking',
+    'None'
 ];
 
 export const STATE_CANCER_AVAILABLE_YEARS = {
@@ -139,7 +141,8 @@ export const STATE_CANCER_AVAILABLE_YEARS = {
     "Lung": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
     "Pancreatic": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
     "Prostate": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
-    "Skin": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020]
+    "Skin": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
+    "None": []
 };
 
 export const COUNTY_CANCER_AVAILABLE_YEARS = {
@@ -150,7 +153,8 @@ export const COUNTY_CANCER_AVAILABLE_YEARS = {
     "Lung": [2011, 2016],
     "Pancreatic": [2011, 2016],
     "Prostate": [2011, 2016],
-    "Skin": [2011, 2016]
+    "Skin": [2011, 2016],
+    "None": []
 };
 
 export const STATE_FACTORS_AVAILABLE_YEARS = {
@@ -170,7 +174,10 @@ export const STATE_FACTORS_AVAILABLE_YEARS = {
     "No_Health_Insurance": [2014, 2015, 2016, 2017, 2018, 2019, 2020],
     
     // Lifestyle
-    "Smoking": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021]
+    "Smoking": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021],
+
+
+    "None": []
 };
 
 export const COUNTY_FACTORS_AVAILABLE_YEARS = {
@@ -196,5 +203,7 @@ export const COUNTY_FACTORS_AVAILABLE_YEARS = {
     "No_Physical_Activity": [2016],
     "Obesity": [2016],
     "Short_Sleep": [2016],
-    "Smoking": [2016]
+    "Smoking": [2016],
+
+    "None": []
 };

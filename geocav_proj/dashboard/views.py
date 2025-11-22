@@ -49,25 +49,29 @@ def get_data(request):
         params['level'], params['cancer_type'], params['factor'], params['gender'], params['race'], params['cancer_year'], params['factor_year']
     )
 
-    cancer_type = get_model_instance(CancerType, 'name', cancer_type_name)
-    factor = get_model_instance(Factor, 'name', factor_name)
+    cancer_queryset = CancerIncidence.objects.none()
+    factor_queryset = FactorMeasurement.objects.none()
     
-    # Build queries
-    cancer_queryset = CancerIncidence.objects.filter(cancer_type=cancer_type)
-    factor_queryset = FactorMeasurement.objects.filter(factor=factor)
+    if cancer_type_name and cancer_type_name.lower() != 'none':
+        cancer_type = get_model_instance(CancerType, 'name', cancer_type_name)
+        cancer_queryset = CancerIncidence.objects.filter(cancer_type=cancer_type)
+        
+        if gender_name.lower() != 'all':
+            gender = get_model_instance(Gender, 'name', gender_name)
+            cancer_queryset = cancer_queryset.filter(gender=gender)
+        
+        if race_name.lower() != 'all':
+            race = get_model_instance(Race, 'name', race_name)
+            cancer_queryset = cancer_queryset.filter(race=race)
+        
+        cancer_queryset = apply_geographic_filter(cancer_queryset, level)
+        cancer_queryset = apply_year_filter(cancer_queryset, cancer_year)
     
-    if gender_name.lower() != 'all':
-        gender = get_model_instance(Gender, 'name', gender_name)
-        cancer_queryset = cancer_queryset.filter(gender=gender)
-    
-    if race_name.lower() != 'all':
-        race = get_model_instance(Race, 'name', race_name)
-        cancer_queryset = cancer_queryset.filter(race=race)
-    
-    cancer_queryset = apply_geographic_filter(cancer_queryset, level)
-    factor_queryset = apply_geographic_filter(factor_queryset, level)
-    cancer_queryset = apply_year_filter(cancer_queryset, cancer_year)
-    factor_queryset = apply_year_filter(factor_queryset, factor_year)
+    if factor_name and factor_name.lower() != 'none':
+        factor = get_model_instance(Factor, 'name', factor_name)
+        factor_queryset = FactorMeasurement.objects.filter(factor=factor)
+        factor_queryset = apply_geographic_filter(factor_queryset, level)
+        factor_queryset = apply_year_filter(factor_queryset, factor_year)
 
     cancer_data, factor_data = organize_data(cancer_queryset, factor_queryset, level)
     return JsonResponse({'cancer_data': cancer_data, 'factor_data': factor_data})
