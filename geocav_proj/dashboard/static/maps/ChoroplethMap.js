@@ -194,12 +194,14 @@ export class ChoroplethMap {
         
         // Only show cancer type if it's selected
         if (this.selectedFilters.cancer_type != 'None') {
-            popupContent += `<p><strong>${this.selectedFilters.cancer_type}:</strong> ${cancerValue != null ? cancerValue.toFixed(2) : 'N/A'}</p>`;
+            popupContent += `<p><strong>${this.selectedFilters.cancer_type}:</strong> ${cancerValue != null ? cancerValue.toFixed(2) : 'N/A'} per 100,000</p>`;
         }
         
         // Only show factor if it's selected
         if (this.selectedFilters.factor != 'None') {
-            popupContent += `<p><strong>${this.selectedFilters.factor}:</strong> ${factorValue != null ? factorValue.toFixed(2) : 'N/A'}</p>`;
+            const unit = FACTORS_UNITS[this.selectedFilters.factor] || '';
+            const valueDisplay = factorValue != null ? factorValue.toFixed(2) : 'N/A';
+            popupContent += `<p><strong>${this.selectedFilters.factor}:</strong> ${valueDisplay}${unit ? ' ' + unit : ''}</p>`;
         }
         
         // Only show correlation if both are selected
