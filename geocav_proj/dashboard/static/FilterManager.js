@@ -80,11 +80,53 @@ export class FilterManager {
         // update filter-dependent UI elements if needed
         this.FilterUpdate(); // Make sure factors are updated based on level
         this.raceGenderToggle(); // Ensure race/gender toggling is respected
+        this.updateCancerOptions();
         this.checkMultiSelect(); // Adjust cancer type select for pie map multi-select
 
         // Then update the map and regression plot based on new filters / new selections
         this.mapRenderer.renderMap(this.selectedFilters);
         this.regressionPlot.renderPlot(this.selectedFilters);
+    }
+
+    updateCancerOptions() {
+        const gender = this.selectedFilters.gender;
+        
+        // Define available cancers
+        let availableCancers = ['Pancreatic', 'Skin', 'Lung', 'Liver', 'Kidney', 'Esophageal', 'None'];
+        
+        if (gender === 'Female') {
+            availableCancers.push('Breast');
+        }
+        if (gender === 'Male') {
+            availableCancers.push('Prostate');
+        }
+        
+        const order = ['Pancreatic', 'Skin', 'Lung', 'Liver', 'Breast', 'Kidney', 'Prostate', 'Esophageal', 'None'];
+        availableCancers.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+
+        // Rebuild options
+        this.cancerSelect.innerHTML = '';
+        availableCancers.forEach(cancer => {
+            const option = document.createElement('option');
+            option.value = cancer;
+            option.textContent = cancer === 'None' ? 'None' : cancer + ' Cancer';
+            this.cancerSelect.appendChild(option);
+        });
+
+        // Validate and update selected filters
+        if (!availableCancers.includes(this.selectedFilters.cancer_type)) {
+             const newSelection = availableCancers.includes('Pancreatic') ? 'Pancreatic' : availableCancers[0];
+             this.selectedFilters.cancer_type = newSelection;
+        }
+        
+        if (this.selectedFilters.selectedCancerTypes) {
+            this.selectedFilters.selectedCancerTypes = this.selectedFilters.selectedCancerTypes.filter(c => availableCancers.includes(c));
+            if (this.selectedFilters.selectedCancerTypes.length === 0) {
+                this.selectedFilters.selectedCancerTypes = [this.selectedFilters.cancer_type];
+            }
+        }
+
+        this.cancerSelect.value = this.selectedFilters.cancer_type;
     }
 
     raceGenderToggle() {

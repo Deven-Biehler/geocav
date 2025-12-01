@@ -213,6 +213,16 @@ class Command(BaseCommand):
         df['Sex'] = df['Sex'].str.strip().str.title()
         df['Race Ethnicity'] = df['Race Ethnicity'].str.strip().str.upper()
         df['Cancer Type'] = df['Cancer Type'].str.strip().str.title()
+        
+        # Duplicate Breast (All -> Female) and Prostate (All -> Male) data
+        breast_all = df[(df['Cancer Type'] == 'Breast') & (df['Sex'] == 'All')].copy()
+        breast_all['Sex'] = 'Female'
+        
+        prostate_all = df[(df['Cancer Type'] == 'Prostate') & (df['Sex'] == 'All')].copy()
+        prostate_all['Sex'] = 'Male'
+        
+        df = pd.concat([df, breast_all, prostate_all], ignore_index=True)
+
         df['County'] = df['County'].str.strip()
         df['State'] = df['State'].str.strip()
         df['StateFIPS'] = df['StateFIPS'].apply(lambda x: int(x))
