@@ -8,7 +8,22 @@ export class PieMap {
 
     async renderMap(map, data) {
         this.statesLayer = data;
+        this.createTitle();
         this.updateMap(map);
+    }
+
+    createTitle() {
+        const titleElement = document.getElementById('page-title');
+        if (titleElement) {
+            const level = this.selectedFilters.level.charAt(0).toUpperCase() + this.selectedFilters.level.slice(1);
+            const cancerYear = this.selectedFilters.cancer_year;
+            
+            const typesToShow = this.selectedFilters.selectedCancerTypes && this.selectedFilters.selectedCancerTypes.length > 0
+                ? this.selectedFilters.selectedCancerTypes.join(', ')
+                : 'No Cancer Selected';
+
+            titleElement.textContent = `Pie Map - ${typesToShow} (${cancerYear}) (${level})`;
+        }
     }
 
     async updateMap(map, level) {

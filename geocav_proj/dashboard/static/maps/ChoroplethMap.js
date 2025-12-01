@@ -9,36 +9,66 @@ export class ChoroplethMap {
     }
 
     async getDataRange(data) {
-        const values = data.features
-            .map(feature => feature.cancer_rate)
-            .filter(value => value != null);
-        const factorValues = data.features
-            .map(feature => feature.factor_value)
-            .filter(value => value != null);
+        // Filter for valid paired data for correlation stats
+        const validFeatures = data.features.filter(f => f.cancer_rate != null && f.factor_value != null);
         
-        // Calculate min/max for normalization
-        this.dataMin = Math.min(...values);
-        this.dataMax = Math.max(...values);
-        this.factorMin = Math.min(...factorValues);
-        this.factorMax = Math.max(...factorValues);
+        const values = validFeatures.map(f => f.cancer_rate);
+        const factorValues = validFeatures.map(f => f.factor_value);
         
-        // Calculate correlation values (product of normalized values) for range
-        const correlationValues = data.features
-            .map(feature => {
-                if (feature.cancer_rate != null && feature.factor_value != null) {
-                    const cancerRange = this.dataMax - this.dataMin || 1;
-                    const factorRange = this.factorMax - this.factorMin || 1;
-                    const normalizedCancer = (feature.cancer_rate - this.dataMin) / cancerRange;
-                    const normalizedFactor = (feature.factor_value - this.factorMin) / factorRange;
-                    return normalizedCancer * normalizedFactor;
-                }
-                return null;
-            })
-            .filter(value => value != null);
+        // Calculate min/max for normalization (using all data for single view)
+        const allValues = data.features.map(f => f.cancer_rate).filter(v => v != null);
+        const allFactorValues = data.features.map(f => f.factor_value).filter(v => v != null);
+
+        this.dataMin = Math.min(...allValues);
+        this.dataMax = Math.max(...allValues);
+        this.factorMin = Math.min(...allFactorValues);
+        this.factorMax = Math.max(...allFactorValues);
         
-        this.correlationMin = Math.min(...correlationValues);
-        this.correlationMax = Math.max(...correlationValues);
-        console.log('[Choropleth Map] Data range - Cancer Min:', this.dataMin, 'Cancer Max:', this.dataMax, 'Factor Min:', this.factorMin, 'Factor Max:', this.factorMax, 'Correlation Min:', this.correlationMin, 'Correlation Max:', this.correlationMax);
+        if (validFeatures.length < 2) {
+            this.correlationMin = 0;
+            this.correlationMax = 0;
+            this.globalCorrelation = 0;
+            this.stats = { meanCancer: 0, meanFactor: 0, stdCancer: 1, stdFactor: 1 };
+            return;
+        }
+
+        // Calculate mean and std for Pearson correlation (using paired data)
+        const n = validFeatures.length;
+        const meanCancer = values.reduce((a, b) => a + b, 0) / n;
+        const meanFactor = factorValues.reduce((a, b) => a + b, 0) / n;
+        
+        const stdCancer = Math.sqrt(values.reduce((a, b) => a + Math.pow(b - meanCancer, 2), 0) / (n - 1));
+        const stdFactor = Math.sqrt(factorValues.reduce((a, b) => a + Math.pow(b - meanFactor, 2), 0) / (n - 1));
+
+        // Calculate global Pearson correlation
+        const correlationTerms = validFeatures.map(feature => {
+            const zCancer = (feature.cancer_rate - meanCancer) / stdCancer;
+            const zFactor = (feature.factor_value - meanFactor) / stdFactor;
+            return zCancer * zFactor;
+        });
+        
+        this.globalCorrelation = correlationTerms.reduce((a, b) => a + b, 0) / (n - 1);
+
+        // Calculate Regression Parameters (y = mx + b)
+        // y = cancer, x = factor
+        const slope = this.globalCorrelation * (stdCancer / stdFactor);
+        const intercept = meanCancer - (slope * meanFactor);
+        
+        this.stats = { meanCancer, meanFactor, stdCancer, stdFactor, slope, intercept };
+
+        // Calculate Residuals for range
+        const residuals = validFeatures.map(feature => {
+            const predicted = (slope * feature.factor_value) + intercept;
+            return feature.cancer_rate - predicted;
+        });
+        
+        this.residualMin = Math.min(...residuals);
+        this.residualMax = Math.max(...residuals);
+        this.maxAbsResidual = Math.max(Math.abs(this.residualMin), Math.abs(this.residualMax));
+        
+        console.log('[Choropleth Map] Data range - Cancer Min:', this.dataMin, 'Cancer Max:', this.dataMax, 'Factor Min:', this.factorMin, 'Factor Max:', this.factorMax);
+        console.log('[Choropleth Map] Regression - Slope:', slope, 'Intercept:', intercept, 'Max Abs Residual:', this.maxAbsResidual);
+        console.log('[Choropleth Map] Global Pearson Correlation:', this.globalCorrelation);
     }
 
     async renderMap(map, data) {
@@ -65,13 +95,11 @@ export class ChoroplethMap {
         
         // Determine legend title based on what's being displayed
         let legendTitle = 'Correlation';
+        let content = '';
+
         if (this.selectedFilters.factor == 'None') {
             legendTitle = this.selectedFilters.cancer_type;
-        } else if (this.selectedFilters.cancer_type == 'None') {
-            legendTitle = this.selectedFilters.factor;
-        }
-    
-        legend.innerHTML = `
+            content = `
             <h4>${legendTitle}</h4>
             <div style="display: flex; gap: 15px; font-size: 12px;">
                 <div style="display: flex; align-items: center; gap: 5px;">
@@ -83,13 +111,71 @@ export class ChoroplethMap {
                     <span>High</span>
                 </div>
             </div>
-        `;
+            `;
+        } else if (this.selectedFilters.cancer_type == 'None') {
+            legendTitle = this.selectedFilters.factor;
+            content = `
+            <h4>${legendTitle}</h4>
+            <div style="display: flex; gap: 15px; font-size: 12px;">
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <div style="background: white; width: 30px; height: 30px; border: 2px solid #999;"></div>
+                    <span>Low</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <div style="background: red; width: 30px; height: 30px; border: 2px solid #999;"></div>
+                    <span>High</span>
+                </div>
+            </div>
+            `;
+        } else {
+            legendTitle = 'Deviation from Trend';
+            content = `
+            <h4>${legendTitle}</h4>
+            <div style="display: flex; flex-direction: column; gap: 5px; font-size: 12px;">
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <div style="background: #ff0000; width: 20px; height: 20px; border: 1px solid #999;"></div>
+                    <span>Higher than expected</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <div style="background: #ffffff; width: 20px; height: 20px; border: 1px solid #999;"></div>
+                    <span>As expected</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <div style="background: #0000ff; width: 20px; height: 20px; border: 1px solid #999;"></div>
+                    <span>Lower than expected</span>
+                </div>
+            </div>
+            `;
+        }
+    
+        legend.innerHTML = content;
     }
 
     createTitle() {
         const titleElement = document.getElementById('page-title');
         if (titleElement) {
-            titleElement.textContent = `Choropleth Map - ${this.selectedFilters.cancer_type} (${this.selectedFilters.level.charAt(0).toUpperCase() + this.selectedFilters.level.slice(1)})`;
+            let title = '';
+            const level = this.selectedFilters.level.charAt(0).toUpperCase() + this.selectedFilters.level.slice(1);
+            
+            const cancerPart = this.selectedFilters.cancer_type !== 'None' 
+                ? `${this.selectedFilters.cancer_type} (${this.selectedFilters.cancer_year})` 
+                : '';
+                
+            const factorPart = this.selectedFilters.factor !== 'None'
+                ? `${this.selectedFilters.factor.replace(/_/g, ' ')} (${this.selectedFilters.factor_year})`
+                : '';
+
+            if (cancerPart && factorPart) {
+                title = `Choropleth Map - ${cancerPart} vs ${factorPart}`;
+            } else if (cancerPart) {
+                title = `Choropleth Map - ${cancerPart}`;
+            } else if (factorPart) {
+                title = `Choropleth Map - ${factorPart}`;
+            } else {
+                title = 'Choropleth Map';
+            }
+
+            titleElement.textContent = `${title} (${level})`;
         }
     }
 
@@ -134,50 +220,65 @@ export class ChoroplethMap {
     }
 
     getCorrelationColor(cancerValue, factorValue) {
-        let normalized;
-        
-        // Handle case where only cancer type is selected (factor is 'None')
+        // Case 1: Only Cancer Type selected (Factor is None)
+        // Color based on magnitude of cancer rate (White -> Red)
         if (this.selectedFilters.factor == 'None') {
             if (cancerValue == null) {
                 return '#cccccc'; // Gray for missing data
             }
             const range = this.dataMax - this.dataMin || 1;
-            normalized = Math.max(0, Math.min(1, (cancerValue - this.dataMin) / range));
+            const normalized = Math.max(0, Math.min(1, (cancerValue - this.dataMin) / range));
+            
+            const r = 255;
+            const g = Math.round(255 * (1 - normalized));
+            const b = Math.round(255 * (1 - normalized));
+            return `rgb(${r}, ${g}, ${b})`;
         }
-        // Handle case where only factor is selected (cancer_type is 'None')
-        else if (this.selectedFilters.cancer_type == 'None') {
+        
+        // Case 2: Only Factor selected (Cancer Type is None)
+        // Color based on magnitude of factor value (White -> Red)
+        if (this.selectedFilters.cancer_type == 'None') {
             if (factorValue == null) {
                 return '#cccccc'; // Gray for missing data
             }
             const range = this.factorMax - this.factorMin || 1;
-            normalized = Math.max(0, Math.min(1, (factorValue - this.factorMin) / range));
+            const normalized = Math.max(0, Math.min(1, (factorValue - this.factorMin) / range));
+            
+            const r = 255;
+            const g = Math.round(255 * (1 - normalized));
+            const b = Math.round(255 * (1 - normalized));
+            return `rgb(${r}, ${g}, ${b})`;
         }
-        // Handle correlation case (both cancer type and factor are selected)
-        else {
-            // Normalize cancer value
-            const cancerRange = this.dataMax - this.dataMin || 1;
-            const normalizedCancer = (cancerValue - this.dataMin) / cancerRange;
-            
-            // Normalize factor value
-            const factorRange = this.factorMax - this.factorMin || 1;
-            const normalizedFactor = (factorValue - this.factorMin) / factorRange;
-            
-            // Calculate correlation as product of normalized values (both must be high for high correlation)
-            const correlationValue = normalizedCancer * normalizedFactor;
-            
-            if (correlationValue == null) {
-                return '#cccccc'; // Gray for missing data
-            }
-            
-            // Normalize to 0-1 range based on actual min/max of correlation values
-            const range = this.correlationMax - this.correlationMin || 1;
-            normalized = Math.max(0, Math.min(1, (correlationValue - this.correlationMin) / range));
+
+        // Case 3: Correlation (Both selected)
+        // Color based on deviation from regression trend (Blue -> White -> Red)
+        if (cancerValue == null || factorValue == null) {
+            return '#cccccc'; // Gray for missing data
         }
+
+        // Calculate predicted value and residual
+        const predicted = (this.stats.slope * factorValue) + this.stats.intercept;
+        const residual = cancerValue - predicted;
         
-        // White to red gradient
-        const r = 255;
-        const g = Math.round(255 * (1 - normalized));
-        const b = Math.round(255 * (1 - normalized));
+        // Normalize residual to -1 to 1 range based on maxAbsResidual
+        // -1 = Blue (Lower than expected), 0 = White, 1 = Red (Higher than expected)
+        const normalized = residual / (this.maxAbsResidual || 1);
+        
+        // Diverging Color Scale
+        let r, g, b;
+        if (normalized > 0) {
+            // White to Red (Higher than expected)
+            r = 255;
+            g = Math.round(255 * (1 - normalized));
+            b = Math.round(255 * (1 - normalized));
+        } else {
+            // White to Blue (Lower than expected)
+            // normalized is negative here, so use Math.abs
+            const absNorm = Math.abs(normalized);
+            r = Math.round(255 * (1 - absNorm));
+            g = Math.round(255 * (1 - absNorm));
+            b = 255;
+        }
         
         return `rgb(${r}, ${g}, ${b})`;
     }
@@ -206,15 +307,13 @@ export class ChoroplethMap {
         
         // Only show correlation if both are selected
         if (this.selectedFilters.cancer_type != 'None' && this.selectedFilters.factor != 'None') {
-            let correlationValue = 'N/A';
-            if (cancerValue != null && factorValue != null) {
-                const cancerRange = this.dataMax - this.dataMin || 1;
-                const factorRange = this.factorMax - this.factorMin || 1;
-                const normalizedCancer = (cancerValue - this.dataMin) / cancerRange;
-                const normalizedFactor = (factorValue - this.factorMin) / factorRange;
-                correlationValue = (normalizedCancer * normalizedFactor).toFixed(2);
+            
+            if (cancerValue != null && factorValue != null && this.stats) {
+                 const predicted = (this.stats.slope * factorValue) + this.stats.intercept;
+                 const residual = cancerValue - predicted;
+                 popupContent += `<p><strong>Expected Rate:</strong> ${predicted.toFixed(2)}</p>`;
+                 popupContent += `<p><strong>Deviation:</strong> ${residual > 0 ? '+' : ''}${residual.toFixed(2)}</p>`;
             }
-            popupContent += `<p><strong>Correlation:</strong> ${correlationValue}</p>`;
         }
         
         popupContent += `</div>`;

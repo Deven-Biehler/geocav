@@ -1,3 +1,5 @@
+import { FACTORS_UNITS } from './config.js';
+
 export class RegressionPlot {
     constructor(dataManager) {
         console.log('[Regression Plot] Initializing RegressionPlot');
@@ -45,7 +47,9 @@ export class RegressionPlot {
             const gender = selectedFilters.gender
             const race = selectedFilters.race
             const cancerLabel = selectedFilters.cancer_type + " Cancer Rate Per 100,000" + (gender && gender !== 'all' ? ` (${gender})` : '') + (race && race !== 'all' ? ` (${race})` : '');
-            const factorLabel = selectedFilters.factor.replace(/_/g, ' ');
+            
+            const factorUnit = FACTORS_UNITS[selectedFilters.factor] || '';
+            const factorLabel = selectedFilters.factor.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') + (factorUnit ? ` (${factorUnit})` : '');
 
             const line = d3.line()
                 .x(d => x(d.x))
@@ -88,12 +92,13 @@ export class RegressionPlot {
                 .call(d3.axisLeft(y));
 
             // Add title
+            const factorName = selectedFilters.factor.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
             svg.append("text")
                 .attr("x", this.width / 2)
                 .attr("y", -5)
                 .style("text-anchor", "middle")
                 .style("font-size", "14px")
-                .text(`${selectedFilters.cancer_type} vs ${selectedFilters.factor} (${selectedFilters.level.charAt(0).toUpperCase() + selectedFilters.level.slice(1)})`);
+                .text(`${selectedFilters.cancer_type} vs ${factorName} (${selectedFilters.level.charAt(0).toUpperCase() + selectedFilters.level.slice(1)})`);
 
             // Add dots
             svg.append('g')
@@ -128,7 +133,7 @@ export class RegressionPlot {
                     tooltip.transition()
                         .duration(200)
                         .style("opacity", .9);
-                    tooltip.html(this.tooltipContent(d))
+                    tooltip.html(this.tooltipContent(d, selectedFilters.factor))
                         .style("left", (event.pageX + 10) + "px")
                         .style("top", (event.pageY - 28) + "px");
                 })
@@ -176,7 +181,7 @@ export class RegressionPlot {
         return { slope, intercept, rSquared };
     }
 
-    tooltipContent(feature) {
+    tooltipContent(feature, factorSlug) {
         // Use the same color scale as the circles
         const color = this.colorScale(feature.state);
         let locationName = feature.state || 'Unknown Location';
@@ -191,10 +196,14 @@ export class RegressionPlot {
         const cancerValue = feature["cancer_rate"] != null ?
             (+feature["cancer_rate"]).toFixed(2) : 'No data';
         
+        const factorUnit = factorSlug ? (FACTORS_UNITS[factorSlug] || '') : '';
+        const factorUnitLabel = factorUnit ? ` ${factorUnit}` : '';
+        const cancerUnitLabel = (feature["cancer_rate"] != null) ? ' (per 100,000)' : '';
+
         const tooltipContent = `
             <strong style="color: ${color};">${locationName}</strong><br>
-            ${this.formatLabel("factor_value")}: ${factorValue}<br>
-            ${this.formatLabel("cancer_rate")}: ${cancerValue}
+            ${this.formatLabel("factor_value")}: ${factorValue}${factorUnitLabel}<br>
+            ${this.formatLabel("cancer_rate")}: ${cancerValue}${cancerUnitLabel}
         `;
         return tooltipContent;
     }

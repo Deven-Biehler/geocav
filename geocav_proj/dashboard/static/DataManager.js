@@ -69,7 +69,7 @@ export class DataManager {
                 : feature.id;
             
             const countyfp = level === 'county' 
-                ? feature.properties.COUNTYFP.slice(-3) 
+                ? feature.properties.COUNTYFP
                 : 'All';
             
             const key = level === 'state' 

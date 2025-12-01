@@ -21,9 +21,38 @@ export class DotDensityMap {
         this.map = map;
         console.log('[Heat Map] Rendering dot density map with cancer type:', this.selectedFilters.cancer_type, ', factor:', this.selectedFilters.factor, 'and level:', this.selectedFilters.level);
         console.log('[Heat Map] Data received for rendering:', data);
+        this.createTitle();
         this.createLegend(this.selectedFilters.cancer_type);
         this.renderDots();
         this.renderHeatmap();
+    }
+
+    createTitle() {
+        const titleElement = document.getElementById('page-title');
+        if (titleElement) {
+            let title = '';
+            const level = this.selectedFilters.level.charAt(0).toUpperCase() + this.selectedFilters.level.slice(1);
+            
+            const cancerPart = this.selectedFilters.cancer_type !== 'None' 
+                ? `${this.selectedFilters.cancer_type} (${this.selectedFilters.cancer_year})` 
+                : '';
+                
+            const factorPart = this.selectedFilters.factor !== 'None'
+                ? `${this.selectedFilters.factor.replace(/_/g, ' ')} (${this.selectedFilters.factor_year})`
+                : '';
+
+            if (cancerPart && factorPart) {
+                title = `Heat Map - ${cancerPart} vs ${factorPart}`;
+            } else if (cancerPart) {
+                title = `Heat Map - ${cancerPart}`;
+            } else if (factorPart) {
+                title = `Heat Map - ${factorPart}`;
+            } else {
+                title = 'Heat Map';
+            }
+
+            titleElement.textContent = `${title} (${level})`;
+        }
     }
 
     async renderHeatmap() {
