@@ -99,14 +99,22 @@ export const FACTORS_UNITS = {
 };
 
 export const STATE_FACTOR_FILTERS = [
+    'Air_Quality',
     'Annual_Sunlight_Exposure',
     'Annual_UV_DailyDose',
     'CO_Poisoning_Hospitalization',
     'Pesticide_Exposure',
+    'Coronary_Heart_Disease',
+    'Depression',
+    'Diabetes',
     'Heart_Stroke',
     'Hospitalization_Gender',
     'Hospitalization',
     'No_Health_Insurance',
+    'Binge_Drinking',
+    'No_Physical_Activity',
+    'Obesity',
+    'Short_Sleep',
     'Smoking',
     'None'
 ];
@@ -159,6 +167,7 @@ export const COUNTY_CANCER_AVAILABLE_YEARS = {
 
 export const STATE_FACTORS_AVAILABLE_YEARS = {
     // Environment
+    "Air_Quality": [2011, 2016],
     "Air_Toxins_Concentration": [2011, 2014, 2017, 2018, 2019],
     "Annual_Sunlight_Exposure": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
     "Annual_UV_DailyDose": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
@@ -166,6 +175,9 @@ export const STATE_FACTORS_AVAILABLE_YEARS = {
     "Pesticide_Exposure": [2011, 2012, 2013, 2014, 2015, 2016, 2017],
     
     // Health status
+    "Coronary_Heart_Disease": [2016],
+    "Depression": [2016],
+    "Diabetes": [2016],
     "Heart_Stroke": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018],
     "High_Blood_Pressure": [2021],
     "High_Cholesterol": [2021],
@@ -174,6 +186,10 @@ export const STATE_FACTORS_AVAILABLE_YEARS = {
     "No_Health_Insurance": [2014, 2015, 2016, 2017, 2018, 2019, 2020],
     
     // Lifestyle
+    "Binge_Drinking": [2016],
+    "No_Physical_Activity": [2016],
+    "Obesity": [2016],
+    "Short_Sleep": [2016],
     "Smoking": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021],
 
 

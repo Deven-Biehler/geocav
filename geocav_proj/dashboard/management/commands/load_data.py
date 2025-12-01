@@ -138,6 +138,36 @@ class Command(BaseCommand):
             dfs.append(df)
         
         merged_df = pd.concat(dfs, ignore_index=True)
+
+        # Calculate missing state averages from county data
+        existing_factors = merged_df['Factor'].unique()
+        new_state_dfs = []
+        
+        for factor in existing_factors:
+            factor_df = merged_df[merged_df['Factor'] == factor]
+            
+            # Check if state level data exists (County == 'All')
+            if not factor_df[factor_df['County'] == 'All'].empty:
+                continue
+                
+            self.stdout.write(f"Calculating state averages for {factor}...")
+            
+            # Group by state and year to calculate averages
+            # Ensure we keep StateFIPS
+            state_avg = factor_df.groupby(['State', 'StateFIPS', 'Start Year', 'End Year'])['Value'].mean().reset_index()
+            
+            # Add required columns
+            state_avg['County'] = 'All'
+            state_avg['CountyFIPS'] = 0
+            state_avg['Factor'] = factor
+            
+            # Ensure correct column order
+            state_avg = state_avg[self.factor_columns]
+            new_state_dfs.append(state_avg)
+            
+        if new_state_dfs:
+            merged_df = pd.concat([merged_df] + new_state_dfs, ignore_index=True)
+
         merged_df.to_csv(os.path.join(settings.BASE_DIR, 'CDC Data/factors.csv'), index=False)
 
         
