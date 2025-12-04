@@ -102,6 +102,17 @@ Visualizes the distribution of multiple cancer types simultaneously for each reg
     5.  Embeds the generated SVG into a Leaflet `L.divIcon`.
 *   **Interactivity**: Custom event listeners are attached to the SVG paths to trigger Leaflet tooltips, as standard Leaflet markers do not support sub-element events easily.
 
+#### 2.4.2 Dynamic Sizing
+To visualize the magnitude of cancer incidence across regions, the pie charts are dynamically sized.
+
+*   **Total Rate Calculation**: For each region, the sum of incidence rates for all selected cancer types is calculated.
+*   **Global Maximum**: The maximum total incidence rate ($MaxTotal$) across all displayed regions is determined.
+*   **Radius Scaling**: The radius of each pie chart is scaled proportional to the square root of its total rate to ensure the *area* of the chart represents the magnitude accurately.
+    *   Formula: $Radius = \sqrt{\frac{TotalRate}{MaxTotal}} \times MaxRadius$
+    *   **Max Radius**: 40px (for the region with the highest incidence).
+    *   **Min Radius**: 1px (to ensure visibility for regions with low but non-zero incidence).
+*   **Zero Handling**: Regions with a total rate of 0 are skipped and not rendered.
+
 ## 3. Backend Data Processing (`views.py`)
 
 The backend is responsible for standardizing the data structure before sending it to the frontend.
@@ -122,3 +133,49 @@ This function transforms the raw database querysets into a dictionary keyed by F
     }
     ```
 *   **Purpose**: This dictionary structure allows the frontend `DataManager` to merge data into GeoJSON features in O(1) time per feature, avoiding nested loops which would degrade performance with 3000+ counties.
+
+## 3. Configuration & Dataset Updates
+
+The dashboard is designed to be data-driven, meaning that adding new cancer types, environmental factors, or updating data years can be done primarily through the configuration file `dashboard/static/config.js`.
+
+### 3.1 Updating `dashboard/static/config.js`
+
+This file acts as the central registry for all frontend options.
+
+#### 3.1.1 Adding a New Cancer Type
+To add a new cancer type (e.g., "Thyroid"):
+
+1.  **Update `CANCER_TYPES_CONFIG`**:
+    *   Add "Thyroid" to the `COMMON`, `FEMALE_ONLY`, or `MALE_ONLY` array as appropriate.
+    *   Add "Thyroid" to the `ORDER` array to determine its position in the dropdown.
+2.  **Update `cancerColorScale`**:
+    *   Add "Thyroid" to the `.domain()` array.
+    *   Add a corresponding color hex code to the `.range()` array.
+3.  **Update Available Years**:
+    *   Add a "Thyroid" key to `STATE_CANCER_AVAILABLE_YEARS` with the list of available years (e.g., `[2011, 2012, ...]`).
+    *   Add a "Thyroid" key to `COUNTY_CANCER_AVAILABLE_YEARS` with the list of available years.
+
+#### 3.1.2 Adding a New Environmental/Health Factor
+To add a new factor (e.g., "Water Quality"):
+
+1.  **Update `FACTORS`**:
+    *   Add "Water_Quality" to the `FACTORS` array.
+2.  **Update `FACTORS_UNITS`**:
+    *   Add a key-value pair: `"Water_Quality": "mg/L"`.
+3.  **Update Filter Lists**:
+    *   Add "Water_Quality" to `STATE_FACTOR_FILTERS` if data exists at the state level.
+    *   Add "Water_Quality" to `COUNTY_FACTOR_FILTERS` if data exists at the county level.
+4.  **Update Available Years**:
+    *   Add a "Water_Quality" key to `STATE_FACTORS_AVAILABLE_YEARS` with the list of available years.
+    *   Add a "Water_Quality" key to `COUNTY_FACTORS_AVAILABLE_YEARS` with the list of available years.
+
+#### 3.1.3 Updating Data Years
+To update the years for an existing dataset:
+
+1.  Locate the relevant key in `STATE_CANCER_AVAILABLE_YEARS`, `COUNTY_CANCER_AVAILABLE_YEARS`, `STATE_FACTORS_AVAILABLE_YEARS`, or `COUNTY_FACTORS_AVAILABLE_YEARS`.
+2.  Append the new year to the array (e.g., change `[2016]` to `[2016, 2020]`).
+
+### 3.2 Backend Considerations
+While the frontend configuration controls the UI, the backend (`dashboard/views.py`) is dynamic and will query the database for whatever parameters are sent. Therefore, **no backend code changes are required** when adding new data types, provided:
+1.  The new data has been correctly loaded into the database (`CancerIncidence` or `FactorMeasurement` models).
+2.  The `CancerType` or `Factor` names in the database match the strings used in `config.js` (case-insensitive matching is handled, but exact spelling is required).
