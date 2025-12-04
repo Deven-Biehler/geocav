@@ -47,9 +47,18 @@ export class PieMap {
             
             let total = 0;
             for (const type of selectedTypes) {
-                const rate = this.lookupRate(rates, type);
-                if (rate !== null && typeof rate === 'number') {
-                    total += rate;
+                const rateObj = this.lookupRate(rates, type);
+                if (rateObj) {
+                    if (typeof rateObj === 'number') {
+                        total += rateObj;
+                    } else if (typeof rateObj === 'object') {
+                        if (rateObj['Male']) total += rateObj['Male'];
+                        if (rateObj['Female']) total += rateObj['Female'];
+                        // If we only have 'Male and Female' or similar, we might want to use that if Male/Female are missing
+                        if (!rateObj['Male'] && !rateObj['Female']) {
+                             Object.values(rateObj).forEach(v => { if(typeof v === 'number') total += v; });
+                        }
+                    }
                 }
             }
             if (total > maxTotal) maxTotal = total;
@@ -84,7 +93,12 @@ export class PieMap {
                 .enter()
                 .append("path")
                 .attr("d", arc)
-                .attr("fill", (d) => cancerColorScale(d.data.key));
+                .attr("fill", (d) => {
+                    const baseColor = cancerColorScale(d.data.key);
+                    if (d.data.gender === 'Male') return d3.rgb(baseColor).darker(0.5);
+                    if (d.data.gender === 'Female') return d3.rgb(baseColor).brighter(0.5);
+                    return baseColor;
+                });
 
             const icon = L.divIcon({
                 className: '',
@@ -125,9 +139,18 @@ export class PieMap {
             : ['Pancreatic']; // Default to Pancreatic if nothing selected (matches data capitalization)
 
         legend.innerHTML = '<h4>Selected Cancer Types</h4>' +
-            typesToShow.map((type) =>
-                `<div><span style="background: ${cancerColorScale(type)}; width: 15px; height: 15px; display: inline-block; margin-right: 5px;"></span>${type}</div>`
-            ).join('');
+            typesToShow.map((type) => {
+                const baseColor = cancerColorScale(type);
+                const maleColor = d3.rgb(baseColor).darker(0.5);
+                const femaleColor = d3.rgb(baseColor).brighter(0.5);
+                return `<div>
+                    <span style="background: ${baseColor}; width: 15px; height: 15px; display: inline-block; margin-right: 5px;"></span>${type}
+                    <div style="font-size: 0.8em; margin-left: 20px;">
+                        <span style="background: ${maleColor}; width: 10px; height: 10px; display: inline-block; margin-right: 5px;"></span>Male
+                        <span style="background: ${femaleColor}; width: 10px; height: 10px; display: inline-block; margin-right: 5px;"></span>Female
+                    </div>
+                </div>`;
+            }).join('');
 
         const legendContainer = document.getElementsByClassName('legend-box')[0];
         if (legendContainer) legendContainer.style.height = `auto`;
@@ -143,16 +166,28 @@ export class PieMap {
             ? this.selectedFilters.selectedCancerTypes
             : ['Kidney']; // Default to Kidney (match data capitalization)
 
-        const pieData = selectedTypes
-            .map(type => {
-                // support case-insensitive keys in the rates object
-                const rate = this.lookupRate(rates, type);
-                return { key: type, value: rate };
-            })
-            .filter(d => d.value !== null && typeof d.value === 'number');
+        const pieData = [];
+        selectedTypes.forEach(type => {
+            const rateObj = this.lookupRate(rates, type);
+            if (rateObj) {
+                if (typeof rateObj === 'number') {
+                    pieData.push({ key: type, gender: 'All', value: rateObj });
+                } else if (typeof rateObj === 'object') {
+                    if (rateObj['Male']) pieData.push({ key: type, gender: 'Male', value: rateObj['Male'] });
+                    if (rateObj['Female']) pieData.push({ key: type, gender: 'Female', value: rateObj['Female'] });
+                    // Fallback if no Male/Female keys found but object exists
+                    if (!rateObj['Male'] && !rateObj['Female']) {
+                         Object.entries(rateObj).forEach(([k, v]) => {
+                             if (typeof v === 'number') pieData.push({ key: type, gender: k, value: v });
+                         });
+                    }
+                }
+            }
+        });
 
         const pie = d3.pie()
-            .value(d => d.value);
+            .value(d => d.value)
+            .sort(null);
 
         return pie(pieData);
     }
@@ -170,8 +205,19 @@ export class PieMap {
             : ['Kidney'];
 
         for (const type of typesToShow) {
-            const rate = this.lookupRate(rates, type);
-            tooltipContent += `<div>${type}: ${rate !== null && typeof rate === 'number' ? Math.round(10*rate)/10 : 'N/A'}</div>`;
+            const rateObj = this.lookupRate(rates, type);
+            tooltipContent += `<div><strong>${type}</strong>:</div>`;
+            if (rateObj) {
+                if (typeof rateObj === 'number') {
+                    tooltipContent += `<div>Total: ${Math.round(10*rateObj)/10}</div>`;
+                } else if (typeof rateObj === 'object') {
+                    Object.entries(rateObj).forEach(([gender, val]) => {
+                        tooltipContent += `<div>${gender}: ${Math.round(10*val)/10}</div>`;
+                    });
+                }
+            } else {
+                tooltipContent += `<div>N/A</div>`;
+            }
         }
         return tooltipContent;
     }

@@ -96,15 +96,20 @@ def get_pie_data(request):
         race = get_model_instance(Race, 'name', race_name)
         cancer_queryset = cancer_queryset.filter(race=race)
 
-    cancer_queryset = cancer_queryset.values('statefp', 'countyfp', 'state', 'county', 'cancer_type__name', 'incidence_rate')
+    cancer_queryset = cancer_queryset.values('statefp', 'countyfp', 'state', 'county', 'cancer_type__name', 'gender__name', 'incidence_rate')
 
     cancer_data = {}
     for record in cancer_queryset:
         key = generate_key(record, level)
         if key not in cancer_data:
             cancer_data[key] = {'state': record['state'], 'county': record['county'] if level == 'county' else None, 'rate': {}}
+        
         if record['incidence_rate'] is not None:
-            cancer_data[key]['rate'][record['cancer_type__name']] = record['incidence_rate']
+            c_type = record['cancer_type__name']
+            gender = record['gender__name']
+            if c_type not in cancer_data[key]['rate']:
+                cancer_data[key]['rate'][c_type] = {}
+            cancer_data[key]['rate'][c_type][gender] = record['incidence_rate']
     return JsonResponse({'cancer_data': cancer_data})
 
 def home(request):

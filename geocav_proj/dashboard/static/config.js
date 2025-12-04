@@ -28,7 +28,7 @@ export const DEFAULT_CHOROPLETH_STYLE = {
 
 export const cancerColorScale = d3.scaleOrdinal()
     .domain(['Breast', 'Esophageal', 'Kidney', 'Liver', 'Lung', 'Pancreatic', 'Prostate', 'Skin'])
-    .range(['#FF8000', '#00FF00', '#0000FF', '#FF0000', '#00FFFF', '#FF00FF', '#FFFF00', '#800080']);
+    .range(['#FF8000', '#00FF00', '#0000FF', '#FF0000', '#00FFFF', '#FF00FF', '#FFFF00', '#FFA500']);
 
 export const DEFAULT_FILTERS = {
     mapType: 'choropleth',
