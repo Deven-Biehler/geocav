@@ -1,3 +1,4 @@
+import { DATA_FIELD_MAPPING } from './config.js';
 
 export class DataManager {
     constructor() {
@@ -24,10 +25,10 @@ export class DataManager {
         const result = Object.keys(this.cancer_data).reduce((acc, key) => {
             if (key in this.factor_data) {
                 acc.push({
-                    state: this.cancer_data[key].state,
-                    county: this.cancer_data[key].county,
-                    cancer_rate: this.cancer_data[key].rate,
-                    factor_value: this.factor_data[key].rate
+                    state: this.cancer_data[key][DATA_FIELD_MAPPING.STATE],
+                    county: this.cancer_data[key][DATA_FIELD_MAPPING.COUNTY],
+                    cancer_rate: this.cancer_data[key][DATA_FIELD_MAPPING.CANCER_RATE],
+                    factor_value: this.factor_data[key][DATA_FIELD_MAPPING.FACTOR_VALUE]
                 });
             }
             return acc;

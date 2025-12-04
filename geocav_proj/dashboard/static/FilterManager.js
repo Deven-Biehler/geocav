@@ -1,6 +1,7 @@
 import {DEFAULT_LEAFLET_CONFIG, DEFAULT_FILTERS, COUNTY_FACTOR_FILTERS, STATE_FACTOR_FILTERS, 
     STATE_CANCER_AVAILABLE_YEARS, COUNTY_CANCER_AVAILABLE_YEARS,
-    COUNTY_FACTORS_AVAILABLE_YEARS, STATE_FACTORS_AVAILABLE_YEARS
+    COUNTY_FACTORS_AVAILABLE_YEARS, STATE_FACTORS_AVAILABLE_YEARS,
+    CANCER_TYPES_CONFIG
 } from './config.js';
 
 import {PieMap} from './maps/PieMap.js';
@@ -92,16 +93,16 @@ export class FilterManager {
         const gender = this.selectedFilters.gender;
         
         // Define available cancers
-        let availableCancers = ['Pancreatic', 'Skin', 'Lung', 'Liver', 'Kidney', 'Esophageal', 'None'];
+        let availableCancers = [...CANCER_TYPES_CONFIG.COMMON];
         
         if (gender === 'Female') {
-            availableCancers.push('Breast');
+            availableCancers.push(...CANCER_TYPES_CONFIG.FEMALE_ONLY);
         }
         if (gender === 'Male') {
-            availableCancers.push('Prostate');
+            availableCancers.push(...CANCER_TYPES_CONFIG.MALE_ONLY);
         }
         
-        const order = ['Pancreatic', 'Skin', 'Lung', 'Liver', 'Breast', 'Kidney', 'Prostate', 'Esophageal', 'None'];
+        const order = CANCER_TYPES_CONFIG.ORDER;
         availableCancers.sort((a, b) => order.indexOf(a) - order.indexOf(b));
 
         // Rebuild options
@@ -170,10 +171,6 @@ export class FilterManager {
         // Update the select element to match the current filter
         this.factorSelect.value = this.selectedFilters.factor;
 
-        // Store current selected years
-        const selectedCancerYear = this.cancerSlider.value;
-        const selectedFactorYear = this.factorSlider.value;
-
         // Clear current slider options
         this.cancerSlider.innerHTML = '';
         this.factorSlider.innerHTML = '';
@@ -182,11 +179,19 @@ export class FilterManager {
         let availableCancerYears = this.selectedFilters.level === 'state'
             ? STATE_CANCER_AVAILABLE_YEARS[this.selectedFilters.cancer_type]
             : COUNTY_CANCER_AVAILABLE_YEARS[this.selectedFilters.cancer_type];
+
+        // Ensure current cancer year is valid
+        if (!availableCancerYears.includes(this.selectedFilters.cancer_year)) {
+             if (availableCancerYears.length > 0) {
+                 this.selectedFilters.cancer_year = availableCancerYears[0];
+             }
+        }
+
         availableCancerYears.forEach(year => {
             const option = document.createElement('option');
             option.value = parseInt(year);
             option.textContent = year;
-            if (year == selectedCancerYear) option.selected = true;
+            if (year == this.selectedFilters.cancer_year) option.selected = true;
             this.cancerSlider.appendChild(option);
         });
 
@@ -194,11 +199,19 @@ export class FilterManager {
         let availableFactorYears = this.selectedFilters.level === 'state'
             ? STATE_FACTORS_AVAILABLE_YEARS[this.selectedFilters.factor]
             : COUNTY_FACTORS_AVAILABLE_YEARS[this.selectedFilters.factor];
+
+        // Ensure current factor year is valid
+        if (!availableFactorYears.includes(this.selectedFilters.factor_year)) {
+             if (availableFactorYears.length > 0) {
+                 this.selectedFilters.factor_year = availableFactorYears[0];
+             }
+        }
+
         availableFactorYears.forEach(year => {
             const option = document.createElement('option');
             option.value = parseInt(year);
             option.textContent = year;
-            if (year == selectedFactorYear) option.selected = true;
+            if (year == this.selectedFilters.factor_year) option.selected = true;
             this.factorSlider.appendChild(option);
         });
     }

@@ -223,3 +223,17 @@ export const COUNTY_FACTORS_AVAILABLE_YEARS = {
 
     "None": []
 };
+
+export const CANCER_TYPES_CONFIG = {
+    COMMON: ['Pancreatic', 'Skin', 'Lung', 'Liver', 'Kidney', 'Esophageal', 'None'],
+    FEMALE_ONLY: ['Breast'],
+    MALE_ONLY: ['Prostate'],
+    ORDER: ['Pancreatic', 'Skin', 'Lung', 'Liver', 'Breast', 'Kidney', 'Prostate', 'Esophageal', 'None']
+};
+
+export const DATA_FIELD_MAPPING = {
+    CANCER_RATE: 'rate',
+    FACTOR_VALUE: 'rate',
+    STATE: 'state',
+    COUNTY: 'county'
+};

@@ -37,14 +37,47 @@ export class PieMap {
         
         this.createLegend();
         
+        // Calculate max total for scaling
+        let maxTotal = 0;
+        this.statesLayer.features.forEach(feature => {
+            const rates = this.getCancerRates(feature);
+            const selectedTypes = this.selectedFilters.selectedCancerTypes && this.selectedFilters.selectedCancerTypes.length > 0
+                ? this.selectedFilters.selectedCancerTypes
+                : ['Kidney'];
+            
+            let total = 0;
+            for (const type of selectedTypes) {
+                const rate = this.lookupRate(rates, type);
+                if (rate !== null && typeof rate === 'number') {
+                    total += rate;
+                }
+            }
+            if (total > maxTotal) maxTotal = total;
+        });
+
         this.statesLayer.features.forEach(feature => {
             const pieData = this.generatePieChart(feature);
             const centroid = L.geoJSON(feature).getBounds().getCenter();
 
+            // Calculate total for this feature
+            const total = pieData.reduce((sum, d) => sum + d.value, 0);
+            
+            // Calculate radius
+            const maxRadius = 40; 
+            const minRadius = 1;
+            let radius = minRadius;
+            
+            if (maxTotal > 0 && total > 0) {
+                radius = Math.sqrt(total / maxTotal) * maxRadius;
+                if (radius < minRadius) radius = minRadius;
+            } else if (total === 0) {
+                return; // Skip if no data
+            }
+
             // Create pie chart SVG
-            const svg = d3.create("svg").attr("width", 100).attr("height", 100);
-            const g = svg.append("g").attr("transform", "translate(50,50)");
-            const arc = d3.arc().innerRadius(0).outerRadius(20);
+            const svg = d3.create("svg").attr("width", 80).attr("height", 80);
+            const g = svg.append("g").attr("transform", "translate(40,40)");
+            const arc = d3.arc().innerRadius(0).outerRadius(radius);
 
             g.selectAll("path")
                 .data(pieData)
@@ -56,8 +89,8 @@ export class PieMap {
             const icon = L.divIcon({
                 className: '',
                 html: svg.node().outerHTML,
-                iconSize: [100, 100],
-                iconAnchor: [50, 50]
+                iconSize: [80, 80],
+                iconAnchor: [40, 40]
             });
 
             const marker = L.marker([centroid.lat, centroid.lng], {icon: icon}).addTo(map);
