@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}Demographic Associations{% endblock %}
+
+{% block content %}
+<style>
+  .demo-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+  }
+
+  .demo-controls {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .demo-controls select, .demo-controls button {
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+  }
+
+  .genes-box {
+    width: 260px;
+    height: 170px;
+  }
+
+  .grid-2x3 {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 14px;
+    width: 100%;
+  }
+
+  .panel {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 10px;
+    min-height: 320px;
+    width: 100%;
+  }
+
+  .panel h3 {
+    margin: 4px 0 8px 0;
+    font-size: 16px;
+    color: #111827;
+  }
+
+  .panel-inner {
+    width: 100%;
+    height: 260px;
+  }
+
+  @media (max-width: 1100px) {
+    .grid-2x3 {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="demo-wrap">
+  <h1>Demographic Associations</h1>
+
+  <div class="demo-controls">
+    <label><strong>Cancer:</strong></label>
+    <select id="cancerSelect">
+      {% for c in cancers %}
+        <option value="{{ c }}" {% if c == selected_cancer %}selected{% endif %}>{{ c }}</option>
+      {% endfor %}
+    </select>
+
+    <div>
+      <label style="display:block;font-weight:600;margin-bottom:4px;">Source Site (TSS)</label>
+      <select id="sourceSiteSelect">
+        <option value="__all__">All sites</option>
+      </select>
+    </div>
+
+    <div>
+      <label style="display:block;font-weight:600;margin-bottom:4px;">Genes (max 20)</label>
+      <select id="geneSelect" class="genes-box" multiple></select>
+      <div style="font-size:12px;color:#6b7280;margin-top:4px;">
+        Top 50 genes available for selection.<br>
+        Default = top 10 genes if none selected.
+      </div>
+    </div>
+
+    <button id="applyBtn">Apply filters</button>
+
+    <span id="metaText" style="font-size:13px;color:#6b7280;"></span>
+  </div>
+
+  <div class="grid-2x3">
+    <div class="panel">
+      <h3>Age vs Mutation Count</h3>
+      <div id="ageMutPlot" class="panel-inner"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Mutation Burden by Gender</h3>
+      <div id="genderBurdenPlot" class="panel-inner"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Top Genes × Race</h3>
+      <div id="raceHeatmap" class="panel-inner"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Top Genes × Ethnicity</h3>
+      <div id="ethHeatmap" class="panel-inner"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Top Genes × Gender</h3>
+      <div id="genderHeatmap" class="panel-inner"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Top Genes × Age Group</h3>
+      <div id="agebinHeatmap" class="panel-inner"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+
+<script>
+(function(){
+  const cancerSelect    = document.getElementById("cancerSelect");
+  const sourceSiteSelect= document.getElementById("sourceSiteSelect");
+  const geneSelect      = document.getElementById("geneSelect");
+  const applyBtn        = document.getElementById("applyBtn");
+  const metaText        = document.getElementById("metaText");
+
+  let lastPayload = null;
+
+  function selectedGenes(){
+    return Array.from(geneSelect.selectedOptions).map(o => o.value).slice(0, 20);
+  }
+
+  function selectedSourceSite(){
+    return sourceSiteSelect.value || "__all__";
+  }
+
+  function populateSourceSites(list, current){
+    const prev = sourceSiteSelect.value;
+    sourceSiteSelect.innerHTML = "";
+    const optAll = document.createElement("option");
+    optAll.value = "__all__";
+    optAll.textContent = "All sites";
+    sourceSiteSelect.appendChild(optAll);
+
+    (list || []).forEach(s => {
+      const opt = document.createElement("option");
+      opt.value = s;
+      opt.textContent = s;
+      sourceSiteSelect.appendChild(opt);
+    });
+
+    if (current && Array.from(sourceSiteSelect.options).some(o => o.value === current)){
+      sourceSiteSelect.value = current;
+    } else {
+      sourceSiteSelect.value = prev || "__all__";
+    }
+  }
+
+  function populateGenes(available, used){
+    geneSelect.innerHTML = "";
+    (available || []).forEach(g => {
+      const opt = document.createElement("option");
+      opt.value = g;
+      opt.textContent = g;
+      if (used && used.includes(g)) {
+        opt.selected = true;
+      }
+      geneSelect.appendChild(opt);
+    });
+  }
+
+  async function fetchDemographics(){
+    const cancer = cancerSelect.value;
+    const sourceSite = selectedSourceSite();
+    const genes = selectedGenes();
+
+    let url = "{% url 'molecular_demographics_json' cancer_name='__C__' %}";
+    url = url.replace("__C__", encodeURIComponent(cancer));
+
+    const params = [];
+    if (sourceSite && sourceSite !== "__all__"){
+      params.push("source_site=" + encodeURIComponent(sourceSite));
+    }
+    if (genes.length > 0){
+      params.push("genes=" + encodeURIComponent(genes.join(",")));
+    } else {
+      params.push("top=10");
+    }
+
+    if (params.length > 0){
+      url += "?" + params.join("&");
+    }
+
+    metaText.textContent = "Loading…";
+
+    const resp = await fetch(url, {cache: "no-store"});
+    if (!resp.ok){
+      const err = await resp.text();
+      console.error(err);
+      metaText.textContent = "Failed to load.";
+      alert("Failed to load demographics JSON:\n" + err);
+      return;
+    }
+
+    const data = await resp.json();
+    lastPayload = data;
+
+    metaText.textContent =
+      `Cancer: ${data.meta.cancer} | Samples: ${data.meta.n_samples}` +
+      (data.meta.source_site && data.meta.source_site !== "__all__"
+        ? ` | Source Site: ${data.meta.source_site}` : "");
+
+    populateSourceSites(data.available_source_sites, data.meta.source_site);
+    populateGenes(data.available_genes, data.genes_used);
+
+    renderAgeMut(data.age_vs_mut);
+    renderGenderBurden(data.gender_burden);
+    renderGeneHeatmap("raceHeatmap", data.gene_by_race, "Fraction mutated (by race)");
+    renderGeneHeatmap("ethHeatmap", data.gene_by_ethnicity, "Fraction mutated (by ethnicity)");
+    renderGeneHeatmap("genderHeatmap", data.gene_by_gender, "Fraction mutated (by gender)");
+    renderGeneHeatmap("agebinHeatmap", data.gene_by_agebin, "Fraction mutated (by age group)");
+  }
+
+  function renderAgeMut(obj){
+    const ages = obj.age || [];
+    const muts = obj.mut_count || [];
+    const trace = {
+      x: ages,
+      y: muts,
+      mode: "markers",
+      type: "scatter",
+      marker: {size: 6, opacity: 0.7}
+    };
+    const layout = {
+      margin: {t: 10, r: 10, b: 40, l: 55},
+      xaxis: {title: "Age at diagnosis (years)", range: [0, 100]},
+      yaxis: {title: "Total mutation count"},
+      height: 260
+    };
+    Plotly.newPlot("ageMutPlot", [trace], layout, {responsive:true});
+  }
+
+  function renderGenderBurden(obj){
+    const genders = obj.genders || [];
+    const countsList = obj.counts || [];
+    const traces = [];
+
+    genders.forEach((g, idx) => {
+      traces.push({
+        y: countsList[idx] || [],
+        type: "box",
+        name: g,
+        boxpoints: "outliers"
+      });
+    });
+
+    const layout = {
+      margin: {t: 10, r: 10, b: 40, l: 55},
+      yaxis: {title: "Total mutation count"},
+      height: 260,
+      boxmode: "group"
+    };
+    Plotly.newPlot("genderBurdenPlot", traces, layout, {responsive:true});
+  }
+
+  function renderGeneHeatmap(divId, obj, title){
+    if (!obj || !obj.genes || !obj.groups){
+      Plotly.newPlot(divId, [], {
+        margin: {t: 20, r: 10, b: 60, l: 120},
+        title: title,
+        height: 260
+      }, {responsive:true});
+      return;
+    }
+
+    const genes = obj.genes;
+    const groups = obj.groups;
+    const matrix = obj.matrix || [];
+
+    const trace = {
+      z: matrix,
+      x: groups,
+      y: genes,
+      type: "heatmap",
+      colorscale: "Viridis",
+      zmin: 0,
+      zmax: 1,
+      colorbar: {title: "Fraction mutated"},
+      hovertemplate: "Gene %{y}<br>Group %{x}<br>Fraction: %{z}<extra></extra>"
+    };
+
+    const layout = {
+      margin: {t: 20, r: 10, b: 80, l: 120},
+      title: title,
+      height: 260,
+      xaxis: {tickangle: -45}
+    };
+
+    Plotly.newPlot(divId, [trace], layout, {responsive:true});
+  }
+
+  applyBtn.addEventListener("click", fetchDemographics);
+  cancerSelect.addEventListener("change", () => {
+    metaText.textContent = "Adjust filters and click Apply.";
+  });
+  sourceSiteSelect.addEventListener("change", () => {
+    metaText.textContent = "Adjust filters and click Apply.";
+  });
+
+  // Initial load
+  if (cancerSelect.value){
+    fetchDemographics();
+  }
+})();
+</script>
+{% endblock %}

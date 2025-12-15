@@ -1,14 +1,18 @@
 from django.shortcuts import render
 from django.http import JsonResponse, Http404
+from collections import Counter
+import numpy as np
 import os
+import ast
 from pathlib import Path
+import math
 import networkx as nx
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_GET
 from .utils import (
     get_query_params, get_model_instance, apply_geographic_filter,
     apply_year_filter, load_geojson, generate_key, handle_errors
 )
-from .models import CancerIncidence, CancerType, Factor, Gender, Race, FactorMeasurement
+from .models import CancerIncidence, CancerType, Factor, Gender, Race, FactorMeasurement, TotalRecordAgg
 
 # Path to the app's static networks directory
 APP_DIR = Path(__file__).resolve().parent
@@ -188,5 +192,762 @@ def network_json_by_slug(request, cancer: str):
 
     return JsonResponse({"elements": elements, "meta": {"nodes": n_nodes, "edges": n_edges}})
 
+def _flatten_to_list(obj):
+    """
+    Helper: flatten nested structures into a flat Python list.
+    """
+    if obj is None:
+        return []
+    if isinstance(obj, (list, tuple, set)):
+        out = []
+        for x in obj:
+            out.extend(_flatten_to_list(x))
+        return out
+    return [obj]
+
+
+def parse_listish(raw):
+    """
+    Convert whatever is stored in Hugo_Symbol / HGVSc / Variant_Classification
+    into a clean list[str].
+
+    Handles:
+      - Real Python lists: ["TP53", "KRAS"]
+      - Nested lists: [["TP53", "KRAS"], ["EGFR"]]
+      - Stringified lists: "['TP53', 'KRAS']" or '["TP53", "KRAS"]'
+      - Comma/semicolon strings: "TP53, KRAS; EGFR"
+      - None / NaN / empty
+    """
+    # None / empty
+    if raw is None:
+        return []
+
+    # Already a list/tuple/set → flatten + stringify
+    if isinstance(raw, (list, tuple, set)):
+        vals = _flatten_to_list(raw)
+        out = []
+        for v in vals:
+            s = str(v).strip()
+            if s and s.lower() not in {"nan", "none", "null"}:
+                out.append(s)
+        return out
+
+    # String case
+    if isinstance(raw, str):
+        s = raw.strip()
+        if not s:
+            return []
+
+        # Try to parse as Python literal (handles "['TP53','KRAS']")
+        if (s.startswith("[") and s.endswith("]")) or (s.startswith("(") and s.endswith(")")):
+            try:
+                obj = ast.literal_eval(s)
+                return parse_listish(obj)
+            except Exception:
+                # fall back to simple splitting
+                pass
+
+        # Fallback: split on comma/semicolon
+        parts = [p.strip() for p in s.replace(";", ",").split(",")]
+        return [p for p in parts if p and p.lower() not in {"nan", "none", "null"}]
+
+    # Anything else → single string
+    s = str(raw).strip()
+    return [s] if s else []
+
+
+
 def molecular_analysis(request):
     return render(request, 'molecular_analysis.html')
+
+def _available_molecular_cancers():
+    # Only show cancers that actually have molecular rows
+    return (TotalRecordAgg.objects
+            .values_list("cancer__name", flat=True)
+            .distinct()
+            .order_by("cancer__name"))
+
+def molecular_cooccurrence(request):
+    cancers = list(_available_molecular_cancers())
+    selected = request.GET.get("cancer") or (cancers[0] if cancers else None)
+
+    return render(request, "molecular_cooccurrence.html", {
+        "title": "Gene Co-occurrence Heatmap",
+        "cancers": cancers,
+        "selected_cancer": selected,
+    })
+
+def molecular_clinical(request):
+    cancers = list(
+        TotalRecordAgg.objects
+        .values_list("cancer__name", flat=True)
+        .distinct()
+        .order_by("cancer__name")
+    )
+    selected = request.GET.get("cancer") or (cancers[0] if cancers else None)
+
+    return render(request, "molecular_clinical.html", {
+        "cancers": cancers,
+        "selected_cancer": selected,
+        "title": "Clinical Distributions",
+    })
+
+
+def molecular_demographics(request):
+    cancers = list(
+        TotalRecordAgg.objects
+        .values_list("cancer__name", flat=True)
+        .distinct()
+        .order_by("cancer__name")
+    )
+    selected = request.GET.get("cancer") or (cancers[0] if cancers else None)
+
+    return render(request, "molecular_demographics.html", {
+        "cancers": cancers,
+        "selected_cancer": selected,
+        "title": "Demographic Associations",
+    })
+
+
+    # dashboard/views.py
+import json
+from collections import Counter
+
+from django.http import JsonResponse, Http404
+from django.shortcuts import render
+from django.views.decorators.http import require_GET
+
+from .models import CancerType, TotalRecordAgg
+
+
+def _available_molecular_cancers():
+    # Only cancers that have molecular rows loaded
+    return (TotalRecordAgg.objects
+            .values_list("cancer__name", flat=True)
+            .distinct()
+            .order_by("cancer__name"))
+
+
+def molecular_landscape(request):
+    cancers = list(_available_molecular_cancers())
+    selected = request.GET.get("cancer") or (cancers[0] if cancers else None)
+
+    return render(request, "molecular_mutational_landscape.html", {
+        "title": "Mutational Landscape",
+        "cancers": cancers,
+        "selected_cancer": selected,
+    })
+
+
+@require_GET
+def molecular_landscape_json(request, cancer_name):
+    """
+    Mutational landscape for a given cancer:
+      - Variant type distribution
+      - Top N mutated genes
+      - Per-sample total mutation burden
+      - Per-sample number of unique mutated genes
+    """
+    # 1) find cancer
+    try:
+        ct = CancerType.objects.get(name__iexact=cancer_name)
+    except CancerType.DoesNotExist:
+        raise Http404(f"Cancer '{cancer_name}' not found in CancerType.name")
+
+    qs = TotalRecordAgg.objects.filter(cancer=ct)
+
+    variant_counter = Counter()
+    gene_counter = Counter()
+
+    burden_per_sample = []   # total mutation count per sample
+    genes_per_sample  = []   # number of unique mutated genes per sample
+
+    # 2) iterate over samples
+    for rec in qs:
+        # 🔹 parse list-like fields robustly
+        genes = parse_listish(rec.Hugo_Symbol)
+        hgvs  = parse_listish(rec.HGVSc)
+        vcls  = parse_listish(rec.Variant_Classification)
+
+        # unique genes for this sample
+        gset = set(g for g in genes if g)
+
+        # total mutation burden
+        if hgvs:
+            mut_count = len([m for m in hgvs if m])
+        else:
+            mut_count = len(gset)
+
+        burden_per_sample.append(mut_count)
+        genes_per_sample.append(len(gset))
+
+        # update global counters
+        gene_counter.update(gset)
+        variant_counter.update(v for v in vcls if v)
+
+    # 3) variant type distribution
+    variant_labels = []
+    variant_counts = []
+    for v, c in variant_counter.most_common():
+        variant_labels.append(v)
+        variant_counts.append(c)
+
+    # 4) Top genes (default 10)
+    top_n = int(request.GET.get("top_genes", 10) or 10)
+    top_n = max(1, min(top_n, 50))
+    top_genes = [g for g, _ in gene_counter.most_common(top_n)]
+    top_gene_counts = [gene_counter[g] for g in top_genes]
+
+    payload = {
+        "meta": {
+            "cancer": cancer_name,
+            "n_samples": qs.count(),
+        },
+        "variant_distribution": {
+            "labels": variant_labels,
+            "counts": variant_counts,
+        },
+        "top_genes": {
+            "genes": top_genes,
+            "counts": top_gene_counts,
+        },
+        "burden": {
+            "per_sample_mutations": burden_per_sample,
+            "per_sample_mutated_genes": genes_per_sample,
+        },
+    }
+    return JsonResponse(payload)
+
+
+
+
+def fisher_exact_two_sided(a, b, c, d):
+    """
+    Two-sided Fisher exact p-value + odds ratio for 2x2 table:
+        [[a, b],
+         [c, d]]
+    Pure python exact test via hypergeometric tail.
+    """
+    or_val = (a * d) / (b * c) if b * c != 0 else (float("inf") if a * d > 0 else 0.0)
+
+    row1 = a + b
+    row2 = c + d
+    col1 = a + c
+    n = row1 + row2
+
+    def log_choose(n, k):
+        if k < 0 or k > n:
+            return float("-inf")
+        return math.lgamma(n + 1) - math.lgamma(k + 1) - math.lgamma(n - k + 1)
+
+    def log_hypergeom(x):
+        return (log_choose(col1, x) +
+                log_choose(n - col1, row1 - x) -
+                log_choose(n, row1))
+
+    lo = max(0, row1 - (n - col1))
+    hi = min(row1, col1)
+
+    log_p_obs = log_hypergeom(a)
+
+    p = 0.0
+    for x in range(lo, hi + 1):
+        lp = log_hypergeom(x)
+        if lp <= log_p_obs + 1e-12:
+            p += math.exp(lp)
+
+    return or_val, min(p, 1.0)
+
+
+
+@require_GET
+def molecular_cooccurrence_json(request, cancer_name):
+    """
+    Query params:
+      - genes=TP53,KRAS,...  (comma-separated, max 20)
+      - top=10               (default top genes if genes not provided)
+    Returns BOTH raw + fisher matrices plus top-50 genes for picker.
+    """
+    try:
+        ct = CancerType.objects.get(name=cancer_name)
+    except CancerType.DoesNotExist:
+        raise Http404(f"Cancer '{cancer_name}' not found")
+
+    qs = TotalRecordAgg.objects.filter(cancer=ct)
+
+    # Per-sample unique gene sets + frequency counter
+    sample_sets = []
+    gene_counter = Counter()
+
+    for rec in qs:
+        genes = parse_listish(rec.Hugo_Symbol)
+        gset = set([g for g in genes if g])
+        sample_sets.append(gset)
+        gene_counter.update(gset)
+
+    n_samples = len(sample_sets)
+    if n_samples == 0:
+        return JsonResponse({
+            "genes": [],
+            "raw_matrix": [],
+            "fisher_or_matrix": [],
+            "fisher_p_matrix": [],
+            "available_genes": [],
+            "n_samples": 0,
+        })
+
+    # Top 50 genes only for picker
+    available_genes = [g for g, _ in gene_counter.most_common(50)]
+
+    # Determine gene list for heatmap
+    genes_param = request.GET.get("genes", "").strip()
+    if genes_param:
+        selected = [g.strip() for g in genes_param.split(",") if g.strip()]
+        selected = selected[:20]
+        genes = [g for g in selected if g in gene_counter]
+        if not genes:
+            genes = [g for g, _ in gene_counter.most_common(10)]
+    else:
+        top_n = int(request.GET.get("top", 10))
+        top_n = max(2, min(top_n, 20))
+        genes = [g for g, _ in gene_counter.most_common(top_n)]
+
+    n = len(genes)
+
+    # Precompute mutation flags per gene (list of 0/1 across samples)
+    flags = {}
+    for g in genes:
+        flags[g] = [1 if g in s else 0 for s in sample_sets]
+
+    raw = [[0.0]*n for _ in range(n)]
+    fisher_or = [[None]*n for _ in range(n)]
+    fisher_pneglog = [[None]*n for _ in range(n)]
+
+    for i, gi in enumerate(genes):
+        fi = flags[gi]
+        for j, gj in enumerate(genes):
+            fj = flags[gj]
+
+            both = sum(1 for k in range(n_samples) if fi[k] and fj[k])
+            raw[i][j] = round(both / n_samples, 2)
+
+            if i == j:
+                continue
+
+            a = both
+            b = sum(1 for k in range(n_samples) if fi[k] and not fj[k])
+            c = sum(1 for k in range(n_samples) if not fi[k] and fj[k])
+            d = sum(1 for k in range(n_samples) if not fi[k] and not fj[k])
+
+            or_val, p_val = fisher_exact_two_sided(a, b, c, d)
+
+            fisher_or[i][j] = round(or_val, 2)
+            p_val = max(p_val, 1e-300)
+            fisher_pneglog[i][j] = round(-math.log10(p_val), 2)
+
+    return JsonResponse({
+        "genes": genes,
+        "raw_matrix": raw,
+        "fisher_or_matrix": fisher_or,
+        "fisher_p_matrix": fisher_pneglog,
+        "available_genes": available_genes,
+        "n_samples": n_samples,
+    })
+
+# clinical associations
+def normalize_stage(raw):
+    """
+    Normalize ajcc_pathologic_stage into broad bins:
+    I, II, III, IV, Other/Unknown
+    """
+    if not raw or str(raw).strip().lower() in {"", "na", "nan", "none"}:
+        return "Unknown"
+    s = str(raw).strip().upper()
+    s = s.replace("STAGE", "").strip()
+
+    if s.startswith("I") and not s.startswith("II") and not s.startswith("III") and not s.startswith("IV"):
+        return "I"
+    if s.startswith("II") and not s.startswith("III") and not s.startswith("IV"):
+        return "II"
+    if s.startswith("III") and not s.startswith("IV"):
+        return "III"
+    if s.startswith("IV"):
+        return "IV"
+    return "Other"
+
+
+def is_yes(raw):
+    if raw is None:
+        return False
+    s = str(raw).strip().lower()
+    return s in {"yes", "y", "true", "t", "1"}
+
+
+def normalize_vital_status(raw):
+    if not raw:
+        return "Unknown"
+    s = str(raw).strip().lower()
+    if "alive" in s:
+        return "Alive"
+    if "dead" in s or "deceased" in s:
+        return "Dead"
+    return "Unknown"
+
+@require_GET
+def molecular_clinical_json(request, cancer_name):
+    """
+    Returns clinical distributions for a cancer type:
+    - age_at_diagnosis (list of ages)
+    - ajcc_pathologic_stage (counts per broad bin)
+    - treatment_combo (None / Pharma only / Radiation only / Both)
+    - vital_status (Alive / Dead / Unknown)
+    """
+    try:
+        ct = CancerType.objects.get(name__iexact=cancer_name)
+    except CancerType.DoesNotExist:
+        raise Http404(f"Cancer '{cancer_name}' not found in CancerType.name")
+
+    qs = TotalRecordAgg.objects.filter(cancer=ct)
+
+    # ---- Age ----
+    ages = []
+    for rec in qs:
+        if rec.age_at_diagnosis is not None:
+            try:
+                days = float(rec.age_at_diagnosis)
+                years = round(days / 365.25, 1)   # one decimal precision
+                ages.append(years)
+            except Exception:
+                continue
+
+    # ---- Stage ----
+    stage_counter = Counter()
+    for rec in qs:
+        stage_counter[normalize_stage(rec.ajcc_pathologic_stage)] += 1
+
+    # enforce display order
+    stage_order = ["I", "II", "III", "IV", "Other", "Unknown"]
+    stage_labels = []
+    stage_counts = []
+    for lab in stage_order:
+        if lab in stage_counter:
+            stage_labels.append(lab)
+            stage_counts.append(stage_counter[lab])
+    # add any weird leftover labels
+    for lab, count in stage_counter.items():
+        if lab not in stage_labels:
+            stage_labels.append(lab)
+            stage_counts.append(count)
+
+    # ---- Treatment combo ----
+    treat_counter = Counter()
+    for rec in qs:
+        pharma = is_yes(rec.treatments_pharmaceutical_treatment_or_therapy)
+        radio = is_yes(rec.treatments_radiation_treatment_or_therapy)
+        if pharma and radio:
+            key = "Pharma + Radiation"
+        elif pharma and not radio:
+            key = "Pharma only"
+        elif not pharma and radio:
+            key = "Radiation only"
+        else:
+            key = "None"
+        treat_counter[key] += 1
+
+    treat_order = ["None", "Pharma only", "Radiation only", "Pharma + Radiation"]
+    treat_labels = []
+    treat_counts = []
+    for lab in treat_order:
+        if lab in treat_counter:
+            treat_labels.append(lab)
+            treat_counts.append(treat_counter[lab])
+
+    # ---- Vital status ----
+    vital_counter = Counter()
+    for rec in qs:
+        vital_counter[normalize_vital_status(rec.vital_status)] += 1
+
+    vital_order = ["Alive", "Dead", "Unknown"]
+    vital_labels = []
+    vital_counts = []
+    for lab in vital_order:
+        if lab in vital_counter:
+            vital_labels.append(lab)
+            vital_counts.append(vital_counter[lab])
+
+    payload = {
+        "meta": {
+            "cancer": cancer_name,
+            "n_samples": qs.count(),
+        },
+        "age": {
+            "values": ages,
+        },
+        "stage": {
+            "labels": stage_labels,
+            "counts": stage_counts,
+        },
+        "treatment": {
+            "labels": treat_labels,
+            "counts": treat_counts,
+        },
+        "vital": {
+            "labels": vital_labels,
+            "counts": vital_counts,
+        },
+    }
+    return JsonResponse(payload)
+
+# demographics associations
+def age_days_to_years(raw):
+    if raw is None:
+        return None
+    try:
+        days = float(raw)
+        return round(days / 365.25, 1)
+    except Exception:
+        return None
+
+
+def normalize_gender(raw):
+    if not raw:
+        return "Unknown"
+    s = str(raw).strip().lower()
+    if s.startswith("m"):
+        return "Male"
+    if s.startswith("f"):
+        return "Female"
+    return "Other/Unknown"
+
+
+def normalize_race(raw):
+    if not raw:
+        return "Unknown"
+    s = str(raw).strip()
+    return s  # keep as-is for now, just strip; you can map further later
+
+
+def normalize_ethnicity(raw):
+    if not raw:
+        return "Unknown"
+    s = str(raw).strip()
+    return s
+
+@require_GET
+def molecular_demographics_json(request, cancer_name):
+    """
+    Demographic associations for a given cancer:
+      - Age vs total mutation count
+      - Mutation burden by gender
+      - Gene prevalence across race / ethnicity / gender / age groups
+
+    Query params:
+      - source_site: optional Source_Site filter (exact match)
+      - genes: comma-separated list of genes (max 20)
+      - top: fallback when genes not provided (default 10)
+    """
+    # --- cancer look-up ---
+    try:
+        ct = CancerType.objects.get(name__iexact=cancer_name)
+    except CancerType.DoesNotExist:
+        raise Http404(f"Cancer '{cancer_name}' not found in CancerType.name")
+
+    base_qs = TotalRecordAgg.objects.filter(cancer=ct)
+
+    # --- available source sites for UI (all sites for this cancer) ---
+    all_sites = (base_qs.values_list("Source_Site", flat=True)
+                        .distinct()
+                        .order_by("Source_Site"))
+    available_sites = [s for s in all_sites if s]
+
+    # --- optional Source_Site filter ---
+    source_site_param = request.GET.get("source_site", "").strip()
+    qs = base_qs
+    if source_site_param and source_site_param not in {"__all__", "All", "ALL"}:
+        qs = qs.filter(Source_Site=source_site_param)
+
+    # ---- build sample-level data ----
+    samples = []
+    gene_counter = Counter()
+
+    for rec in qs:
+        genes = parse_listish(rec.Hugo_Symbol)
+        hgvs  = parse_listish(rec.HGVSc)
+
+        gset = set(g for g in genes if g)
+
+        if hgvs:
+            mut_count = len([m for m in hgvs if m])
+        else:
+            mut_count = len(gset)
+
+        age_years = age_days_to_years(rec.age_at_diagnosis)
+        gender = normalize_gender(rec.gender)
+        race = normalize_race(rec.race)
+        ethnicity = normalize_ethnicity(rec.ethnicity)
+
+        samples.append({
+            "genes": gset,
+            "mut_count": mut_count,
+            "age_years": age_years,
+            "gender": gender,
+            "race": race,
+            "ethnicity": ethnicity,
+        })
+        gene_counter.update(gset)
+
+
+    n_samples = len(samples)
+    if n_samples == 0:
+        return JsonResponse({
+            "meta": {
+                "cancer": cancer_name,
+                "n_samples": 0,
+                "source_site": source_site_param or "__all__"
+            },
+            "available_genes": [],
+            "genes_used": [],
+            "available_source_sites": available_sites,
+            "age_vs_mut": {"age": [], "mut_count": []},
+            "gender_burden": {"genders": [], "counts": []},
+            "gene_by_race": {},
+            "gene_by_ethnicity": {},
+            "gene_by_gender": {},
+            "gene_by_agebin": {},
+        })
+
+    # ---- gene selection ----
+    available_genes = [g for g, _ in gene_counter.most_common(50)]
+
+    genes_param = request.GET.get("genes", "").strip()
+    if genes_param:
+        selected = [g.strip() for g in genes_param.split(",") if g.strip()]
+        selected = selected[:20]
+        genes_used = [g for g in selected if g in gene_counter]
+        if not genes_used:
+            genes_used = [g for g, _ in gene_counter.most_common(10)]
+    else:
+        top_n = int(request.GET.get("top", 10))
+        top_n = max(2, min(top_n, 20))
+        genes_used = [g for g, _ in gene_counter.most_common(top_n)]
+
+    # ---- age vs mutation count ----
+    age_vals = []
+    mut_vals = []
+    for s in samples:
+        if s["age_years"] is not None:
+            age_vals.append(s["age_years"])
+            mut_vals.append(s["mut_count"])
+
+    # ---- mutation burden by gender ----
+    gender_map = {}
+    for s in samples:
+        g = s["gender"]
+        gender_map.setdefault(g, []).append(s["mut_count"])
+
+    gender_labels = []
+    gender_counts = []
+    for g, vals in gender_map.items():
+        gender_labels.append(g)
+        gender_counts.append(vals)  # list of mut counts for boxplot
+
+    # ---- group helpers for gene prevalence ----
+
+    def age_bin(age):
+        if age is None:
+            return "Unknown"
+        if age < 50:
+            return "< 50"
+        if age < 65:
+            return "50–64"
+        if age < 80:
+            return "65–79"
+        return "≥ 80"
+
+    # group counters: group -> count, gene_group_counts: gene -> group -> count
+    def build_gene_group_matrix(group_key_func, group_order=None):
+        group_counter = Counter()
+        gene_group_counts = {g: Counter() for g in genes_used}
+
+        for s in samples:
+            grp = group_key_func(s)
+            group_counter[grp] += 1
+            gset = s["genes"]
+            for g in genes_used:
+                if g in gset:
+                    gene_group_counts[g][grp] += 1
+
+        # group labels in nice order
+        if group_order:
+            labels = [g for g in group_order if g in group_counter]
+            # add any extra leftover
+            for g in group_counter:
+                if g not in labels:
+                    labels.append(g)
+        else:
+            labels = list(group_counter.keys())
+
+        # build matrix: rows = genes_used, cols = labels
+        matrix = []
+        for g in genes_used:
+            row = []
+            for grp in labels:
+                denom = group_counter[grp]
+                if denom > 0:
+                    freq = gene_group_counts[g][grp] / denom
+                    row.append(round(freq, 3))
+                else:
+                    row.append(None)
+            matrix.append(row)
+
+        return {
+            "genes": genes_used,
+            "groups": labels,
+            "matrix": matrix
+        }
+
+    # gene prevalence by race
+    gene_by_race = build_gene_group_matrix(
+        group_key_func=lambda s: s["race"]
+    )
+
+    # gene prevalence by ethnicity
+    gene_by_ethnicity = build_gene_group_matrix(
+        group_key_func=lambda s: s["ethnicity"]
+    )
+
+    # gene prevalence by gender
+    gene_by_gender = build_gene_group_matrix(
+        group_key_func=lambda s: s["gender"],
+        group_order=["Male", "Female", "Other/Unknown"]
+    )
+
+    # gene prevalence by age bins
+    gene_by_agebin = build_gene_group_matrix(
+        group_key_func=lambda s: age_bin(s["age_years"]),
+        group_order=["< 50", "50–64", "65–79", "≥ 80", "Unknown"]
+    )
+
+    payload = {
+        "meta": {
+            "cancer": cancer_name,
+            "n_samples": n_samples,
+            "source_site": source_site_param or "__all__",
+        },
+        "available_genes": available_genes,
+        "genes_used": genes_used,
+        "available_source_sites": available_sites,
+        "age_vs_mut": {
+            "age": age_vals,
+            "mut_count": mut_vals,
+        },
+        "gender_burden": {
+            "genders": gender_labels,
+            "counts": gender_counts,
+        },
+        "gene_by_race": gene_by_race,
+        "gene_by_ethnicity": gene_by_ethnicity,
+        "gene_by_gender": gene_by_gender,
+        "gene_by_agebin": gene_by_agebin,
+    }
+    return JsonResponse(payload)

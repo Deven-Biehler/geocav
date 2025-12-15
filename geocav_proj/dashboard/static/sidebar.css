@@ -91,3 +91,43 @@ p, li {
   body.sidebar-open .sidebar { transform: translateX(0); }
   .content { margin-left: 0; width: 100%; }
 }
+
+/* =========================
+   Molecular submenu (same style, indented)
+   ========================= */
+
+/* Molecular header: same as nav-link, just caret alignment */
+#molToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#molToggle .mol-caret {
+  font-size: 12px;
+  opacity: 0.7;
+  transition: transform 0.2s ease;
+}
+
+#molToggle.open .mol-caret {
+  transform: rotate(180deg);
+}
+
+/* Submenu container: acts like nav (same gap) */
+.mol-submenu {
+  display: none;
+  flex-direction: column;
+  gap: 4px;     /* << same as .nav gap */
+  margin: 0;
+  padding: 0;
+}
+
+/* Show submenu */
+.mol-submenu.show {
+  display: flex;
+}
+
+/* Sublinks: identical style to nav-link, only indented */
+.nav-link.mol-sublink {
+  padding-left: 34px !important; /* base 14px + 14px indentation */
+}

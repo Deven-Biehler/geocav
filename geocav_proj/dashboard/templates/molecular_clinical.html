@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}Clinical Distributions{% endblock %}
+
+{% block content %}
+<style>
+  .clin-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+  }
+
+  .clin-controls {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    width: fit-content;
+  }
+
+  .clin-controls select {
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+  }
+
+  .grid-2x2 {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 14px;
+    width: 100%;
+  }
+
+  .panel {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 10px;
+    min-height: 320px;
+    width: 100%;
+  }
+
+  .panel h3 {
+    margin: 4px 0 8px 0;
+    font-size: 16px;
+    color: #111827;
+  }
+
+  .panel-inner {
+    width: 100%;
+    height: 260px;
+  }
+
+  @media (max-width: 1100px) {
+    .grid-2x2 {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="clin-wrap">
+  <h1>Clinical Distributions</h1>
+
+  <div class="clin-controls">
+    <label><strong>Cancer:</strong></label>
+    <select id="cancerSelect">
+      {% for c in cancers %}
+        <option value="{{ c }}" {% if c == selected_cancer %}selected{% endif %}>{{ c }}</option>
+      {% endfor %}
+    </select>
+
+    <span id="metaText" style="font-size:13px;color:#6b7280;"></span>
+  </div>
+
+  <div class="grid-2x2">
+    <div class="panel">
+      <h3>Age at Diagnosis</h3>
+      <div id="agePlot" class="panel-inner"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Pathologic Stage</h3>
+      <div id="stagePlot" class="panel-inner"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Treatment Combination</h3>
+      <div id="treatPlot" class="panel-inner"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Vital Status</h3>
+      <div id="vitalPlot" class="panel-inner"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+
+<script>
+(function(){
+  const cancerSelect = document.getElementById("cancerSelect");
+  const metaText     = document.getElementById("metaText");
+
+  async function fetchClinical(){
+    const cancer = cancerSelect.value;
+    let url = "{% url 'molecular_clinical_json' cancer_name='__C__' %}";
+    url = url.replace("__C__", encodeURIComponent(cancer));
+
+    metaText.textContent = "Loading…";
+
+    const resp = await fetch(url, {cache: "no-store"});
+    if (!resp.ok){
+      const err = await resp.text();
+      console.error(err);
+      metaText.textContent = "Failed to load.";
+      alert("Failed to load clinical JSON:\n" + err);
+      return;
+    }
+
+    const data = await resp.json();
+    metaText.textContent =
+      `Cancer: ${data.meta.cancer} | Samples: ${data.meta.n_samples}`;
+
+    renderAge(data.age);
+    renderStage(data.stage);
+    renderTreatment(data.treatment);
+    renderVital(data.vital);
+  }
+
+  // 🔹 UPDATED: fixed x-axis + median line
+  function renderAge(ageData){
+    const values = ageData.values || [];
+    if (!values.length) {
+      Plotly.newPlot("agePlot", [], {
+        margin: {t: 10, r: 10, b: 40, l: 50},
+        xaxis: {title: "Age (years)", range: [0, 100]},
+        yaxis: {title: "Number of patients"},
+        height: 260
+      }, {responsive:true});
+      return;
+    }
+
+    // compute median
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const median = sorted.length % 2 === 0
+      ? (sorted[mid - 1] + sorted[mid]) / 2
+      : sorted[mid];
+
+    const trace = {
+      x: values,
+      type: "histogram",
+      nbinsx: 20,
+      marker: {line: {width: 0.5}}
+    };
+
+    const layout = {
+      margin: {t: 10, r: 10, b: 40, l: 50},
+      xaxis: {
+        title: "Age (years)",
+        range: [0, 100]   // 🔹 fixed scale across cancers
+      },
+      yaxis: {title: "Number of patients"},
+      height: 260,
+      shapes: [
+        {
+          type: "line",
+          x0: median,
+          x1: median,
+          y0: 0,
+          y1: 1,
+          xref: "x",
+          yref: "paper",
+          line: {
+            color: "#ef4444",
+            width: 2,
+            dash: "dash"
+          }
+        }
+      ],
+      annotations: [
+        {
+          x: median,
+          y: 1.05,
+          xref: "x",
+          yref: "paper",
+          showarrow: false,
+          text: `Median: ${median.toFixed(1)}`,
+          font: {size: 11, color: "#ef4444"}
+        }
+      ]
+    };
+
+    Plotly.newPlot("agePlot", [trace], layout, {responsive:true});
+  }
+
+  function renderStage(stageData){
+    const labels = stageData.labels || [];
+    const counts = stageData.counts || [];
+    const trace = {
+      x: labels,
+      y: counts,
+      type: "bar"
+    };
+    const layout = {
+      margin: {t: 10, r: 10, b: 60, l: 50},
+      xaxis: {title: "Stage"},
+      yaxis: {title: "Number of patients"},
+      height: 260
+    };
+    Plotly.newPlot("stagePlot", [trace], layout, {responsive:true});
+  }
+
+  function renderTreatment(tData){
+    const labels = tData.labels || [];
+    const counts = tData.counts || [];
+    const trace = {
+      x: labels,
+      y: counts,
+      type: "bar"
+    };
+    const layout = {
+      margin: {t: 10, r: 10, b: 80, l: 50},
+      xaxis: {title: "Treatment Combination"},
+      yaxis: {title: "Number of patients"},
+      height: 260
+    };
+    Plotly.newPlot("treatPlot", [trace], layout, {responsive:true});
+  }
+
+  function renderVital(vData){
+    const labels = vData.labels || [];
+    const counts = vData.counts || [];
+    const trace = {
+      x: labels,
+      y: counts,
+      type: "bar"
+    };
+    const layout = {
+      margin: {t: 10, r: 10, b: 60, l: 50},
+      xaxis: {title: "Vital status"},
+      yaxis: {title: "Number of patients"},
+      height: 260
+    };
+    Plotly.newPlot("vitalPlot", [trace], layout, {responsive:true});
+  }
+
+  cancerSelect.addEventListener("change", fetchClinical);
+
+  if (cancerSelect.value){
+    fetchClinical();
+  }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="page">
+  <!-- Sidebar stays from base.html -->
+
+  <main class="main">
+    <section class="controls-card">
+      <h2 class="controls-title">{{ title }}</h2>
+
+      <!-- Cancer selector -->
+      <label for="cancerSelect">Select cancer type</label>
+      <select id="cancerSelect">
+        {% for c in cancers %}
+          <option value="{{ c }}" {% if c == selected_cancer %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+
+      <!-- Filters (you can expand later) -->
+      <div id="filters" class="filters">
+        {% block filters %}
+        <!-- default empty; each subpage can add filters -->
+        {% endblock %}
+      </div>
+    </section>
+
+    <section class="viz-card">
+      {% block molecular_content %}{% endblock %}
+    </section>
+  </main>
+</div>
+{% endblock %}
