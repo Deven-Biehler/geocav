@@ -25,10 +25,10 @@ export function transpose(matrix) {
 }
 
 export function multiply(A, B) {
-    const result = new Array(A.length).fill(0).map(() => new Array(B[0].length).fill(0));
-    return result.map((row, i) => {
-        return row.map((val, j) => {
-            return A[i].reduce((sum, elm, k) => sum + (elm * B[k][j]), 0);
+    const result = new Array(A.length).fill(0).map(() => new Array(B[0].length).fill(0)); // Initialize result matrix
+    return result.map((row, i) => { // For each row in A
+        return row.map((val, j) => { // For each column in B
+            return A[i].reduce((sum, elm, k) => sum + (elm * B[k][j]), 0); // Dot product
         });
     });
 }
@@ -84,7 +84,7 @@ export function calculateLinearRegression(data, xKey, yKey) {
     const n = data.length;
     let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
 
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < n; i++) { // for each data point
         sumX += +data[i][xKey];
         sumY += +data[i][yKey];
         sumXY += +data[i][xKey] * +data[i][yKey];
@@ -98,7 +98,7 @@ export function calculateLinearRegression(data, xKey, yKey) {
     let totalSumSquares = 0;
     let residualSumSquares = 0;
 
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < n; i++) { // for each data point
         const predictedY = intercept + slope * data[i][xKey];
         totalSumSquares += (data[i][yKey] - meanY) ** 2;
         residualSumSquares += (data[i][yKey] - predictedY) ** 2;
