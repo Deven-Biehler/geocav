@@ -29,7 +29,11 @@ def organize_data(cancer_queryset, factor_queryset, level):
     for record in factor_queryset:
         key = generate_key(record, level)
         if record.factor_value is not None:
-            factor_data[key] = {'state': record.state, 'county': record.county if level == 'county' else None, 'rate': record.factor_value}
+            # Store all factors
+            if key not in factor_data:
+                factor_data[key] = {'state': record.state, 'county': record.county if level == 'county' else None}
+            factor_data[key][record.factor.name] = record.factor_value
+            factor_data[key]['rate'] = record.factor_value
 
     return cancer_data, factor_data
 
@@ -44,10 +48,13 @@ def get_geojson(request):
 
 @require_http_methods(["GET"])
 def get_data(request):
-    params = get_query_params(request, optional_params=['level', 'cancer_type', 'factor', 'gender', 'race', 'cancer_year', 'factor_year'])
-    level, cancer_type_name, factor_name, gender_name, race_name, cancer_year, factor_year = (
-        params['level'], params['cancer_type'], params['factor'], params['gender'], params['race'], params['cancer_year'], params['factor_year']
+    params = get_query_params(request, optional_params=['level', 'cancer_type', 'gender', 'race', 'cancer_year', 'factor_year'])
+    level, cancer_type_name, gender_name, race_name, cancer_year, factor_year = (
+        params['level'], params['cancer_type'], params['gender'], params['race'], params['cancer_year'], params['factor_year']
     )
+    
+    # Handle multiple factors
+    factor_names = request.GET.getlist('factor')
 
     cancer_queryset = CancerIncidence.objects.none()
     factor_queryset = FactorMeasurement.objects.none()
@@ -67,11 +74,13 @@ def get_data(request):
         cancer_queryset = apply_geographic_filter(cancer_queryset, level)
         cancer_queryset = apply_year_filter(cancer_queryset, cancer_year)
     
-    if factor_name and factor_name.lower() != 'none':
-        factor = get_model_instance(Factor, 'name', factor_name)
-        factor_queryset = FactorMeasurement.objects.filter(factor=factor)
-        factor_queryset = apply_geographic_filter(factor_queryset, level)
-        factor_queryset = apply_year_filter(factor_queryset, factor_year)
+    if factor_names:
+        valid_factors = [f for f in factor_names if f.lower() != 'none']
+        if valid_factors:
+            factors = Factor.objects.filter(name__in=valid_factors)
+            factor_queryset = FactorMeasurement.objects.filter(factor__in=factors)
+            factor_queryset = apply_geographic_filter(factor_queryset, level)
+            factor_queryset = apply_year_filter(factor_queryset, factor_year)
 
     cancer_data, factor_data = organize_data(cancer_queryset, factor_queryset, level)
     return JsonResponse({'cancer_data': cancer_data, 'factor_data': factor_data})

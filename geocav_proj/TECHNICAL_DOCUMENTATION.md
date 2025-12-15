@@ -9,7 +9,7 @@ The dashboard relies on a decoupled architecture where the frontend `DataManager
 ### 1.1 Data Retrieval (`DataManager.js`)
 Data is fetched from the backend via two primary endpoints:
 1.  `/get_geojson`: Returns the geographic boundaries (State or County polygons).
-2.  `/get_data`: Returns statistical data (Cancer Incidence and Factor Measurements).
+2.  `/get_data`: Returns statistical data. Accepts multiple `factor` parameters to retrieve multiple environmental datasets simultaneously.
 
 ### 1.2 Data Merging Strategy
 To ensure efficient rendering, statistical data is merged directly into the GeoJSON structure before being passed to the map renderers.
@@ -17,7 +17,7 @@ To ensure efficient rendering, statistical data is merged directly into the GeoJ
 *   **Key Generation**: A unique key is generated for each record to match statistical data with GeoJSON features.
     *   *State Level*: `StateFIPS`
     *   *County Level*: `StateFIPS` + `CountyFIPS`
-*   **Merging**: The `addGeoJSONProperties` method iterates through the GeoJSON features and injects `cancer_rate` and `factor_value` directly into the feature object. This allows O(1) access to data during the rendering loop of thousands of polygons.
+*   **Merging**: The `addGeoJSONProperties` method iterates through the GeoJSON features and injects `cancer_rate` and all selected factor values (e.g., `Smoking`, `Obesity`) directly into the feature object. This allows O(1) access to data during the rendering loop of thousands of polygons.
 
 ## 2. Visualization Logic
 
@@ -72,6 +72,31 @@ The plot calculates the "Line of Best Fit" using the Least Squares method:
 *   **Trend Line**: A SVG path is drawn using the calculated $m$ and $b$ across the extent of the X-axis.
 *   **Coloring**: Points are colored using a categorical color scale (`d3.schemeCategory10`) mapped to the State name, allowing users to visually cluster data by region.
 
+### 2.2.3 Multiple Linear Regression
+When multiple environmental factors are selected, the system switches to a Multiple Linear Regression model to predict cancer rates based on the combination of factors.
+
+#### Mathematical Implementation (Matrix Algebra)
+The model uses the **Normal Equation** (Ordinary Least Squares) to calculate the coefficient vector $\beta$:
+
+$$\beta = (X^T X)^{-1} X^T Y$$
+
+Where:
+*   $Y$: Vector of observed cancer rates ($n \times 1$).
+*   $X$: Design matrix ($n \times (k+1)$), where $k$ is the number of factors. The first column is all 1s (intercept term).
+*   $\beta$: Vector of coefficients ($\beta_0, \beta_1, ..., \beta_k$).
+
+**Matrix Operations**:
+Since standard JavaScript lacks a linear algebra library, custom matrix operations were implemented in `RegressionPlot.js`:
+*   `transpose(M)`: Swaps rows and columns.
+*   `multiply(A, B)`: Performs matrix multiplication.
+*   `invert(M)`: Calculates the inverse of a square matrix using **Gaussian Elimination** with partial pivoting.
+
+#### Visualization
+*   **X-Axis**: Predicted Cancer Rate ($\hat{y} = X\beta$).
+*   **Y-Axis**: Actual Cancer Rate ($y$).
+*   **Reference Line**: A dashed 1:1 line indicates perfect prediction.
+*   **Interpretation**: Points closer to the dashed line indicate that the combination of selected factors better explains the variance in cancer rates.
+
 ### 2.3 Dot Density Map (`DotDensityMap.js`)
 
 This visualization combines a heatmap with a "Top Cases" filter.
@@ -120,7 +145,7 @@ The backend is responsible for standardizing the data structure before sending i
 ### 3.1 `organize_data` Function
 This function transforms the raw database querysets into a dictionary keyed by FIPS codes.
 
-*   **Input**: `CancerIncidence` QuerySet, `FactorMeasurement` QuerySet.
+*   **Input**: `CancerIncidence` QuerySet, `FactorMeasurement` QuerySet (potentially multiple).
 *   **Output**:
     ```json
     {
@@ -128,7 +153,12 @@ This function transforms the raw database querysets into a dictionary keyed by F
             "FIPS_CODE": { "rate": 123.45, "state": "...", "county": "..." }
         },
         "factor_data": {
-            "FIPS_CODE": { "rate": 45.67, "state": "...", "county": "..." }
+            "FIPS_CODE": { 
+                "Smoking": 15.2, 
+                "Obesity": 25.4,
+                "state": "...", 
+                "county": "..." 
+            }
         }
     }
     ```

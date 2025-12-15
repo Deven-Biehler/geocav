@@ -33,7 +33,15 @@ export class FilterManager {
 
         // Set default selections
         this.cancerSelect.value = this.selectedFilters.cancer_type;
-        this.factorSelect.value = this.selectedFilters.factor;
+        
+        // Handle initial factor selection
+        if (!Array.isArray(this.selectedFilters.factor)) {
+            this.selectedFilters.factor = [this.selectedFilters.factor];
+        }
+        Array.from(this.factorSelect.options).forEach(option => {
+            option.selected = this.selectedFilters.factor.includes(option.value);
+        });
+
         this.levelSelect.value = this.selectedFilters.level;
         this.genderSelect.value = this.selectedFilters.gender;
         this.raceSelect.value = this.selectedFilters.race;
@@ -65,6 +73,12 @@ export class FilterManager {
                     } else {
                         this.selectedFilters[key] = e.target.value;
                         this.selectedFilters.selectedCancerTypes = [e.target.value];
+                    }
+                } else if (key === 'factor') {
+                    this.selectedFilters[key] = Array.from(this.factorSelect.selectedOptions).map(opt => opt.value);
+                    // If nothing selected, maybe default to 'None' or empty array?
+                    if (this.selectedFilters[key].length === 0) {
+                        this.selectedFilters[key] = ['None'];
                     }
                 } else {
                     this.selectedFilters[key] = (key === 'cancer_year' || key === 'factor_year') 
@@ -163,13 +177,25 @@ export class FilterManager {
             this.factorSelect.appendChild(option);
         });
         
-        // Only change factor if current selection is invalid for this level
-        if (!this.selectedFilters.factor || !filterList.includes(this.selectedFilters.factor)) {
-            this.selectedFilters.factor = filterList[0];
+        // Handle factor selection (array or string)
+        let currentFactors = Array.isArray(this.selectedFilters.factor) 
+            ? this.selectedFilters.factor 
+            : [this.selectedFilters.factor];
+
+        // Filter out invalid factors
+        currentFactors = currentFactors.filter(f => filterList.includes(f));
+
+        // If no valid factors, default to first one
+        if (currentFactors.length === 0) {
+            currentFactors = [filterList[0]];
         }
         
+        this.selectedFilters.factor = currentFactors;
+
         // Update the select element to match the current filter
-        this.factorSelect.value = this.selectedFilters.factor;
+        Array.from(this.factorSelect.options).forEach(option => {
+            option.selected = currentFactors.includes(option.value);
+        });
 
         // Clear current slider options
         this.cancerSlider.innerHTML = '';
@@ -196,9 +222,10 @@ export class FilterManager {
         });
 
         // Update factor years
+        const firstFactor = Array.isArray(this.selectedFilters.factor) ? this.selectedFilters.factor[0] : this.selectedFilters.factor;
         let availableFactorYears = this.selectedFilters.level === 'state'
-            ? STATE_FACTORS_AVAILABLE_YEARS[this.selectedFilters.factor]
-            : COUNTY_FACTORS_AVAILABLE_YEARS[this.selectedFilters.factor];
+            ? STATE_FACTORS_AVAILABLE_YEARS[firstFactor]
+            : COUNTY_FACTORS_AVAILABLE_YEARS[firstFactor];
 
         // Ensure current factor year is valid
         if (!availableFactorYears.includes(this.selectedFilters.factor_year)) {

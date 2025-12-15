@@ -282,5 +282,3 @@ class Command(BaseCommand):
             self.stdout.write('  Deleted CancerType records')
         
         self.stdout.write(self.style.SUCCESS('Successfully cleared all data'))
-
-# TODO: add fuzzy cross-year handling between factors and cancer incidence

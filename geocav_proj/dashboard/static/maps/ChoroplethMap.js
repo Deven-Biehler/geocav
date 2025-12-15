@@ -1,5 +1,7 @@
 import { DEFAULT_CHOROPLETH_STYLE } from '../config.js';
 import { FACTORS_UNITS } from '../config.js';
+import { calculateMultipleLinearRegression } from '../mathUtils.js';
+import { getDeviationLegendContent, getStandardLegendContent, createBivariatePopupContent, getCorrelationColor } from '../mapUtils.js';
 
 export class ChoroplethMap {
     constructor(selectedFilters) {
@@ -8,85 +10,109 @@ export class ChoroplethMap {
         this.selectedFilters = selectedFilters
     }
 
-    async getDataRange(data) {
-        // Filter for valid paired data for correlation stats
-        const validFeatures = data.features.filter(f => f.cancer_rate != null && f.factor_value != null);
-        
-        const values = validFeatures.map(f => f.cancer_rate);
-        const factorValues = validFeatures.map(f => f.factor_value);
+    async getDataStats(data) {
+        /* Calculate necessary statistics for choropleth rendering */
         
         // Calculate min/max for normalization (using all data for single view)
-        const allValues = data.features.map(f => f.cancer_rate).filter(v => v != null);
-        const allFactorValues = data.features.map(f => f.factor_value).filter(v => v != null);
-
-        this.dataMin = Math.min(...allValues);
-        this.dataMax = Math.max(...allValues);
-        this.factorMin = Math.min(...allFactorValues);
-        this.factorMax = Math.max(...allFactorValues);
+        const allValues = data.features.map(f => f.cancer_rate).filter(v => v != null); // Filter out nulls
+        const nC = allValues.length; // Number of valid cancer rate values
+        this.dataMean = allValues.reduce((a, b) => a + b, 0) / nC; // Mean of all cancer rate values
+        this.dataStd = Math.sqrt(allValues.reduce((a, b) => a + Math.pow(b - this.dataMean, 2), 0) / (nC - 1)); // Std Dev
         
-        if (validFeatures.length < 2) {
-            this.correlationMin = 0;
-            this.correlationMax = 0;
-            this.globalCorrelation = 0;
-            this.stats = { meanCancer: 0, meanFactor: 0, stdCancer: 1, stdFactor: 1 };
-            return;
+        // Calculate factor stats if single factor selected
+        if (this.selectedFilters.factor.length === 1) {
+            const factorName = this.selectedFilters.factor[0]; // Single factor (bc length == 1)
+            const allFactorValues = data.features.map(f => f[factorName]).filter(v => v != null); // Filter out nulls
+            const nF = allFactorValues.length; // Number of valid factor values
+            this.factorMean = allFactorValues.reduce((a, b) => a + b, 0) / nF; // Mean of all factor values
+            this.factorStd = Math.sqrt(allFactorValues.reduce((a, b) => a + Math.pow(b - this.factorMean, 2), 0) / (nF - 1)); // Std Dev
         }
 
-        // Calculate mean and std for Pearson correlation (using paired data)
-        const n = validFeatures.length;
-        const meanCancer = values.reduce((a, b) => a + b, 0) / n;
-        const meanFactor = factorValues.reduce((a, b) => a + b, 0) / n;
-        
-        const stdCancer = Math.sqrt(values.reduce((a, b) => a + Math.pow(b - meanCancer, 2), 0) / (n - 1));
-        const stdFactor = Math.sqrt(factorValues.reduce((a, b) => a + Math.pow(b - meanFactor, 2), 0) / (n - 1));
+        // Filter for valid paired data (cancer rate and factor values)
+        const validFeatures = data.features.filter(f => 
+            f.cancer_rate != null && this.selectedFilters.factor.every(factor => f[factor] != null)
+        );
 
-        // Calculate global Pearson correlation
-        const correlationTerms = validFeatures.map(feature => {
-            const zCancer = (feature.cancer_rate - meanCancer) / stdCancer;
-            const zFactor = (feature.factor_value - meanFactor) / stdFactor;
-            return zCancer * zFactor;
-        });
-        
-        this.globalCorrelation = correlationTerms.reduce((a, b) => a + b, 0) / (n - 1);
+        this.calculateRegression(validFeatures);
+    }
 
-        // Calculate Regression Parameters (y = mx + b)
-        // y = cancer, x = factor
-        const slope = this.globalCorrelation * (stdCancer / stdFactor);
-        const intercept = meanCancer - (slope * meanFactor);
-        
-        this.stats = { meanCancer, meanFactor, stdCancer, stdFactor, slope, intercept };
+    async calculateRegression(validFeatures) {
+        /* Perform regression analysis based on selected factors */
+        if (validFeatures.length < this.selectedFilters.factor.length + 1) {
+            this.stats = { beta: [] };
+            return; // Not enough data to perform regression
+        }
 
-        // Calculate Residuals for range
-        const residuals = validFeatures.map(feature => {
-            const predicted = (slope * feature.factor_value) + intercept;
-            return feature.cancer_rate - predicted;
-        });
+        if (this.selectedFilters.factor.length > 1) {
+            // Multiple Regression
+            const X = validFeatures.map(f => [1, ...this.selectedFilters.factor.map(factor => +f[factor])]);
+            const Y = validFeatures.map(f => +f.cancer_rate);
+            
+            const { beta, predictedY, rSquared } = calculateMultipleLinearRegression(X, Y);
+            
+            // Calculate Residuals
+            const residuals = validFeatures.map((feature, i) => {
+                return feature.cancer_rate - predictedY[i];
+            });
+
+            this.stats = { beta, isMultiple: true, rSquared };
+            
+            // Set range to 2 standard deviations of the original data
+            this.maxAbsResidual = (this.dataStd * 2) || 1;
+            
+        } else {
+            // Single Regression
+            const factorName = this.selectedFilters.factor[0];
+            const values = validFeatures.map(f => f.cancer_rate);
+            const factorValues = validFeatures.map(f => f[factorName]);
+            
+            const n = validFeatures.length;
+            const meanCancer = values.reduce((a, b) => a + b, 0) / n;
+            const meanFactor = factorValues.reduce((a, b) => a + b, 0) / n;
+            
+            const stdCancer = Math.sqrt(values.reduce((a, b) => a + Math.pow(b - meanCancer, 2), 0) / (n - 1));
+            const stdFactor = Math.sqrt(factorValues.reduce((a, b) => a + Math.pow(b - meanFactor, 2), 0) / (n - 1));
+
+            const correlationTerms = validFeatures.map(feature => {
+                const zCancer = (feature.cancer_rate - meanCancer) / stdCancer;
+                const zFactor = (feature[factorName] - meanFactor) / stdFactor;
+                return zCancer * zFactor;
+            });
+            
+            const globalCorrelation = correlationTerms.reduce((a, b) => a + b, 0) / (n - 1);
+            const rSquared = Math.pow(globalCorrelation, 2);
+
+            const slope = globalCorrelation * (stdCancer / stdFactor);
+            const intercept = meanCancer - (slope * meanFactor);
+            
+            this.stats = { meanCancer, meanFactor, stdCancer, stdFactor, slope, intercept, isMultiple: false, rSquared };
+            
+            // Set range to 2 standard deviations of the original data
+            this.maxAbsResidual = (this.dataStd * 2) || 1;
+        }
         
-        this.residualMin = Math.min(...residuals);
-        this.residualMax = Math.max(...residuals);
-        this.maxAbsResidual = Math.max(Math.abs(this.residualMin), Math.abs(this.residualMax));
-        
-        console.log('[Choropleth Map] Data range - Cancer Min:', this.dataMin, 'Cancer Max:', this.dataMax, 'Factor Min:', this.factorMin, 'Factor Max:', this.factorMax);
-        console.log('[Choropleth Map] Regression - Slope:', slope, 'Intercept:', intercept, 'Max Abs Residual:', this.maxAbsResidual);
-        console.log('[Choropleth Map] Global Pearson Correlation:', this.globalCorrelation);
+        console.log('[Choropleth Map] Regression stats:', this.stats);
     }
 
     async renderMap(map, data) {
         console.log('[Choropleth Map] Rendering choropleth map with cancer type:', this.selectedFilters.cancer_type, 'and level:', this.selectedFilters.level);
         console.log('[Choropleth Map] Data received for rendering:', data);
-        this.statesLayer = data
-        this.createTitle();
+
         const layersToRemove = [];
-        map.eachLayer((layer) => {
+        map.eachLayer((layer) => { // Promise to remove old layers
             if (layer instanceof L.GeoJSON) {
             layersToRemove.push(layer);
             }
         });
-        await this.getDataRange(data);
+
+        /* Update title, legend and map */
+        this.createTitle();                                         // Update title based on selected filters
+        await this.getDataStats(data);                              // Calculate necessary stats before rendering
+        this.layer = await this.createChoroplethLayer(map, data);   // Create new choropleth layer
+        this.createLegend();                                        // Update legend after rendering map
+        layersToRemove.forEach(layer => map.removeLayer(layer));    // Remove old layers
+
         console.log('[Choropleth Map] Data range calculated - Correlation Min:', this.correlationMin, 'Correlation Max:', this.correlationMax);
-        this.layer = await this.createChoroplethLayer(map);
-        this.createLegend();
-        layersToRemove.forEach(layer => map.removeLayer(layer));
         console.log('[Choropleth Map] Choropleth map rendered.');
     }
 
@@ -97,55 +123,26 @@ export class ChoroplethMap {
         let legendTitle = 'Correlation';
         let content = '';
 
-        if (this.selectedFilters.factor == 'None') {
+        const factor = Array.isArray(this.selectedFilters.factor) ? this.selectedFilters.factor[0] : this.selectedFilters.factor;
+
+        if (factor == 'None') {
             legendTitle = this.selectedFilters.cancer_type;
-            content = `
-            <h4>${legendTitle}</h4>
-            <div style="display: flex; gap: 15px; font-size: 12px;">
-                <div style="display: flex; align-items: center; gap: 5px;">
-                    <div style="background: white; width: 30px; height: 30px; border: 2px solid #999;"></div>
-                    <span>Low</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 5px;">
-                    <div style="background: red; width: 30px; height: 30px; border: 2px solid #999;"></div>
-                    <span>High</span>
-                </div>
-            </div>
-            `;
+            const lowVal = (this.dataMean - 2 * this.dataStd).toFixed(1);
+            const highVal = (this.dataMean + 2 * this.dataStd).toFixed(1);
+            const meanVal = this.dataMean.toFixed(1);
+            content = getStandardLegendContent(legendTitle, lowVal, highVal, meanVal);
         } else if (this.selectedFilters.cancer_type == 'None') {
-            legendTitle = this.selectedFilters.factor;
-            content = `
-            <h4>${legendTitle}</h4>
-            <div style="display: flex; gap: 15px; font-size: 12px;">
-                <div style="display: flex; align-items: center; gap: 5px;">
-                    <div style="background: white; width: 30px; height: 30px; border: 2px solid #999;"></div>
-                    <span>Low</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 5px;">
-                    <div style="background: red; width: 30px; height: 30px; border: 2px solid #999;"></div>
-                    <span>High</span>
-                </div>
-            </div>
-            `;
+            legendTitle = factor;
+            const lowVal = (this.factorMean - 2 * this.factorStd).toFixed(1);
+            const highVal = (this.factorMean + 2 * this.factorStd).toFixed(1);
+            const meanVal = this.factorMean.toFixed(1);
+            content = getStandardLegendContent(legendTitle, lowVal, highVal, meanVal);
         } else {
             legendTitle = 'Deviation from Trend';
-            content = `
-            <h4>${legendTitle}</h4>
-            <div style="display: flex; flex-direction: column; gap: 5px; font-size: 12px;">
-                <div style="display: flex; align-items: center; gap: 5px;">
-                    <div style="background: #ff0000; width: 20px; height: 20px; border: 1px solid #999;"></div>
-                    <span>Higher than expected</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 5px;">
-                    <div style="background: #ffffff; width: 20px; height: 20px; border: 1px solid #999;"></div>
-                    <span>As expected</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 5px;">
-                    <div style="background: #0000ff; width: 20px; height: 20px; border: 1px solid #999;"></div>
-                    <span>Lower than expected</span>
-                </div>
-            </div>
-            `;
+            const rangeVal = this.maxAbsResidual ? this.maxAbsResidual.toFixed(1) : 'N/A';
+            const r2 = this.stats && this.stats.rSquared ? this.stats.rSquared.toFixed(3) : 'N/A';
+            
+            content = getDeviationLegendContent(legendTitle, r2, rangeVal);
         }
     
         legend.innerHTML = content;
@@ -160,10 +157,15 @@ export class ChoroplethMap {
             const cancerPart = this.selectedFilters.cancer_type !== 'None' 
                 ? `${this.selectedFilters.cancer_type} (${this.selectedFilters.cancer_year})` 
                 : '';
-                
-            const factorPart = this.selectedFilters.factor !== 'None'
-                ? `${this.selectedFilters.factor.replace(/_/g, ' ')} (${this.selectedFilters.factor_year})`
-                : '';
+            
+            const factors = Array.isArray(this.selectedFilters.factor) ? this.selectedFilters.factor : [this.selectedFilters.factor];
+            let factorPart = '';
+            
+            if (factors.length > 1) {
+                factorPart = `${factors.length} Factors (${this.selectedFilters.factor_year})`;
+            } else if (factors[0] !== 'None') {
+                factorPart = `${factors[0].replace(/_/g, ' ')} (${this.selectedFilters.factor_year})`;
+            }
 
             if (cancerPart && factorPart) {
                 title = `Choropleth Map - ${cancerPart} vs ${factorPart}`;
@@ -179,12 +181,15 @@ export class ChoroplethMap {
         }
     }
 
-    async createChoroplethLayer(map) {  
+    async createChoroplethLayer(map, data) {  
+        /* Create choropleth layer on map based on data and selected filters */
+
         console.log('[Choropleth Map] Creating choropleth layer...');
-        console.log('[Choropleth Map] States layer data:', this.statesLayer);
-        const layer = L.geoJson(this.statesLayer, {
-            style: (feature) => this.getBivariateMapStyle(feature),
-            onEachFeature: (feature, layer) => {
+        console.log('[Choropleth Map] States layer data:', data);
+        
+        const layer = L.geoJson(data, {
+            style: (feature) => this.getBivariateMapStyle(feature),     // Apply bivariate styling
+            onEachFeature: (feature, layer) => {                        // Add interactivity
                 layer.on({
                     mouseover: (e) => {
                         this.highlightFeature(e);
@@ -196,7 +201,12 @@ export class ChoroplethMap {
                     }
                 });
                 
-                const popupContent = this.createBivariatePopupContent(feature);
+                const popupContent = createBivariatePopupContent(
+                    feature, 
+                    this.selectedFilters, 
+                    this.stats, 
+                    this.maxAbsResidual,
+                     FACTORS_UNITS);                                    // Create popup content
                 layer.bindTooltip(popupContent, {
                     sticky: true,
                     opacity: 0.9,
@@ -209,115 +219,26 @@ export class ChoroplethMap {
 
     getBivariateMapStyle(feature) {
         const cancerValue = feature.cancer_rate;
-        const factorValue = feature.factor_value;
-        const color = this.getCorrelationColor(cancerValue, factorValue);
+        const factors = Array.isArray(this.selectedFilters.factor) ? this.selectedFilters.factor : [this.selectedFilters.factor];
+        const hasFactors = factors.every(f => feature[f] != null);
+        
+        // Use imported getCorrelationColor
+        const color = getCorrelationColor(
+            feature, 
+            this.selectedFilters, 
+            this.dataMean, 
+            this.dataStd, 
+            this.factorMean, 
+            this.factorStd, 
+            this.stats, 
+            this.maxAbsResidual
+        );
         
         return {
             ...DEFAULT_CHOROPLETH_STYLE,
             fillColor: color,
-            fillOpacity: (cancerValue !== null && factorValue !== null) ? 0.8 : 0.1
+            fillOpacity: (cancerValue !== null && hasFactors) ? 0.8 : 0.1
         };
-    }
-
-    getCorrelationColor(cancerValue, factorValue) {
-        // Case 1: Only Cancer Type selected (Factor is None)
-        // Color based on magnitude of cancer rate (White -> Red)
-        if (this.selectedFilters.factor == 'None') {
-            if (cancerValue == null) {
-                return '#cccccc'; // Gray for missing data
-            }
-            const range = this.dataMax - this.dataMin || 1;
-            const normalized = Math.max(0, Math.min(1, (cancerValue - this.dataMin) / range));
-            
-            const r = 255;
-            const g = Math.round(255 * (1 - normalized));
-            const b = Math.round(255 * (1 - normalized));
-            return `rgb(${r}, ${g}, ${b})`;
-        }
-        
-        // Case 2: Only Factor selected (Cancer Type is None)
-        // Color based on magnitude of factor value (White -> Red)
-        if (this.selectedFilters.cancer_type == 'None') {
-            if (factorValue == null) {
-                return '#cccccc'; // Gray for missing data
-            }
-            const range = this.factorMax - this.factorMin || 1;
-            const normalized = Math.max(0, Math.min(1, (factorValue - this.factorMin) / range));
-            
-            const r = 255;
-            const g = Math.round(255 * (1 - normalized));
-            const b = Math.round(255 * (1 - normalized));
-            return `rgb(${r}, ${g}, ${b})`;
-        }
-
-        // Case 3: Correlation (Both selected)
-        // Color based on deviation from regression trend (Blue -> White -> Red)
-        if (cancerValue == null || factorValue == null) {
-            return '#cccccc'; // Gray for missing data
-        }
-
-        // Calculate predicted value and residual
-        const predicted = (this.stats.slope * factorValue) + this.stats.intercept;
-        const residual = cancerValue - predicted;
-        
-        // Normalize residual to -1 to 1 range based on maxAbsResidual
-        // -1 = Blue (Lower than expected), 0 = White, 1 = Red (Higher than expected)
-        const normalized = residual / (this.maxAbsResidual || 1);
-        
-        // Diverging Color Scale
-        let r, g, b;
-        if (normalized > 0) {
-            // White to Red (Higher than expected)
-            r = 255;
-            g = Math.round(255 * (1 - normalized));
-            b = Math.round(255 * (1 - normalized));
-        } else {
-            // White to Blue (Lower than expected)
-            // normalized is negative here, so use Math.abs
-            const absNorm = Math.abs(normalized);
-            r = Math.round(255 * (1 - absNorm));
-            g = Math.round(255 * (1 - absNorm));
-            b = 255;
-        }
-        
-        return `rgb(${r}, ${g}, ${b})`;
-    }
-
-    createBivariatePopupContent(feature) {
-        const county_name = feature.properties.NAME || '';
-        const state_name = feature.properties.name || feature.properties.state_name || '';
-        const name = county_name ? `${county_name}, ${state_name}` : state_name;
-        const cancerValue = feature.cancer_rate;
-        const factorValue = feature.factor_value;
-        
-        // Build popup content based on selected filters
-        let popupContent = `<div class="map-popup"><h4>${name}</h4>`;
-        
-        // Only show cancer type if it's selected
-        if (this.selectedFilters.cancer_type != 'None') {
-            popupContent += `<p><strong>${this.selectedFilters.cancer_type}:</strong> ${cancerValue != null ? cancerValue.toFixed(2) : 'N/A'} per 100,000</p>`;
-        }
-        
-        // Only show factor if it's selected
-        if (this.selectedFilters.factor != 'None') {
-            const unit = FACTORS_UNITS[this.selectedFilters.factor] || '';
-            const valueDisplay = factorValue != null ? factorValue.toFixed(2) : 'N/A';
-            popupContent += `<p><strong>${this.selectedFilters.factor}:</strong> ${valueDisplay}${unit ? ' ' + unit : ''}</p>`;
-        }
-        
-        // Only show correlation if both are selected
-        if (this.selectedFilters.cancer_type != 'None' && this.selectedFilters.factor != 'None') {
-            
-            if (cancerValue != null && factorValue != null && this.stats) {
-                 const predicted = (this.stats.slope * factorValue) + this.stats.intercept;
-                 const residual = cancerValue - predicted;
-                 popupContent += `<p><strong>Expected Rate:</strong> ${predicted.toFixed(2)}</p>`;
-                 popupContent += `<p><strong>Deviation:</strong> ${residual > 0 ? '+' : ''}${residual.toFixed(2)}</p>`;
-            }
-        }
-        
-        popupContent += `</div>`;
-        return popupContent;
     }
 
     highlightFeature(e) {
@@ -337,4 +258,5 @@ export class ChoroplethMap {
         const layer = e.target;
         layer.setStyle(this.getBivariateMapStyle(layer.feature));
     }
+
 }

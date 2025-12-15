@@ -37,8 +37,14 @@ export class DotDensityMap {
                 ? `${this.selectedFilters.cancer_type} (${this.selectedFilters.cancer_year})` 
                 : '';
                 
-            const factorPart = this.selectedFilters.factor !== 'None'
-                ? `${this.selectedFilters.factor.replace(/_/g, ' ')} (${this.selectedFilters.factor_year})`
+            // Handle factor being an array or string
+            let factorName = this.selectedFilters.factor;
+            if (Array.isArray(factorName)) {
+                factorName = factorName.length > 0 ? factorName[0] : 'None';
+            }
+
+            const factorPart = (factorName && factorName !== 'None')
+                ? `${factorName.replace(/_/g, ' ')} (${this.selectedFilters.factor_year})`
                 : '';
 
             if (cancerPart && factorPart) {

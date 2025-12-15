@@ -10,7 +10,7 @@ export class DataManager {
         params.append('level', filters.level);
         const response = await fetch(`/get_geojson?${params.toString()}`);
         const geojson = await response.json();
-        const statesLayer = this.addGeoJSONProperties(geojson, filters.level, this.cancer_data, this.factor_data);
+        const statesLayer = this.addGeoJSONProperties(geojson, filters.level, this.cancer_data, this.factor_data, filters);
         console.log('[DataManager] Data fetched with filters:', filters, 'Data:', statesLayer);
         return statesLayer;
     }
@@ -21,15 +21,31 @@ export class DataManager {
             console.log('[DataManager] Regression data not found in cache, fetching data...');
             let result = await this.fetchData(selectedFilters);
         }
-
+        
+        // Format data for regression analysis
         const result = Object.keys(this.cancer_data).reduce((acc, key) => {
             if (key in this.factor_data) {
-                acc.push({
+                const item = {
                     state: this.cancer_data[key][DATA_FIELD_MAPPING.STATE],
                     county: this.cancer_data[key][DATA_FIELD_MAPPING.COUNTY],
                     cancer_rate: this.cancer_data[key][DATA_FIELD_MAPPING.CANCER_RATE],
-                    factor_value: this.factor_data[key][DATA_FIELD_MAPPING.FACTOR_VALUE]
+                };
+                
+                const factors = Array.isArray(selectedFilters.factor) ? selectedFilters.factor : [selectedFilters.factor];
+                factors.forEach(f => {
+                    if (this.factor_data[key][f] !== undefined) {
+                        item[f] = this.factor_data[key][f];
+                    }
                 });
+                
+                // For backward compatibility or single factor usage
+                if (factors.length === 1) {
+                    item['factor_value'] = this.factor_data[key][factors[0]];
+                } else if (this.factor_data[key]['rate'] !== undefined) {
+                     item['factor_value'] = this.factor_data[key]['rate'];
+                }
+
+                acc.push(item);
             }
             return acc;
         }, []);
@@ -43,7 +59,14 @@ export class DataManager {
         const params = new URLSearchParams();
         params.append('level', filters.level);
         params.append('cancer_type', filters.cancer_type);
-        params.append('factor', filters.factor);
+        
+        // Handle multiple factors
+        if (Array.isArray(filters.factor)) {
+            filters.factor.forEach(f => params.append('factor', f));
+        } else {
+            params.append('factor', filters.factor);
+        }
+        
         params.append('cancer_year', parseInt(filters.cancer_year));
         params.append('factor_year', parseInt(filters.factor_year));
         params.append('gender', filters.gender || 'all');
@@ -59,11 +82,18 @@ export class DataManager {
         return result;
     }
 
-    addGeoJSONProperties(geojson, level, cancerData, factorData) {
+    addGeoJSONProperties(geojson, level, cancerData, factorData, filters) {
         // Preprocessing step to merge GeoJSON features with cancer and factor data based on level (state or county)
         console.log('[DataManager] Merging GeoJSON with cancer and factor data for level:', level);
         console.log('[DataManager] Cancer Data Sample:', Object.entries(cancerData).slice(0, 5));
         console.log('[DataManager] Factor Data Sample:', Object.entries(factorData).slice(0, 5));
+        
+        // Determine selected factor if multiple factors are provided
+        const factors = (filters && filters.factor) 
+            ? (Array.isArray(filters.factor) ? filters.factor : [filters.factor]) 
+            : [];
+        const selectedFactor = factors.length > 0 ? factors[0] : null;
+
         geojson.features.forEach((feature, i) => {
             const statefp = level === 'county' 
                 ? feature.properties.STATEFP 
@@ -78,7 +108,20 @@ export class DataManager {
                 : statefp + countyfp;
             
             geojson.features[i].cancer_rate = cancerData[key]?.rate;
-            geojson.features[i].factor_value = factorData[key]?.rate;
+            
+            // Attach all selected factors
+            factors.forEach(f => {
+                if (factorData[key] && factorData[key][f] !== undefined) {
+                    geojson.features[i][f] = factorData[key][f];
+                }
+            });
+
+            // Try to get specific factor value if available, otherwise fallback to 'rate'
+            if (selectedFactor && factorData[key] && factorData[key][selectedFactor] !== undefined) {
+                geojson.features[i].factor_value = factorData[key][selectedFactor];
+            } else {
+                geojson.features[i].factor_value = factorData[key]?.rate;
+            }
         });
         
         return geojson;

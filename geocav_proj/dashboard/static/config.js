@@ -167,12 +167,12 @@ export const COUNTY_CANCER_AVAILABLE_YEARS = {
 
 export const STATE_FACTORS_AVAILABLE_YEARS = {
     // Environment
-    "Air_Quality": [2011, 2016],
-    "Air_Toxins_Concentration": [2011, 2014, 2017, 2018, 2019],
-    "Annual_Sunlight_Exposure": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
-    "Annual_UV_DailyDose": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
+    "Air_Quality":                  [2011, 2016],
+    "Air_Toxins_Concentration":     [2011, 2014, 2017, 2018, 2019],
+    "Annual_Sunlight_Exposure":     [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
+    "Annual_UV_DailyDose":          [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
     "CO_Poisoning_Hospitalization": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021],
-    "Pesticide_Exposure": [2011, 2012, 2013, 2014, 2015, 2016, 2017],
+    "Pesticide_Exposure":           [2011, 2012, 2013, 2014, 2015, 2016, 2017],
     
     // Health status
     "Coronary_Heart_Disease": [2016],
