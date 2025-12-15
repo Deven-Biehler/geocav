@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Gene Co-occurrence{% endblock %}
+
+{% block content %}
+<style>
+  .cooc-wrap { display:flex; flex-direction:column; gap:14px; width:100%; }
+
+  .controls {
+    background:#fff; border:1px solid #e5e7eb; border-radius:8px;
+    padding:12px 14px; display:flex; flex-wrap:wrap; gap:12px; align-items:center;
+  }
+
+  select, button {
+    padding:6px 8px; border:1px solid #d1d5db; border-radius:6px; background:#fff;
+  }
+
+  .genes-box { width:260px; height:170px; }
+
+  .toggle-group { display:flex; gap:8px; align-items:center; }
+  .toggle-group label { font-size:14px; }
+
+  #heatmap {
+    width:100%; min-height:640px; background:#fff;
+    border:1px solid #e5e7eb; border-radius:8px;
+  }
+</style>
+
+<div class="cooc-wrap">
+  <h1>Gene Co-occurrence / Mutual Exclusivity</h1>
+
+  <div class="controls">
+    <label><strong>Cancer:</strong></label>
+    <select id="cancerSelect">
+      {% for c in cancers %}
+        <option value="{{ c }}" {% if c == selected_cancer %}selected{% endif %}>{{ c }}</option>
+      {% endfor %}
+    </select>
+
+    <div>
+      <label style="display:block;font-weight:600;margin-bottom:4px;">Select genes (max 20)</label>
+      <select id="geneSelect" class="genes-box" multiple></select>
+      <div style="font-size:12px;color:#6b7280;margin-top:4px;">
+        Showing top 50 genes for selection.<br>
+        Default = top 10 if none selected.
+      </div>
+    </div>
+
+    <div class="toggle-group">
+      <label><input type="radio" name="mode" value="raw" checked> Raw co-occurrence</label>
+      <label><input type="radio" name="mode" value="fisher"> Fisher OR (sig)</label>
+    </div>
+
+    <button id="computeBtn">Compute Heatmap</button>
+
+    <span id="metaText" style="font-size:13px;color:#6b7280;"></span>
+  </div>
+
+  <div id="heatmap"></div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+
+<script>
+(function(){
+  const cancerSelect = document.getElementById("cancerSelect");
+  const geneSelect   = document.getElementById("geneSelect");
+  const computeBtn   = document.getElementById("computeBtn");
+  const metaText     = document.getElementById("metaText");
+  const modeRadios   = document.querySelectorAll("input[name='mode']");
+
+  let lastPayload = null;
+
+  function selectedGenes(){
+    return Array.from(geneSelect.selectedOptions).map(o => o.value).slice(0, 20);
+  }
+
+  function currentMode(){
+    return Array.from(modeRadios).find(r => r.checked)?.value || "raw";
+  }
+
+  async function fetchData(){
+    const cancer = cancerSelect.value;
+    const genes = selectedGenes();
+
+    let url = "{% url 'molecular_cooccurrence_json' cancer_name='__C__' %}"
+                .replace("__C__", cancer);
+
+    if (genes.length > 0){
+      url += "?genes=" + encodeURIComponent(genes.join(","));
+    } else {
+      url += "?top=10";
+    }
+
+    metaText.textContent = "Loading…";
+
+    const resp = await fetch(url, {cache:"no-store"});
+    if (!resp.ok){
+      const errText = await resp.text();
+      metaText.textContent = "Failed to load.";
+      console.error(errText);
+      alert("Failed to load co-occurrence API:\n" + errText);
+      return;
+    }
+
+    lastPayload = await resp.json();
+    metaText.textContent =
+      `Samples: ${lastPayload.n_samples} | Genes shown: ${lastPayload.genes.length}`;
+
+    // Populate picker only once per cancer load
+    populateGenePicker(lastPayload.available_genes, lastPayload.genes);
+
+    renderHeatmap();
+  }
+
+  function populateGenePicker(available, preselect){
+    geneSelect.innerHTML = "";
+    available.forEach(g => {
+      const opt = document.createElement("option");
+      opt.value = g; opt.textContent = g;
+      if (preselect.includes(g)) opt.selected = true;
+      geneSelect.appendChild(opt);
+    });
+  }
+
+  function renderHeatmap(){
+    if (!lastPayload) return;
+
+    const genes = lastPayload.genes;
+    const mode  = currentMode();
+
+    let z, text, hover, colorscale, title;
+
+    if (mode === "raw"){
+      z = lastPayload.raw_matrix;
+      text = lastPayload.raw_matrix;
+      colorscale = "Viridis";
+      title = "Raw Co-occurrence Frequency (fraction of samples)";
+      hover = "Genes %{y} & %{x}<br>Raw co-occurrence: %{z}<extra></extra>";
+    } else {
+      z = lastPayload.fisher_p_matrix;      // color
+      text = lastPayload.fisher_or_matrix;  // text
+      colorscale = "RdBu";
+      title = "Fisher’s Exact Test: OR text, color = -log10(p)";
+      hover = "Genes %{y} & %{x}<br>Odds Ratio: %{text}<br>-log10(p): %{z}<extra></extra>";
+    }
+
+    const trace = {
+      z, x: genes, y: genes,
+      type: "heatmap",
+      colorscale,
+      reversescale: mode === "fisher",
+      showscale: true,
+      text, texttemplate: "%{text}",
+      textfont: {size: 10, color: "white"},
+      hovertemplate: hover
+    };
+
+    const layout = {
+      margin: {t: 20, l: 120, r: 60, b: 120},
+      height: 700,
+      xaxis: {tickangle: -45},
+      title
+    };
+
+    Plotly.newPlot("heatmap", [trace], layout, {responsive:true});
+  }
+
+  // --- Events ---
+  computeBtn.addEventListener("click", fetchData);
+
+  // When cancer changes, refresh available genes but DO NOT compute until button click
+  cancerSelect.addEventListener("change", async () => {
+    lastPayload = null;
+    geneSelect.innerHTML = "";
+    metaText.textContent = "Select genes, then click Compute Heatmap.";
+    await fetchData(); // this fetch fills available genes + default genes + draws once
+  });
+
+  modeRadios.forEach(r => r.addEventListener("change", renderHeatmap));
+
+  // Initial load: fetch once to populate genes + draw default top10
+  fetchData();
+
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}Mutational Landscape{% endblock %}
+
+{% block content %}
+<style>
+  .land-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+  }
+
+  .land-controls {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    width: fit-content;
+  }
+
+  .land-controls select {
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+  }
+
+  .grid-2x2 {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 14px;
+    width: 100%;
+  }
+
+  .panel {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 10px;
+    min-height: 320px;
+    width: 100%;
+  }
+
+  .panel h3 {
+    margin: 4px 0 8px 0;
+    font-size: 16px;
+    color: #111827;
+  }
+
+  .panel-inner {
+    width: 100%;
+    height: 260px;
+  }
+
+  @media (max-width: 1100px) {
+    .grid-2x2 {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="land-wrap">
+  <h1>Mutational Landscape</h1>
+
+  <div class="land-controls">
+    <label><strong>Cancer:</strong></label>
+    <select id="cancerSelect">
+      {% for c in cancers %}
+        <option value="{{ c }}" {% if c == selected_cancer %}selected{% endif %}>{{ c }}</option>
+      {% endfor %}
+    </select>
+
+    <span id="metaText" style="font-size:13px;color:#6b7280;"></span>
+  </div>
+
+  <div class="grid-2x2">
+    <div class="panel">
+      <h3>Variant Type Distribution</h3>
+      <div id="variantPlot" class="panel-inner"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Top Mutated Genes</h3>
+      <div id="topGenesPlot" class="panel-inner"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Per-Sample Mutation Burden</h3>
+      <div id="burdenPlot" class="panel-inner"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Number of Mutated Genes per Sample</h3>
+      <div id="genesPerSamplePlot" class="panel-inner"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+
+<script>
+(function(){
+  const cancerSelect = document.getElementById("cancerSelect");
+  const metaText     = document.getElementById("metaText");
+
+  async function fetchLandscape(){
+    const cancer = cancerSelect.value;
+    let url = "{% url 'molecular_landscape_json' cancer_name='__C__' %}";
+    url = url.replace("__C__", encodeURIComponent(cancer));
+
+    metaText.textContent = "Loading…";
+
+    const resp = await fetch(url, {cache: "no-store"});
+    if (!resp.ok){
+      const err = await resp.text();
+      console.error(err);
+      metaText.textContent = "Failed to load mutational landscape.";
+      alert("Failed to load mutational landscape:\n" + err);
+      return;
+    }
+
+    const data = await resp.json();
+
+    if (!data || !data.meta){
+      metaText.textContent = "No data.";
+      return;
+    }
+
+    metaText.textContent =
+      `Cancer: ${data.meta.cancer} | Samples: ${data.meta.n_samples}`;
+
+    renderVariant(data.variant_distribution || {labels: [], counts: []});
+    renderTopGenes(data.top_genes || {genes: [], counts: []});
+    renderBurden(data.burden || {per_sample_mutations: [], per_sample_mutated_genes: []});
+  }
+
+  // Variant type: horizontal bar, sorted (backend already sends sorted)
+  function renderVariant(vdata){
+    const labels = vdata.labels || [];
+    const counts = vdata.counts || [];
+
+    const trace = {
+      x: counts,
+      y: labels,
+      type: "bar",
+      orientation: "h"
+    };
+    const layout = {
+      margin: {t: 10, r: 10, b: 40, l: 150},
+      xaxis: {title: "Count"},
+      yaxis: {title: "Variant classification"},
+      height: 260
+    };
+    Plotly.newPlot("variantPlot", [trace], layout, {responsive:true});
+  }
+
+  // Top genes: horizontal bar
+  function renderTopGenes(gdata){
+    const genes = gdata.genes || [];
+    const counts = gdata.counts || [];
+
+    const trace = {
+      x: counts,
+      y: genes,
+      type: "bar",
+      orientation: "h"
+    };
+    const layout = {
+      margin: {t: 10, r: 10, b: 40, l: 150},
+      xaxis: {title: "Number of samples with mutation"},
+      yaxis: {title: "Gene"},
+      height: 260
+    };
+    Plotly.newPlot("topGenesPlot", [trace], layout, {responsive:true});
+  }
+
+  // Per sample burden: x = sample index, two traces
+  function renderBurden(bdata){
+    const muts  = bdata.per_sample_mutations || [];
+    const genes = bdata.per_sample_mutated_genes || [];
+
+    const n = Math.max(muts.length, genes.length);
+    const idx = Array.from({length: n}, (_, i) => i + 1);
+
+    const traces = [];
+
+    if (muts.length){
+      traces.push({
+        x: idx.slice(0, muts.length),
+        y: muts,
+        type: "scatter",
+        mode: "lines+markers",
+        name: "Total mutations",
+        marker: {size: 5}
+      });
+    }
+
+    if (genes.length){
+      traces.push({
+        x: idx.slice(0, genes.length),
+        y: genes,
+        type: "scatter",
+        mode: "lines+markers",
+        name: "Unique mutated genes",
+        marker: {size: 5}
+      });
+    }
+
+    const layout = {
+      margin: {t: 10, r: 10, b: 40, l: 55},
+      xaxis: {title: "Sample index"},
+      yaxis: {title: "Count"},
+      height: 260,
+      legend: {orientation: "h", y: -0.2}
+    };
+    Plotly.newPlot("burdenPlot", traces, layout, {responsive:true});
+
+    // Also render a separate plot for genes-per-sample if you want:
+    if (genes.length){
+      const layout2 = {
+        margin: {t: 10, r: 10, b: 40, l: 55},
+        xaxis: {title: "Sample index"},
+        yaxis: {title: "# of mutated genes"},
+        height: 260
+      };
+      const trace2 = {
+        x: idx.slice(0, genes.length),
+        y: genes,
+        type: "bar",
+        name: "Unique mutated genes"
+      };
+      Plotly.newPlot("genesPerSamplePlot", [trace2], layout2, {responsive:true});
+    } else {
+      Plotly.newPlot("genesPerSamplePlot", [], {
+        margin: {t: 10, r: 10, b: 40, l: 55},
+        xaxis: {title: "Sample index"},
+        yaxis: {title: "# of mutated genes"},
+        height: 260
+      }, {responsive:true});
+    }
+  }
+
+  cancerSelect.addEventListener("change", fetchLandscape);
+
+  // initial load
+  if (cancerSelect.value){
+    fetchLandscape();
+  }
+})();
+</script>
+{% endblock %}

@@ -16,7 +16,7 @@
     }
   },
   "cancer_types": [
-    "Pancreatic", "Skin", "Lung", "Liver", "Breast", "Kidney", "Prostate", "Esophageal"
+    "Pancreatic", "Skin", "Lung", "Liver", "Breast", "Kidney", "Prostate", "Esophageal", "Ovarian", "Stomach"
   ],
 
   "factors": {
@@ -268,5 +268,60 @@
     "CDC Data/Factors/County_Level/Lifestyle/Short_Sleep.csv",
     "CDC Data/Factors/County_Level/Lifestyle/Smoking.csv",
     "CDC Data/Factors/State_Level/Lifestyle/Smoking.csv"
-  ]
+  ],
+  
+  "tss_codes": "media/reference/tss_codes.csv",
+
+  "cancers": {
+    "lung": {
+      "label": "Lung Cancer",
+      "maf": "media/molecular/lung/maf.csv",
+      "clinical": "media/molecular/lung/clinical.csv"
+    },
+    "skin": {
+      "label": "Skin Cancer",
+      "maf": "media/molecular/skin/maf.csv",
+      "clinical": "media/molecular/skin/clinical.csv"
+    },
+    "breast": {
+      "label": "Breast Cancer",
+      "maf": "media/molecular/breast/maf.csv",
+      "clinical": "media/molecular/breast/clinical.csv"
+    },
+    "esophageal": {
+      "label": "Esophageal Cancer",
+      "maf": "media/molecular/esophageal/maf.csv",
+      "clinical": "media/molecular/esophageal/clinical.csv"
+    },
+    "kidney": {
+      "label": "Kidney Cancer",
+      "maf": "media/molecular/kidney/maf.csv",
+      "clinical": "media/molecular/kidney/clinical.csv"
+    },
+    "liver": {
+      "label": "Liver Cancer",
+      "maf": "media/molecular/liver/maf.csv",
+      "clinical": "media/molecular/liver/clinical.csv"
+    },
+    "ovarian": {
+      "label": "Ovarian Cancer",
+      "maf": "media/molecular/ovarian/maf.csv",
+      "clinical": "media/molecular/ovarian/clinical.csv"
+    },
+    "pancreatic": {
+      "label": "Pancreatic Cancer",
+      "maf": "media/molecular/pancreatic/maf.csv",
+      "clinical": "media/molecular/pancreatic/clinical.csv"
+    },
+    "prostate": {
+      "label": "Prostate Cancer",
+      "maf": "media/molecular/prostate/maf.csv",
+      "clinical": "media/molecular/prostate/clinical.csv"
+    },
+    "stomach": {
+      "label": "Stomach Cancer",
+      "maf": "media/molecular/stomach/maf.csv",
+      "clinical": "media/molecular/stomach/clinical.csv"
+    }
+  }
 }

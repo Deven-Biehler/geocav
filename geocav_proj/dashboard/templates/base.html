@@ -7,19 +7,88 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="{% static 'sidebar.css' %}" rel="stylesheet" />
 </head>
+
 <body>
   <aside class="sidebar">
     <div class="brand">GeoCAV</div>
+
     <nav class="nav">
-      <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'home' %}">Home</a>
-      <a class="nav-link {% if request.resolver_match.url_name == 'dashboard_view' %}active{% endif %}" href="{% url 'dashboard_view' %}">Geospatial Dashboard</a>
-      <a class="nav-link {% if request.resolver_match.url_name == 'network_analysis' %}active{% endif %}" href="{% url 'network_analysis' %}">Network Analysis</a>
-      <a class="nav-link {% if request.resolver_match.url_name == 'molecular_analysis' %}active{% endif %}" href="{% url 'molecular_analysis' %}">Molecular Analysis</a>
+
+      <!-- Home -->
+      <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}"
+         href="{% url 'home' %}">Home</a>
+
+      <!-- Geospatial Dashboard -->
+      <a class="nav-link {% if request.resolver_match.url_name == 'dashboard_view' %}active{% endif %}"
+         href="{% url 'dashboard_view' %}">Geospatial Dashboard</a>
+
+      <!-- Network Analysis -->
+      <a class="nav-link {% if request.resolver_match.url_name == 'network_analysis' %}active{% endif %}"
+         href="{% url 'network_analysis' %}">Network Analysis</a>
+
+      <!-- Molecular Analysis (Collapsible, same style as main links) -->
+      <a href="{% url 'molecular_landscape' %}"
+        id="molToggle"
+        class="nav-link {% if request.resolver_match.url_name == 'molecular_landscape' or request.resolver_match.url_name == 'molecular_cooccurrence' or request.resolver_match.url_name == 'molecular_clinical' or request.resolver_match.url_name == 'molecular_demographics' %}active open{% endif %}">
+        Molecular Analysis
+        <span class="mol-caret">▾</span>
+      </a>
+
+      <div id="molSubmenu"
+          class="mol-submenu {% if request.resolver_match.url_name == 'molecular_landscape' or request.resolver_match.url_name == 'molecular_cooccurrence' or request.resolver_match.url_name == 'molecular_clinical' or request.resolver_match.url_name == 'molecular_demographics' %}show{% endif %}">
+
+        <a class="nav-link mol-sublink {% if request.resolver_match.url_name == 'molecular_landscape' %}active{% endif %}"
+          href="{% url 'molecular_landscape' %}">
+          Mutational Landscape
+        </a>
+
+        <a class="nav-link mol-sublink {% if request.resolver_match.url_name == 'molecular_cooccurrence' %}active{% endif %}"
+          href="{% url 'molecular_cooccurrence' %}">
+          Gene Co-occurrence
+        </a>
+
+        <a class="nav-link mol-sublink {% if request.resolver_match.url_name == 'molecular_clinical' %}active{% endif %}"
+          href="{% url 'molecular_clinical' %}">
+          Clinical Distributions
+        </a>
+
+        <a class="nav-link mol-sublink {% if request.resolver_match.url_name == 'molecular_demographics' %}active{% endif %}"
+          href="{% url 'molecular_demographics' %}">
+          Demographics Associations
+        </a>
+
+      </div>
+
+
     </nav>
   </aside>
 
+  <!-- Main content -->
   <main class="content">
     {% block content %}{% endblock %}
   </main>
+
+  <!-- Sidebar collapse JS -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const toggle = document.getElementById("molToggle");
+      const submenu = document.getElementById("molSubmenu");
+
+      if (!toggle || !submenu) return;
+
+      toggle.addEventListener("click", function (e) {
+        // If caret clicked -> ONLY toggle submenu
+        if (e.target.classList.contains("mol-caret")) {
+          e.preventDefault();
+          submenu.classList.toggle("show");
+          toggle.classList.toggle("open");
+        }
+        // else: normal click navigates to molecular_landscape
+      });
+    });
+  </script>
+
+
+
 </body>
 </html>
