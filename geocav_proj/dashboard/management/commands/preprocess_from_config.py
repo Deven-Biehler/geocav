@@ -4,6 +4,8 @@ import os
 import json
 import math
 from pathlib import Path
+import ast
+import re
 
 import pandas as pd
 from django.conf import settings
@@ -39,6 +41,79 @@ def safe_str(x):
     if pd.isna(x):
         return ""
     return str(x).strip()
+
+def parse_listish_value(v):
+    """
+    Convert various 'list-ish' representations into a clean list[str].
+    Handles:
+      - list / tuple / set
+      - numpy / pyarrow arrays
+      - JSON string: ["TP53","KRAS"]
+      - Python repr string: ['TP53', 'KRAS']
+      - Delimited strings: "TP53,KRAS" / "TP53; KRAS" / "TP53|KRAS"
+      - Single gene string
+      - NA / None
+    """
+    # ---- None / NA ----
+    if v is None:
+        return []
+
+    # ---- numpy / pyarrow array-like ----
+    if hasattr(v, "__len__") and not isinstance(v, str):
+        try:
+            return [
+                str(x).strip()
+                for x in list(v)
+                if str(x).strip().lower() not in ("", "nan", "none", "null")
+            ]
+        except Exception:
+            pass
+
+    # ---- pandas NA scalar ----
+    try:
+        if pd.isna(v):
+            return []
+    except Exception:
+        pass
+
+    # ---- already list-like ----
+    if isinstance(v, (list, tuple, set)):
+        return [
+            str(x).strip()
+            for x in v
+            if str(x).strip().lower() not in ("", "nan", "none", "null")
+        ]
+
+    s = str(v).strip()
+    if not s or s.lower() in ("nan", "none", "null"):
+        return []
+
+    # ---- JSON string ----
+    if s.startswith("[") and s.endswith("]"):
+        try:
+            parsed = json.loads(s)
+            return parse_listish_value(parsed)
+        except Exception:
+            pass
+
+        # ---- Python literal string ----
+        try:
+            parsed = ast.literal_eval(s)
+            return parse_listish_value(parsed)
+        except Exception:
+            pass
+
+    # ---- delimiter fallback ----
+    if any(sep in s for sep in [",", ";", "|"]):
+        return [
+            p.strip().strip("'").strip('"')
+            for p in re.split(r"[,\;\|]\s*", s)
+            if p.strip().lower() not in ("", "nan", "none", "null")
+        ]
+
+    # ---- single token ----
+    return [s]
+
 
 
 # ---------- core builder ----------
@@ -224,14 +299,9 @@ class Command(BaseCommand):
             total["age_at_diagnosis"] = total["age_at_diagnosis"].apply(safe_int)
             total["year_of_diagnosis"] = total["year_of_diagnosis"].apply(safe_int)
 
-            # Ensure the three list columns are really lists of strings
+            # Ensure the three list columns are REALLY lists[str] (even if parquet/csv had list-strings)
             for col in ["Hugo_Symbol", "HGVSc", "Variant_Classification"]:
-                def normalize_list(v):
-                    if isinstance(v, list):
-                        return [str(x).strip() for x in v if str(x).strip() not in ("", "nan", "None")]
-                    # Fallback: treat scalar as single-element series
-                    return to_list(pd.Series([v]))
-                total[col] = total[col].apply(normalize_list)
+                total[col] = total[col].apply(parse_listish_value)
 
             # Save/overwrite Parquet so it's always in the expected schema
             parquet_path.parent.mkdir(parents=True, exist_ok=True)
