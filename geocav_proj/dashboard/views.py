@@ -812,6 +812,95 @@ def normalize_ethnicity(raw):
     s = str(raw).strip()
     return s
 
+def _clean_str(x):
+    return str(x).strip() if x is not None else ""
+
+def compute_gene_group_matrix(qs, genes_used, group_getter, variant_classes=None):
+    """
+    Returns:
+      groups: list[str]
+      genes: list[str]
+      fractions: list[list[float]]  genes x groups
+      counts: list[list[int]]       genes x groups (# mutated samples)
+      group_sizes: list[int]        groups
+    """
+    variant_classes = set(vc.strip() for vc in (variant_classes or []) if vc and vc.strip())
+
+    # group -> total samples
+    group_sizes = Counter()
+    # group -> gene -> mutated sample count
+    mutated = {}  # dict[group][gene] = count
+
+    # Pre-init
+    for g in genes_used:
+        g = _clean_str(g)
+
+    for rec in qs:
+        grp = group_getter(rec)
+        if not grp:
+            grp = "Unknown"
+        group_sizes[grp] += 1
+
+        genes = parse_listish(rec.Hugo_Symbol)
+        vcls  = parse_listish(rec.Variant_Classification)
+
+        # Build per-sample mutated gene set under selected variant classes
+        if variant_classes:
+            # try to zip genes and variant classes (aligned per MAF row in your aggregation)
+            pairs = zip(genes, vcls) if (genes and vcls and len(genes) == len(vcls)) else []
+            gset = set()
+            if pairs:
+                for g, vc in pairs:
+                    g = _clean_str(g)
+                    vc = _clean_str(vc)
+                    if g and vc in variant_classes:
+                        gset.add(g)
+            else:
+                # fallback if lengths don't match: if any selected class exists, include all genes (conservative)
+                if any(_clean_str(vc) in variant_classes for vc in vcls):
+                    gset = set(_clean_str(g) for g in genes if _clean_str(g))
+                else:
+                    gset = set()
+        else:
+            # no filter → all mutated genes
+            gset = set(_clean_str(g) for g in genes if _clean_str(g))
+
+        if not gset:
+            continue
+
+        if grp not in mutated:
+            mutated[grp] = Counter()
+
+        # count mutated samples per gene (binary per sample)
+        for g in gset:
+            if g in genes_used:
+                mutated[grp][g] += 1
+
+    groups = sorted(group_sizes.keys())
+    group_sizes_list = [group_sizes[g] for g in groups]
+
+    # Build matrices in gene order
+    fractions = []
+    counts = []
+    for gene in genes_used:
+        row_counts = []
+        row_fracs = []
+        for gi, grp in enumerate(groups):
+            k = mutated.get(grp, {}).get(gene, 0)
+            n = group_sizes_list[gi] if group_sizes_list[gi] else 0
+            row_counts.append(int(k))
+            row_fracs.append((k / n) if n else 0.0)
+        counts.append(row_counts)
+        fractions.append(row_fracs)
+
+    return {
+        "groups": groups,
+        "genes": genes_used,
+        "fractions": fractions,
+        "counts": counts,
+        "group_sizes": group_sizes_list,
+    }
+
 @require_GET
 def molecular_demographics_json(request, cancer_name):
     """
@@ -895,6 +984,18 @@ def molecular_demographics_json(request, cancer_name):
         top_n = max(2, min(top_n, 20))
         genes_used = [g for g, _ in gene_counter.most_common(top_n)]
 
+    # ---- variant class selection ----
+    variant_classes_param = (request.GET.get("variant_classes") or "").strip()
+    variant_classes = [v.strip() for v in variant_classes_param.split(",") if v.strip()]
+
+    vc_counter = Counter()
+    for rec in qs:
+        for vc in parse_listish(rec.Variant_Classification):
+            vc = _clean_str(vc)
+            if vc:
+                vc_counter[vc] += 1
+    available_variant_classes = [vc for vc, _ in vc_counter.most_common(20)]
+
     # ---- age vs mutation count ----
     age_vals = []
     mut_vals = []
@@ -970,26 +1071,44 @@ def molecular_demographics_json(request, cancer_name):
             "matrix": matrix
         }
 
-    # gene prevalence by race
-    gene_by_race = build_gene_group_matrix(
-        group_key_func=lambda s: s["race"]
+    gene_by_race = compute_gene_group_matrix(
+        qs, genes_used,
+        group_getter=lambda r: _clean_str(r.race) or "Unknown",
+        variant_classes=variant_classes
     )
 
-    # gene prevalence by ethnicity
-    gene_by_ethnicity = build_gene_group_matrix(
-        group_key_func=lambda s: s["ethnicity"]
+    gene_by_ethnicity = compute_gene_group_matrix(
+        qs, genes_used,
+        group_getter=lambda r: _clean_str(r.ethnicity) or "Unknown",
+        variant_classes=variant_classes
     )
 
-    # gene prevalence by gender
-    gene_by_gender = build_gene_group_matrix(
-        group_key_func=lambda s: s["gender"],
-        group_order=["Male", "Female", "Other/Unknown"]
+    gene_by_gender = compute_gene_group_matrix(
+        qs, genes_used,
+        group_getter=lambda r: normalize_gender(r.gender) or "Unknown",
+        variant_classes=variant_classes
     )
 
-    # gene prevalence by age bins
-    gene_by_agebin = build_gene_group_matrix(
-        group_key_func=lambda s: age_bin(s["age_years"]),
-        group_order=["< 50", "50–64", "65–79", "≥ 80", "Unknown"]
+    # age bins (example: 0-39, 40-49, ... or 10-year bins)
+    def age_bin_years(rec):
+        a = rec.age_at_diagnosis  # stored as days in DB
+        if a is None:
+            return "Unknown"
+        try:
+            years = float(a) / 365.25
+        except Exception:
+            return "Unknown"
+
+        if years < 0:
+            return "Unknown"
+
+        b = int(years // 10) * 10
+        return f"{b}-{b+9}"
+
+    gene_by_agebin = compute_gene_group_matrix(
+        qs, genes_used,
+        group_getter=age_bin_years,
+        variant_classes=variant_classes
     )
 
     payload = {
@@ -1011,5 +1130,7 @@ def molecular_demographics_json(request, cancer_name):
         "gene_by_ethnicity": gene_by_ethnicity,
         "gene_by_gender": gene_by_gender,
         "gene_by_agebin": gene_by_agebin,
+        "available_variant_classes": available_variant_classes,
+        "variant_classes_used": variant_classes,
     }
     return JsonResponse(payload)

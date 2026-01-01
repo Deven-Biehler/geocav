@@ -93,6 +93,16 @@
       </div>
     </div>
 
+    <div>
+      <label style="display:block;font-weight:600;margin-bottom:4px;">
+        Variant Classification (applies only to Gene×Group plots)
+      </label>
+      <select id="varClassSelect" class="genes-box" multiple></select>
+      <div style="font-size:12px;color:#6b7280;margin-top:4px;">
+        Leave unselected = include all variant classes.
+      </div>
+    </div>
+
     <button id="applyBtn">Apply filters</button>
 
     <span id="metaText" style="font-size:13px;color:#6b7280;"></span>
@@ -137,6 +147,7 @@
 (function(){
   const cancerSelect    = document.getElementById("cancerSelect");
   const geneSelect      = document.getElementById("geneSelect");
+  const varClassSelect  = document.getElementById("varClassSelect");
   const applyBtn        = document.getElementById("applyBtn");
   const metaText        = document.getElementById("metaText");
 
@@ -159,9 +170,25 @@
     });
   }
 
+  function selectedVarClasses(){
+    return Array.from(varClassSelect.selectedOptions).map(o => o.value);
+  }
+
+  function populateVariantClasses(available, used){
+    varClassSelect.innerHTML = "";
+    (available || []).forEach(vc => {
+      const opt = document.createElement("option");
+      opt.value = vc;
+      opt.textContent = vc;
+      if (used && used.includes(vc)) opt.selected = true;
+      varClassSelect.appendChild(opt);
+    });
+  }
+
   async function fetchDemographics(){
     const cancer = cancerSelect.value;
     const genes = selectedGenes();
+    const varClasses = selectedVarClasses();
 
     let url = "{% url 'molecular_demographics_json' cancer_name='__C__' %}";
     url = url.replace("__C__", encodeURIComponent(cancer));
@@ -171,6 +198,9 @@
       params.push("genes=" + encodeURIComponent(genes.join(",")));
     } else {
       params.push("top=10");
+    }
+    if (varClasses.length > 0){
+      params.push("variant_classes=" + encodeURIComponent(varClasses.join(",")));
     }
 
     if (params.length > 0){
@@ -195,15 +225,16 @@
       `Cancer: ${data.meta.cancer} | Samples: ${data.meta.n_samples}`;
 
     populateGenes(data.available_genes, data.genes_used);
+    populateVariantClasses(data.available_variant_classes, data.variant_classes_used);
 
     window.lastAgeMutData = data.age_vs_mut;
     renderAgeMut(window.lastAgeMutData);
     window.lastGenderBurdenData = data.gender_burden;
     renderGenderBurden(window.lastGenderBurdenData);
-    renderGeneHeatmap("raceHeatmap", data.gene_by_race, "Fraction mutated (by race)");
-    renderGeneHeatmap("ethHeatmap", data.gene_by_ethnicity, "Fraction mutated (by ethnicity)");
-    renderGeneHeatmap("genderHeatmap", data.gene_by_gender, "Fraction mutated (by gender)");
-    renderGeneHeatmap("agebinHeatmap", data.gene_by_agebin, "Fraction mutated (by age group)");
+    renderGeneGroupedBars("raceHeatmap", data.gene_by_race, "Gene mutation frequency by Race");
+    renderGeneGroupedBars("ethHeatmap", data.gene_by_ethnicity, "Gene mutation frequency by Ethnicity");
+    renderGeneGroupedBars("genderHeatmap", data.gene_by_gender, "Gene mutation frequency by Gender");
+    renderGeneGroupedBars("agebinHeatmap", data.gene_by_agebin, "Gene mutation frequency by Age Group");
   }
 
   function median(values){
@@ -292,7 +323,7 @@
 
     const layout = {
       margin: {t: 10, r: 10, b: 70, l: 55},
-      xaxis: {title: "Age at diagnosis (years) — 10-year bins", tickangle: -25},
+      xaxis: {title: "Age at diagnosis (years)", tickangle: -25},
       yaxis: {title: "Median mutation count", autorange: true},
       height: 260
     };
@@ -353,6 +384,52 @@
 
     Plotly.newPlot("genderBurdenPlot", traces, layout, {responsive:true});
   }
+
+  function renderGeneGroupedBars(divId, obj, title){
+    if (!obj || !obj.groups || !obj.genes || !obj.fractions){
+      Plotly.newPlot(divId, [], {title, height: 260}, {responsive:true});
+      return;
+    }
+
+    const groups = obj.groups || [];
+    const genes  = obj.genes  || [];
+    const fracs  = obj.fractions || []; // matrix: genes x groups
+    const counts = obj.counts || [];    // matrix: genes x groups (mutated sample counts)
+    const groupSizes = obj.group_sizes || []; // groups length
+
+    const traces = genes.map((g, gi) => {
+      const y = (fracs[gi] || []).map(v => (v == null ? 0 : v));
+      const text = groups.map((grp, j) => {
+        const k = counts?.[gi]?.[j] ?? 0;
+        const n = groupSizes?.[j] ?? 0;
+        const pct = (y[j] * 100);
+        return `${pct.toFixed(1)}%<br>(${k}/${n})`;
+      });
+
+      return {
+        x: groups,
+        y: y,
+        type: "bar",
+        name: g,
+        text: text,
+        textposition: "auto",
+        hovertemplate: `<b>${g}</b><br>%{x}<br>%{text}<extra></extra>`
+      };
+    });
+
+    const layout = {
+      title: {text: title, font: {size: 12}},
+      margin: {t: 30, r: 10, b: 80, l: 60},
+      barmode: "group",
+      yaxis: {title: "Fraction mutated", range: [0, 1]},
+      xaxis: {tickangle: -35},
+      height: 260,
+      legend: {orientation: "h", y: -0.35}
+    };
+
+    Plotly.newPlot(divId, traces, layout, {responsive:true});
+  }
+
 
   function renderGeneHeatmap(divId, obj, title){
     if (!obj || !obj.genes || !obj.groups){
