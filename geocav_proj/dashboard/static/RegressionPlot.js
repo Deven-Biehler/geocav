@@ -115,6 +115,16 @@ export class RegressionPlot {
 
             const { beta, predictedY, rSquared } = calculateMultipleLinearRegression(X, Y);
 
+            const n = validData.length;                    // number of observations
+            const p = factors.length;                      // number of predictors (excluding intercept)
+
+            let adjustedRSquared = rSquared;
+            if (p > 1) {  // Only adjust if more than 1 predictor
+                adjustedRSquared = 1 - (1 - rSquared) * (n - 1) / (n - p - 1);
+            }
+            
+            if (adjustedRSquared < 0) adjustedRSquared = 0; // negative adjusted R² means poor fit
+
             // Plot Predicted vs Actual
             const plotData = validData.map((d, i) => ({
                 actual: Y[i],
@@ -135,7 +145,7 @@ export class RegressionPlot {
             addRegressionTitle(svg, `Multiple Regression (${factors.length} factors)`, this.width);
 
             addDataPoints(svg, plotData, x, y, "predicted", "actual", this.colorScale);
-            addRSquaredLabel(svg, rSquared);
+            addRSquaredLabel(svg, adjustedRSquared);
 
             // Tooltip for multiple regression
             const tooltip = d3.select("body").append("div")

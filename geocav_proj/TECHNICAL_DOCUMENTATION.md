@@ -209,3 +209,46 @@ To update the years for an existing dataset:
 While the frontend configuration controls the UI, the backend (`dashboard/views.py`) is dynamic and will query the database for whatever parameters are sent. Therefore, **no backend code changes are required** when adding new data types, provided:
 1.  The new data has been correctly loaded into the database (`CancerIncidence` or `FactorMeasurement` models).
 2.  The `CancerType` or `Factor` names in the database match the strings used in `config.js` (case-insensitive matching is handled, but exact spelling is required).
+
+## 4. Django Schematic View
+
+This section outlines the high-level architecture of the Django application, illustrating how requests are processed and how the different components interact.
+
+### 4.1 Model-View-Template (MVT) Structure
+
+The application follows the standard Django MVT pattern:
+
+*   **Models (`models.py`)**: Define the database schema for cancer incidence, environmental factors, and demographics.
+*   **Views (`views.py`)**: Handle HTTP requests, process data (filtering, aggregation), and return responses (HTML or JSON).
+*   **Templates (`templates/`)**: HTML files that define the structure of the web pages.
+*   **URLs (`urls.py`)**: Map URL patterns to specific view functions.
+
+### 4.2 Request-Response Cycle
+
+1.  **User Action**: A user interacts with the dashboard (e.g., selects a cancer type and year).
+2.  **URL Routing**: The browser sends a request to a specific URL (e.g., `/get_data?cancer_type=Lung&year=2016`). Django's URL dispatcher (`urls.py`) matches this URL to the `get_data` view.
+3.  **View Processing**:
+    *   The `get_data` view extracts parameters from the request.
+    *   It queries the `CancerIncidence` and `FactorMeasurement` models using the Django ORM.
+    *   Filters are applied based on the user's selection (State/County, Year, Gender, Race).
+4.  **Data Serialization**: The view organizes the query results into a dictionary structure suitable for the frontend.
+5.  **Response**: The view returns a `JsonResponse` containing the data.
+6.  **Frontend Update**: The JavaScript `DataManager` receives the JSON and updates the map and charts.
+
+### 4.3 Key Components
+
+#### 4.3.1 Models
+*   **`CancerIncidence`**: Stores cancer rate data linked to a `CancerType`, `Gender`, `Race`, and location (`State`/`County`).
+*   **`FactorMeasurement`**: Stores environmental/health factor data linked to a `Factor` and location.
+*   **`TotalRecordAgg`**: Stores aggregated molecular data for specific cancer types.
+
+#### 4.3.2 Views
+*   **`dashboard_view`**: Renders the main dashboard template (`geospatial_dashboard.html`).
+*   **`get_data`**: API endpoint that returns cancer and factor data for the map.
+*   **`get_geojson`**: API endpoint that returns the geographic boundaries (GeoJSON).
+*   **`molecular_*`**: Views for the molecular analysis pages.
+
+#### 4.3.3 Templates
+*   **`base.html`**: The base template containing common elements (navbar, footer, scripts).
+*   **`geospatial_dashboard.html`**: Extends `base.html` and contains the specific layout for the map and charts.
+

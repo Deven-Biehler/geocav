@@ -72,7 +72,8 @@ export const FACTORS = [
     "Obesity",
     "Short_Sleep",
     "Smoking",
-    "Smoking"
+    "Smoking",
+    "SVI_Score"
 ];
 
 export const FACTORS_UNITS = {
@@ -95,7 +96,8 @@ export const FACTORS_UNITS = {
     "No_Physical_Activity": "Percentage (%)",
     "Obesity": "Percentage (%)",
     "Short_Sleep": "Percentage (%)",
-    "Smoking": "Percentage (%)"
+    "Smoking": "Percentage (%)",
+    "SVI_Score": "Score (0-1)"
 };
 
 export const STATE_FACTOR_FILTERS = [
@@ -138,6 +140,7 @@ export const COUNTY_FACTOR_FILTERS = [
     'Obesity',
     'Short_Sleep',
     'Smoking',
+    'SVI_Score',
     'None'
 ];
 
@@ -192,7 +195,6 @@ export const STATE_FACTORS_AVAILABLE_YEARS = {
     "Short_Sleep": [2016],
     "Smoking": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021],
 
-
     "None": []
 };
 
@@ -220,6 +222,8 @@ export const COUNTY_FACTORS_AVAILABLE_YEARS = {
     "Obesity": [2016],
     "Short_Sleep": [2016],
     "Smoking": [2016],
+
+    "SVI_Score": [2014, 2016, 2018, 2020, 2022],
 
     "None": []
 };
