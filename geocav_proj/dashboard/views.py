@@ -89,6 +89,112 @@ def get_data(request):
     cancer_data, factor_data = organize_data(cancer_queryset, factor_queryset, level)
     return JsonResponse({'cancer_data': cancer_data, 'factor_data': factor_data})
 
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+import pandas as pd
+from scipy.sparse import csr_matrix  # Optional for sparse efficiency if many NaNs
+
+
+@require_http_methods(["GET"])
+def get_pca_view(request):
+    """
+    View to compute PCA on selected factors across geographic units.
+    Query params:
+    - level: 'state' or 'county' (required)
+    - factor: list of factor names (e.g., ?factor=poverty&factor=obesity) (required, min 2)
+    - cancer_type, gender, race, cancer_year: Optional for aligning cancer rates
+    - factor_year: Year filter for factors
+    - n_components: Max PCs (default=3)
+    Returns: PCA scores, loadings, variance explained, factor names, geo data, optional cancer rates.
+    Usage: Plot PC1 vs PC2 scatter (size/color by cancer rate).
+    """
+    params = get_query_params(
+        request, optional_params=['level', 'cancer_type', 'gender', 'race', 'cancer_year', 'factor_year', 'n_components']
+    )
+    level = params['level']
+    factor_names = request.GET.getlist('factor')
+    n_components = int(params.get('n_components', min(3, len(factor_names))))
+    
+    if len(factor_names) < 2:
+        return handle_errors(request, "At least 2 factors required for PCA.", status=400)
+    
+    valid_factors = [f for f in factor_names if f.lower() != 'none']
+    if not valid_factors:
+        return handle_errors(request, "No valid factors selected.", status=400)
+    
+    # Fetch factor data (reuse your pipeline)
+    factors = Factor.objects.filter(name__in=valid_factors)
+    factor_queryset = FactorMeasurement.objects.filter(factor__in=factors)
+    factor_queryset = apply_geographic_filter(factor_queryset, level)
+    factor_queryset = apply_year_filter(factor_queryset, params['factor_year'])
+    
+    # Fetch optional cancer data for coloring
+    cancer_data = {}
+    if params['cancer_type'] and params['cancer_type'].lower() != 'none':
+        cancer_type = get_model_instance(CancerType, 'name', params['cancer_type'])
+        cancer_qs = CancerIncidence.objects.filter(cancer_type=cancer_type)
+        if params['gender'].lower() != 'all':
+            gender = get_model_instance(Gender, 'name', params['gender'])
+            cancer_qs = cancer_qs.filter(gender=gender)
+        if params['race'].lower() != 'all':
+            race = get_model_instance(Race, 'name', params['race'])
+            cancer_qs = cancer_qs.filter(race=race)
+        cancer_qs = apply_geographic_filter(cancer_qs, level)
+        cancer_qs = apply_year_filter(cancer_qs, params['cancer_year'])
+        
+        # Simple dict for lookup
+        for record in cancer_qs:
+            if record.incidence_rate is not None:
+                key = generate_key(record, level)
+                cancer_data[key] = record.incidence_rate
+    
+    # Organize factors into DataFrame (pivot: rows=geo units, cols=factors)
+    factor_df_dict = {}
+    factor_metadata = {}  # {key: {'state', 'county'}}
+    
+    for record in factor_queryset:
+        key = generate_key(record, level)
+        if record.factor_value is not None:
+            if key not in factor_metadata:
+                factor_metadata[key] = {
+                    'state': record.state,
+                    'county': record.county if level == 'county' else None
+                }
+            factor_df_dict.setdefault(key, {})[record.factor.name] = record.factor_value
+    
+    if len(factor_df_dict) < 2:  # Need min 2 units for PCA
+        return handle_errors(request, "Insufficient geographic units with factor data.", status=400)
+    
+    # Build DataFrame: Drop units with any missing factor (complete cases only)
+    factor_df = pd.DataFrame.from_dict(factor_df_dict, orient='index')
+    factor_df = factor_df.dropna()  # Rows with NaN in any factor -> drop
+    if factor_df.shape[0] < 2 or factor_df.shape[1] < 2:
+        return handle_errors(request, "Insufficient complete data after dropping NaNs.", status=400)
+    
+    # Standardize (zero mean, unit variance)
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(factor_df)
+    
+    # Fit PCA
+    pca = PCA(n_components=n_components)
+    pc_scores = pca.fit_transform(X_scaled)  # Shape: (n_samples, n_components)
+    
+    # Results dict
+    results = {
+        'geo_keys': list(factor_df.index),  # e.g., ['state:WA', 'county:WA,001']
+        'pc_scores': pc_scores.tolist(),     # [[PC1, PC2, ...], ...]
+        'loadings': pca.components_.tolist(), # [[factor1_load_PC1, factor2_load_PC1, ...], ...]
+        'explained_variance_ratio': pca.explained_variance_ratio_.tolist(),
+        'explained_variance': pca.explained_variance_.tolist(),
+        'factor_names': list(factor_df.columns),
+        'n_samples': factor_df.shape[0],
+        'singular_values': pca.singular_values_.tolist() if hasattr(pca, 'singular_values_') else None,
+        'metadata': {key: factor_metadata[key] for key in factor_df.index},
+        'cancer_rates': {key: cancer_data.get(key, None) for key in factor_df.index},  # Optional for coloring
+        'level': level
+    }
+    
+    return JsonResponse(results)
 
 def get_pie_data(request):
     '''Fetch data for pie chart visualization. Data includes multiple cancer types.'''

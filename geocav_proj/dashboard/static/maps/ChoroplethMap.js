@@ -49,13 +49,22 @@ export class ChoroplethMap {
             const Y = validFeatures.map(f => +f.cancer_rate);
             
             const { beta, predictedY, rSquared } = calculateMultipleLinearRegression(X, Y);
+
+            const n = Y.length;                    // number of observations
+            const p = this.selectedFilters.factor.length;  // number of predictors (excluding intercept)
+
+            const adjustedRSquared = 1 - (1 - rSquared) * (n - 1) / (n - p - 1);
             
             // Calculate Residuals
             const residuals = validFeatures.map((feature, i) => {
                 return feature.cancer_rate - predictedY[i];
             });
 
-            this.stats = { beta, isMultiple: true, rSquared };
+            this.stats = { 
+                    beta, 
+                    isMultiple: true, 
+                    rSquared: adjustedRSquared
+                };
             
             // Set range to 2 standard deviations of the original data
             this.maxAbsResidual = (this.dataStd * 2) || 1;
@@ -140,7 +149,9 @@ export class ChoroplethMap {
         } else {
             legendTitle = 'Deviation from Trend';
             const rangeVal = this.maxAbsResidual ? this.maxAbsResidual.toFixed(1) : 'N/A';
-            const r2 = this.stats && this.stats.rSquared ? this.stats.rSquared.toFixed(3) : 'N/A';
+            const r2 = this.stats && this.stats.adjustedRSquared !== undefined 
+                ? this.stats.adjustedRSquared.toFixed(3) 
+                : (this.stats?.rSquared?.toFixed(3) || 'N/A');
             
             content = getDeviationLegendContent(legendTitle, r2, rangeVal);
         }

@@ -134,6 +134,12 @@
         "slug": "smoking",
         "category": "lifestyle",
         "filepath": "CDC Data/Factors/County_Level/Lifestyle/Smoking.csv"
+      },
+      {
+        "name": "SVI Score",
+        "slug": "svi_score",
+        "category": "Socioeconomic",
+        "filepath": "CDC Data/Factors/County_Level/SVI_Score.csv"
       }
     ],
     "state": [
@@ -267,7 +273,8 @@
     "CDC Data/Factors/County_Level/Lifestyle/Obesity.csv",
     "CDC Data/Factors/County_Level/Lifestyle/Short_Sleep.csv",
     "CDC Data/Factors/County_Level/Lifestyle/Smoking.csv",
-    "CDC Data/Factors/State_Level/Lifestyle/Smoking.csv"
+    "CDC Data/Factors/State_Level/Lifestyle/Smoking.csv",
+    "CDC Data/Factors/County_Level/SVI_Score.csv"
   ],
   
   "tss_codes": "media/reference/tss_codes.csv",

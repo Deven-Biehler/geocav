@@ -71,7 +71,7 @@ export function addRSquaredLabel(svg, rSquared) {
         .attr("x", 10)
         .attr("y", 20)
         .style("font-size", "12px")
-        .text(`R² = ${rSquared.toFixed(5)}`);
+        .text(`Adjusted R² = ${rSquared.toFixed(5)}`);
 }
 
 export const LEGEND_STYLES = {

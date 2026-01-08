@@ -131,7 +131,7 @@ export function getDeviationLegendContent(legendTitle, r2, rangeVal) {
     return `
     <h4>${legendTitle}</h4>
     <div style="${LEGEND_STYLES.container}">
-        <strong>Model Fit (R²):</strong> ${r2}<br>
+        <strong>Model Fit (Adjusted R²):</strong> ${r2}<br>
         <strong>Deviation Limit:</strong> +/- ${rangeVal} per 100k<br>
         <span style="${LEGEND_STYLES.subText}">(Calculated as 2 Standard Deviations)</span><br>
         <em>Whiter map indicates better model fit</em>
