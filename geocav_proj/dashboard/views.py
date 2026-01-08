@@ -462,17 +462,39 @@ def molecular_landscape(request):
         "selected_cancer": selected,
     })
 
+def yn_unknown(val):
+    if not val:
+        return "Unknown"
+    s = str(val).strip().lower()
+    if s in {"yes", "y", "true", "1"}:
+        return "Yes"
+    if s in {"no", "n", "false", "0"}:
+        return "No"
+    # TCGA fields sometimes contain longer strings
+    if "yes" in s:
+        return "Yes"
+    if "no" in s:
+        return "No"
+    return "Unknown"
+
+def normalize_stage(stage):
+    if not stage:
+        return "Unknown"
+    s = str(stage).strip().upper()
+    # common patterns: "STAGE II", "Stage IIA", etc.
+    if "I" in s and "II" not in s and "III" not in s and "IV" not in s:
+        return "Stage I"
+    if "II" in s and "III" not in s and "IV" not in s:
+        return "Stage II"
+    if "III" in s and "IV" not in s:
+        return "Stage III"
+    if "IV" in s:
+        return "Stage IV"
+    return "Unknown"
+
 
 @require_GET
 def molecular_landscape_json(request, cancer_name):
-    """
-    Mutational landscape for a given cancer:
-      - Variant type distribution
-      - Top N mutated genes
-      - Per-sample total mutation burden
-      - Per-sample number of unique mutated genes
-    """
-    # 1) find cancer
     try:
         ct = CancerType.objects.get(name__iexact=cancer_name)
     except CancerType.DoesNotExist:
@@ -480,68 +502,107 @@ def molecular_landscape_json(request, cancer_name):
 
     qs = TotalRecordAgg.objects.filter(cancer=ct)
 
+    group_by = (request.GET.get("group_by") or "none").strip().lower()
+    allowed = {"none", "gender", "stage", "vital_status", "pharma_treatment", "radiation_treatment"}
+    if group_by not in allowed:
+        group_by = "none"
+
     variant_counter = Counter()
     gene_counter = Counter()
 
-    burden_per_sample = []   # total mutation count per sample
-    genes_per_sample  = []   # number of unique mutated genes per sample
+    grouped_mutations = {}   # group -> [total_mutations_per_sample,...]
+    grouped_genes     = {}   # group -> [unique_gene_count_per_sample,...]
 
-    # 2) iterate over samples
+    def clean_tokens(raw):
+        vals = []
+        for x in parse_listish(raw):
+            s = str(x).strip()
+            if not s:
+                continue
+            if s.lower() in {"nan", "none", "null"}:
+                continue
+            vals.append(s)
+        return vals
+
+    def get_group_label(rec):
+        if group_by == "gender":
+            return normalize_gender(rec.gender)
+        if group_by == "stage":
+            return normalize_stage(rec.ajcc_pathologic_stage)
+        if group_by == "vital_status":
+            return (str(rec.vital_status).strip() if rec.vital_status else "Unknown")
+        if group_by == "pharma_treatment":
+            return yn_unknown(rec.treatments_pharmaceutical_treatment_or_therapy)
+        if group_by == "radiation_treatment":
+            return yn_unknown(rec.treatments_radiation_treatment_or_therapy)
+        return "All Samples"
+
     for rec in qs:
-        # 🔹 parse list-like fields robustly
-        genes = parse_listish(rec.Hugo_Symbol)
-        hgvs  = parse_listish(rec.HGVSc)
-        vcls  = parse_listish(rec.Variant_Classification)
+        genes = clean_tokens(rec.Hugo_Symbol)
+        hgvs  = clean_tokens(rec.HGVSc)
+        vcls  = clean_tokens(rec.Variant_Classification)
 
-        # unique genes for this sample
-        gset = set(g for g in genes if g)
+        gset = set(genes)
+        # print('gset:', len(gset))
 
-        # total mutation burden
-        if hgvs:
-            mut_count = len([m for m in hgvs if m])
-        else:
-            mut_count = len(gset)
+        # total mutations per sample = number of HGVSc entries (mutation events)
+        # No fallback to gene count (that was making both plots look the same).
+        mut_count = len(hgvs)
+        #print('mut_count:', mut_count)
 
-        burden_per_sample.append(mut_count)
-        genes_per_sample.append(len(gset))
+        # number of unique mutated genes per sample
+        gene_count = len(gset)
 
-        # update global counters
+        # counters for other plots
         gene_counter.update(gset)
-        variant_counter.update(v for v in vcls if v)
+        variant_counter.update(vcls)
 
-    # 3) variant type distribution
-    variant_labels = []
-    variant_counts = []
-    for v, c in variant_counter.most_common():
-        variant_labels.append(v)
-        variant_counts.append(c)
+        # grouped boxplot data
+        label = get_group_label(rec)
+        grouped_mutations.setdefault(label, []).append(mut_count)
+        grouped_genes.setdefault(label, []).append(gene_count)
 
-    # 4) Top genes (default 10)
+    # variant type distribution (descending)
+    if variant_counter:
+        variant_labels, variant_counts = zip(*variant_counter.most_common())
+    else:
+        variant_labels, variant_counts = ([], [])
+
+    # top genes (descending)
     top_n = int(request.GET.get("top_genes", 10) or 10)
     top_n = max(1, min(top_n, 50))
-    top_genes = [g for g, _ in gene_counter.most_common(top_n)]
-    top_gene_counts = [gene_counter[g] for g in top_genes]
+    top = gene_counter.most_common(top_n)
+    top_genes = [g for g, _ in top]
+    top_gene_counts = [c for _, c in top]
+
+    # stable group order (optional: push Unknown last)
+    def group_sort_key(k):
+        return (k == "Unknown", k)
+
+    groups_sorted = sorted(grouped_mutations.keys(), key=group_sort_key)
 
     payload = {
         "meta": {
             "cancer": cancer_name,
             "n_samples": qs.count(),
+            "group_by": group_by,
+            "groups": groups_sorted,
         },
         "variant_distribution": {
-            "labels": variant_labels,
-            "counts": variant_counts,
+            "labels": list(variant_labels),
+            "counts": list(variant_counts),
         },
         "top_genes": {
             "genes": top_genes,
             "counts": top_gene_counts,
         },
-        "burden": {
-            "per_sample_mutations": burden_per_sample,
-            "per_sample_mutated_genes": genes_per_sample,
-        },
+        "burden_box": {
+            "groups": groups_sorted,
+            "mutations": [grouped_mutations[g] for g in groups_sorted],
+            "genes": [grouped_genes[g] for g in groups_sorted],
+        }
     }
     return JsonResponse(payload)
-
 
 
 
@@ -857,6 +918,95 @@ def normalize_ethnicity(raw):
     s = str(raw).strip()
     return s
 
+def _clean_str(x):
+    return str(x).strip() if x is not None else ""
+
+def compute_gene_group_matrix(qs, genes_used, group_getter, variant_classes=None):
+    """
+    Returns:
+      groups: list[str]
+      genes: list[str]
+      fractions: list[list[float]]  genes x groups
+      counts: list[list[int]]       genes x groups (# mutated samples)
+      group_sizes: list[int]        groups
+    """
+    variant_classes = set(vc.strip() for vc in (variant_classes or []) if vc and vc.strip())
+
+    # group -> total samples
+    group_sizes = Counter()
+    # group -> gene -> mutated sample count
+    mutated = {}  # dict[group][gene] = count
+
+    # Pre-init
+    for g in genes_used:
+        g = _clean_str(g)
+
+    for rec in qs:
+        grp = group_getter(rec)
+        if not grp:
+            grp = "Unknown"
+        group_sizes[grp] += 1
+
+        genes = parse_listish(rec.Hugo_Symbol)
+        vcls  = parse_listish(rec.Variant_Classification)
+
+        # Build per-sample mutated gene set under selected variant classes
+        if variant_classes:
+            # try to zip genes and variant classes (aligned per MAF row in your aggregation)
+            pairs = zip(genes, vcls) if (genes and vcls and len(genes) == len(vcls)) else []
+            gset = set()
+            if pairs:
+                for g, vc in pairs:
+                    g = _clean_str(g)
+                    vc = _clean_str(vc)
+                    if g and vc in variant_classes:
+                        gset.add(g)
+            else:
+                # fallback if lengths don't match: if any selected class exists, include all genes (conservative)
+                if any(_clean_str(vc) in variant_classes for vc in vcls):
+                    gset = set(_clean_str(g) for g in genes if _clean_str(g))
+                else:
+                    gset = set()
+        else:
+            # no filter → all mutated genes
+            gset = set(_clean_str(g) for g in genes if _clean_str(g))
+
+        if not gset:
+            continue
+
+        if grp not in mutated:
+            mutated[grp] = Counter()
+
+        # count mutated samples per gene (binary per sample)
+        for g in gset:
+            if g in genes_used:
+                mutated[grp][g] += 1
+
+    groups = sorted(group_sizes.keys())
+    group_sizes_list = [group_sizes[g] for g in groups]
+
+    # Build matrices in gene order
+    fractions = []
+    counts = []
+    for gene in genes_used:
+        row_counts = []
+        row_fracs = []
+        for gi, grp in enumerate(groups):
+            k = mutated.get(grp, {}).get(gene, 0)
+            n = group_sizes_list[gi] if group_sizes_list[gi] else 0
+            row_counts.append(int(k))
+            row_fracs.append((k / n) if n else 0.0)
+        counts.append(row_counts)
+        fractions.append(row_fracs)
+
+    return {
+        "groups": groups,
+        "genes": genes_used,
+        "fractions": fractions,
+        "counts": counts,
+        "group_sizes": group_sizes_list,
+    }
+
 @require_GET
 def molecular_demographics_json(request, cancer_name):
     """
@@ -866,7 +1016,6 @@ def molecular_demographics_json(request, cancer_name):
       - Gene prevalence across race / ethnicity / gender / age groups
 
     Query params:
-      - source_site: optional Source_Site filter (exact match)
       - genes: comma-separated list of genes (max 20)
       - top: fallback when genes not provided (default 10)
     """
@@ -876,19 +1025,7 @@ def molecular_demographics_json(request, cancer_name):
     except CancerType.DoesNotExist:
         raise Http404(f"Cancer '{cancer_name}' not found in CancerType.name")
 
-    base_qs = TotalRecordAgg.objects.filter(cancer=ct)
-
-    # --- available source sites for UI (all sites for this cancer) ---
-    all_sites = (base_qs.values_list("Source_Site", flat=True)
-                        .distinct()
-                        .order_by("Source_Site"))
-    available_sites = [s for s in all_sites if s]
-
-    # --- optional Source_Site filter ---
-    source_site_param = request.GET.get("source_site", "").strip()
-    qs = base_qs
-    if source_site_param and source_site_param not in {"__all__", "All", "ALL"}:
-        qs = qs.filter(Source_Site=source_site_param)
+    qs = TotalRecordAgg.objects.filter(cancer=ct)
 
     # ---- build sample-level data ----
     samples = []
@@ -927,11 +1064,9 @@ def molecular_demographics_json(request, cancer_name):
             "meta": {
                 "cancer": cancer_name,
                 "n_samples": 0,
-                "source_site": source_site_param or "__all__"
             },
             "available_genes": [],
             "genes_used": [],
-            "available_source_sites": available_sites,
             "age_vs_mut": {"age": [], "mut_count": []},
             "gender_burden": {"genders": [], "counts": []},
             "gene_by_race": {},
@@ -954,6 +1089,18 @@ def molecular_demographics_json(request, cancer_name):
         top_n = int(request.GET.get("top", 10))
         top_n = max(2, min(top_n, 20))
         genes_used = [g for g, _ in gene_counter.most_common(top_n)]
+
+    # ---- variant class selection ----
+    variant_classes_param = (request.GET.get("variant_classes") or "").strip()
+    variant_classes = [v.strip() for v in variant_classes_param.split(",") if v.strip()]
+
+    vc_counter = Counter()
+    for rec in qs:
+        for vc in parse_listish(rec.Variant_Classification):
+            vc = _clean_str(vc)
+            if vc:
+                vc_counter[vc] += 1
+    available_variant_classes = [vc for vc, _ in vc_counter.most_common(20)]
 
     # ---- age vs mutation count ----
     age_vals = []
@@ -1030,37 +1177,53 @@ def molecular_demographics_json(request, cancer_name):
             "matrix": matrix
         }
 
-    # gene prevalence by race
-    gene_by_race = build_gene_group_matrix(
-        group_key_func=lambda s: s["race"]
+    gene_by_race = compute_gene_group_matrix(
+        qs, genes_used,
+        group_getter=lambda r: _clean_str(r.race) or "Unknown",
+        variant_classes=variant_classes
     )
 
-    # gene prevalence by ethnicity
-    gene_by_ethnicity = build_gene_group_matrix(
-        group_key_func=lambda s: s["ethnicity"]
+    gene_by_ethnicity = compute_gene_group_matrix(
+        qs, genes_used,
+        group_getter=lambda r: _clean_str(r.ethnicity) or "Unknown",
+        variant_classes=variant_classes
     )
 
-    # gene prevalence by gender
-    gene_by_gender = build_gene_group_matrix(
-        group_key_func=lambda s: s["gender"],
-        group_order=["Male", "Female", "Other/Unknown"]
+    gene_by_gender = compute_gene_group_matrix(
+        qs, genes_used,
+        group_getter=lambda r: normalize_gender(r.gender) or "Unknown",
+        variant_classes=variant_classes
     )
 
-    # gene prevalence by age bins
-    gene_by_agebin = build_gene_group_matrix(
-        group_key_func=lambda s: age_bin(s["age_years"]),
-        group_order=["< 50", "50–64", "65–79", "≥ 80", "Unknown"]
+    # age bins (example: 0-39, 40-49, ... or 10-year bins)
+    def age_bin_years(rec):
+        a = rec.age_at_diagnosis  # stored as days in DB
+        if a is None:
+            return "Unknown"
+        try:
+            years = float(a) / 365.25
+        except Exception:
+            return "Unknown"
+
+        if years < 0:
+            return "Unknown"
+
+        b = int(years // 10) * 10
+        return f"{b}-{b+9}"
+
+    gene_by_agebin = compute_gene_group_matrix(
+        qs, genes_used,
+        group_getter=age_bin_years,
+        variant_classes=variant_classes
     )
 
     payload = {
         "meta": {
             "cancer": cancer_name,
             "n_samples": n_samples,
-            "source_site": source_site_param or "__all__",
         },
         "available_genes": available_genes,
         "genes_used": genes_used,
-        "available_source_sites": available_sites,
         "age_vs_mut": {
             "age": age_vals,
             "mut_count": mut_vals,
@@ -1073,5 +1236,7 @@ def molecular_demographics_json(request, cancer_name):
         "gene_by_ethnicity": gene_by_ethnicity,
         "gene_by_gender": gene_by_gender,
         "gene_by_agebin": gene_by_agebin,
+        "available_variant_classes": available_variant_classes,
+        "variant_classes_used": variant_classes,
     }
     return JsonResponse(payload)

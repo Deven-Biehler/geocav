@@ -75,6 +75,21 @@
       {% endfor %}
     </select>
 
+    <label style="margin-left:10px;"><strong>Mutation burden filter:</strong></label>
+    <select id="groupBySelect">
+      <option value="none">None (overall)</option>
+      <option value="gender">Gender</option>
+      <option value="stage">Pathologic stage</option>
+      <option value="vital_status">Vital status</option>
+      <option value="pharma_treatment">Pharma treatment</option>
+      <option value="radiation_treatment">Radiation treatment</option>
+    </select>
+
+    <label style="margin-left:10px; display:flex; align-items:center; gap:6px;">
+    <input type="checkbox" id="showOutliersToggle" checked>
+    <strong>Show outliers</strong>
+</label>
+
     <span id="metaText" style="font-size:13px;color:#6b7280;"></span>
   </div>
 
@@ -90,12 +105,12 @@
     </div>
 
     <div class="panel">
-      <h3>Per-Sample Mutation Burden</h3>
+      <h3>Mutation Burden (Mutations per Sample)</h3>
       <div id="burdenPlot" class="panel-inner"></div>
     </div>
 
     <div class="panel">
-      <h3>Number of Mutated Genes per Sample</h3>
+      <h3>Mutated Gene Count (Unique Genes per Sample)</h3>
       <div id="genesPerSamplePlot" class="panel-inner"></div>
     </div>
   </div>
@@ -105,17 +120,31 @@
 
 <script>
 (function(){
-  const cancerSelect = document.getElementById("cancerSelect");
-  const metaText     = document.getElementById("metaText");
+  const cancerSelect  = document.getElementById("cancerSelect");
+  const groupBySelect = document.getElementById("groupBySelect");
+  const showOutliersToggle = document.getElementById("showOutliersToggle");
+  const metaText      = document.getElementById("metaText");
 
   async function fetchLandscape(){
-    const cancer = cancerSelect.value;
+    const cancer  = cancerSelect.value;
+    const groupBy = (groupBySelect && groupBySelect.value) ? groupBySelect.value : "none";
+
     let url = "{% url 'molecular_landscape_json' cancer_name='__C__' %}";
     url = url.replace("__C__", encodeURIComponent(cancer));
+    url += `?group_by=${encodeURIComponent(groupBy)}&t=${Date.now()}`;
 
     metaText.textContent = "Loading…";
 
-    const resp = await fetch(url, {cache: "no-store"});
+    let resp;
+    try {
+      resp = await fetch(url, {cache: "no-store"});
+    } catch (e) {
+      console.error(e);
+      metaText.textContent = "Failed to load mutational landscape.";
+      alert("Failed to load mutational landscape:\n" + e);
+      return;
+    }
+
     if (!resp.ok){
       const err = await resp.text();
       console.error(err);
@@ -131,15 +160,15 @@
       return;
     }
 
-    metaText.textContent =
-      `Cancer: ${data.meta.cancer} | Samples: ${data.meta.n_samples}`;
+    const gb = (data.meta.group_by && data.meta.group_by !== "none") ? ` | Grouped by: ${data.meta.group_by}` : "";
+    metaText.textContent = `Cancer: ${data.meta.cancer} | Samples: ${data.meta.n_samples}${gb}`;
 
     renderVariant(data.variant_distribution || {labels: [], counts: []});
     renderTopGenes(data.top_genes || {genes: [], counts: []});
-    renderBurden(data.burden || {per_sample_mutations: [], per_sample_mutated_genes: []});
+    renderBoxplots(data.burden_box || {groups: [], mutations: [], genes: []});
   }
 
-  // Variant type: horizontal bar, sorted (backend already sends sorted)
+  // Variant type: horizontal bar, sorted descending in backend; reverse y-axis for top-to-bottom
   function renderVariant(vdata){
     const labels = vdata.labels || [];
     const counts = vdata.counts || [];
@@ -150,16 +179,18 @@
       type: "bar",
       orientation: "h"
     };
+
     const layout = {
-      margin: {t: 10, r: 10, b: 40, l: 150},
+      margin: {t: 10, r: 10, b: 40, l: 170},
       xaxis: {title: "Count"},
-      yaxis: {title: "Variant classification"},
+      yaxis: {title: "Variant classification", autorange: "reversed"},
       height: 260
     };
+
     Plotly.newPlot("variantPlot", [trace], layout, {responsive:true});
   }
 
-  // Top genes: horizontal bar
+  // Top genes: horizontal bar; reverse y-axis for descending display
   function renderTopGenes(gdata){
     const genes = gdata.genes || [];
     const counts = gdata.counts || [];
@@ -170,82 +201,87 @@
       type: "bar",
       orientation: "h"
     };
+
     const layout = {
-      margin: {t: 10, r: 10, b: 40, l: 150},
+      margin: {t: 10, r: 10, b: 40, l: 170},
       xaxis: {title: "Number of samples with mutation"},
-      yaxis: {title: "Gene"},
+      yaxis: {title: "Gene", autorange: "reversed"},
       height: 260
     };
+
     Plotly.newPlot("topGenesPlot", [trace], layout, {responsive:true});
   }
 
-  // Per sample burden: x = sample index, two traces
-  function renderBurden(bdata){
-    const muts  = bdata.per_sample_mutations || [];
-    const genes = bdata.per_sample_mutated_genes || [];
+  function removeOutliersIQR(values) {
+    const arr = (values || []).filter(v => typeof v === "number" && !isNaN(v));
+    if (arr.length < 8) return arr;
 
-    const n = Math.max(muts.length, genes.length);
-    const idx = Array.from({length: n}, (_, i) => i + 1);
+    const sorted = [...arr].sort((a, b) => a - b);
+    const q1 = sorted[Math.floor(sorted.length * 0.25)];
+    const q3 = sorted[Math.floor(sorted.length * 0.75)];
+    const iqr = q3 - q1;
 
-    const traces = [];
+    const lower = q1 - 1.5 * iqr;
+    const upper = q3 + 1.5 * iqr;
 
-    if (muts.length){
-      traces.push({
-        x: idx.slice(0, muts.length),
-        y: muts,
-        type: "scatter",
-        mode: "lines+markers",
-        name: "Total mutations",
-        marker: {size: 5}
-      });
-    }
-
-    if (genes.length){
-      traces.push({
-        x: idx.slice(0, genes.length),
-        y: genes,
-        type: "scatter",
-        mode: "lines+markers",
-        name: "Unique mutated genes",
-        marker: {size: 5}
-      });
-    }
-
-    const layout = {
-      margin: {t: 10, r: 10, b: 40, l: 55},
-      xaxis: {title: "Sample index"},
-      yaxis: {title: "Count"},
-      height: 260,
-      legend: {orientation: "h", y: -0.2}
-    };
-    Plotly.newPlot("burdenPlot", traces, layout, {responsive:true});
-
-    // Also render a separate plot for genes-per-sample if you want:
-    if (genes.length){
-      const layout2 = {
-        margin: {t: 10, r: 10, b: 40, l: 55},
-        xaxis: {title: "Sample index"},
-        yaxis: {title: "# of mutated genes"},
-        height: 260
-      };
-      const trace2 = {
-        x: idx.slice(0, genes.length),
-        y: genes,
-        type: "bar",
-        name: "Unique mutated genes"
-      };
-      Plotly.newPlot("genesPerSamplePlot", [trace2], layout2, {responsive:true});
-    } else {
-      Plotly.newPlot("genesPerSamplePlot", [], {
-        margin: {t: 10, r: 10, b: 40, l: 55},
-        xaxis: {title: "Sample index"},
-        yaxis: {title: "# of mutated genes"},
-        height: 260
-      }, {responsive:true});
-    }
+    return arr.filter(v => v >= lower && v <= upper);
   }
 
+  // Boxplots for mutation burden + mutated gene count (separate plots)
+  function renderBoxplots(bbox){
+    const groups = bbox.groups || [];
+
+    const showOutliers = showOutliersToggle ? showOutliersToggle.checked : true;
+    const boxpointsVal = showOutliers ? "outliers" : false;
+
+    function maybeTrim(values){
+      return showOutliers ? (values || []) : removeOutliersIQR(values || []);
+    }
+
+    // ---- mutations per sample ----
+    const mutsByGroup = bbox.mutations || [];
+    const mutTraces = groups.map((g, i) => ({
+      y: maybeTrim(mutsByGroup[i]),
+      type: "box",
+      name: g,
+      boxpoints: boxpointsVal, // ✅ toggle here
+      jitter: 0.3,
+      pointpos: 0
+    }));
+
+    Plotly.newPlot("burdenPlot", mutTraces, {
+      margin: {t: 10, r: 10, b: 70, l: 60},
+      yaxis: {title: "Mutations per sample"},
+      xaxis: {tickangle: -25},
+      height: 260,
+      boxmode: "group"
+    }, {responsive:true});
+
+    // ---- unique genes per sample ----
+    const genesByGroup = bbox.genes || [];
+    const geneTraces = groups.map((g, i) => ({
+      y: maybeTrim(genesByGroup[i]),
+      type: "box",
+      name: g,
+      boxpoints: boxpointsVal, // ✅ toggle here too
+      jitter: 0.3,
+      pointpos: 0
+    }));
+
+    Plotly.newPlot("genesPerSamplePlot", geneTraces, {
+      margin: {t: 10, r: 10, b: 70, l: 60},
+      yaxis: {title: "Unique mutated genes per sample"},
+      xaxis: {tickangle: -25},
+      height: 260,
+      boxmode: "group"
+    }, {responsive:true});
+  }
+
+
+  // events
   cancerSelect.addEventListener("change", fetchLandscape);
+  if (groupBySelect) groupBySelect.addEventListener("change", fetchLandscape);
+  if (showOutliersToggle) showOutliersToggle.addEventListener("change", fetchLandscape);
 
   // initial load
   if (cancerSelect.value){
