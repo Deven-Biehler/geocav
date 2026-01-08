@@ -693,8 +693,8 @@ def molecular_clinical_json(request, cancer_name):
     for rec in qs:
         if rec.age_at_diagnosis is not None:
             try:
-                days = float(rec.age_at_diagnosis)
-                years = round(days / 365.25, 1)   # one decimal precision
+                years = float(rec.age_at_diagnosis)
+                #years = round(days / 365.25, 1)   # one decimal precision
                 ages.append(years)
             except Exception:
                 continue
@@ -815,8 +815,28 @@ def normalize_ethnicity(raw):
 def _clean_str(x):
     return str(x).strip() if x is not None else ""
 
-def compute_gene_group_matrix(qs, genes_used, group_getter, variant_classes=None):
+from itertools import zip_longest
+
+def yn_norm(x):
+    s = (str(x).strip().lower() if x is not None else "")
+    if s in ("y", "yes", "true", "1", "hotspot"):
+        return "Yes"
+    if s in ("n", "no", "false", "0", "non-hotspot", "nonhotspot"):
+        return "No"
+    return "Unknown"
+
+
+def compute_gene_group_matrix(
+    qs,
+    genes_used,
+    group_getter,
+    variant_classes=None,
+    impacts=None,
+    hotspot="__all__",
+):
     """
+    Filters apply to counting whether a gene is mutated in a sample.
+
     Returns:
       groups: list[str]
       genes: list[str]
@@ -824,46 +844,50 @@ def compute_gene_group_matrix(qs, genes_used, group_getter, variant_classes=None
       counts: list[list[int]]       genes x groups (# mutated samples)
       group_sizes: list[int]        groups
     """
-    variant_classes = set(vc.strip() for vc in (variant_classes or []) if vc and vc.strip())
+    vset = set(vc.strip() for vc in (variant_classes or []) if vc and vc.strip())
+    iset = set(im.strip() for im in (impacts or []) if im and im.strip())
 
     # group -> total samples
     group_sizes = Counter()
     # group -> gene -> mutated sample count
-    mutated = {}  # dict[group][gene] = count
+    mutated = {}  # dict[group][gene] = Counter()
 
-    # Pre-init
-    for g in genes_used:
-        g = _clean_str(g)
+    genes_used = [g for g in genes_used if g]  # keep order
 
     for rec in qs:
-        grp = group_getter(rec)
-        if not grp:
-            grp = "Unknown"
+        grp = group_getter(rec) or "Unknown"
         group_sizes[grp] += 1
 
         genes = parse_listish(rec.Hugo_Symbol)
-        vcls  = parse_listish(rec.Variant_Classification)
+        vcls  = parse_listish(getattr(rec, "Variant_Classification", None))
 
-        # Build per-sample mutated gene set under selected variant classes
-        if variant_classes:
-            # try to zip genes and variant classes (aligned per MAF row in your aggregation)
-            pairs = zip(genes, vcls) if (genes and vcls and len(genes) == len(vcls)) else []
-            gset = set()
-            if pairs:
-                for g, vc in pairs:
-                    g = _clean_str(g)
-                    vc = _clean_str(vc)
-                    if g and vc in variant_classes:
-                        gset.add(g)
-            else:
-                # fallback if lengths don't match: if any selected class exists, include all genes (conservative)
-                if any(_clean_str(vc) in variant_classes for vc in vcls):
-                    gset = set(_clean_str(g) for g in genes if _clean_str(g))
-                else:
-                    gset = set()
-        else:
-            # no filter → all mutated genes
-            gset = set(_clean_str(g) for g in genes if _clean_str(g))
+        # These fields may or may not exist depending on your model/data
+        imps  = parse_listish(getattr(rec, "IMPACT", None))
+        hots  = parse_listish(getattr(rec, "hotspot", None))
+
+        gset = set()
+
+        # mutation-level filtering (best effort alignment)
+        for g, vc, imp, hs in zip_longest(genes, vcls, imps, hots, fillvalue=None):
+            g = _clean_str(g)
+            if not g:
+                continue
+
+            vc  = _clean_str(vc)
+            imp = _clean_str(imp)
+            hs  = yn_norm(hs)
+
+            # apply filters
+            if genes_used and g not in genes_used:
+                continue
+            if vset and vc not in vset:
+                continue
+            if iset and imp not in iset:
+                continue
+            if hotspot != "__all__" and hs != hotspot:
+                continue
+
+            gset.add(g)
 
         if not gset:
             continue
@@ -871,10 +895,9 @@ def compute_gene_group_matrix(qs, genes_used, group_getter, variant_classes=None
         if grp not in mutated:
             mutated[grp] = Counter()
 
-        # count mutated samples per gene (binary per sample)
+        # count presence per sample (binary)
         for g in gset:
-            if g in genes_used:
-                mutated[grp][g] += 1
+            mutated[grp][g] += 1
 
     groups = sorted(group_sizes.keys())
     group_sizes_list = [group_sizes[g] for g in groups]
@@ -904,14 +927,14 @@ def compute_gene_group_matrix(qs, genes_used, group_getter, variant_classes=None
 @require_GET
 def molecular_demographics_json(request, cancer_name):
     """
-    Demographic associations for a given cancer:
-      - Age vs total mutation count
-      - Mutation burden by gender
-      - Gene prevalence across race / ethnicity / gender / age groups
+    Demographic associations for a given cancer (ALL filters apply to ALL plots)
 
     Query params:
       - genes: comma-separated list of genes (max 20)
       - top: fallback when genes not provided (default 10)
+      - variant_classes: comma-separated list (optional)
+      - impacts: comma-separated list (optional)
+      - hotspot: "__all__" | "Yes" | "No" | "Unknown" (optional)
     """
     # --- cancer look-up ---
     try:
@@ -921,46 +944,125 @@ def molecular_demographics_json(request, cancer_name):
 
     qs = TotalRecordAgg.objects.filter(cancer=ct)
 
-    # ---- build sample-level data ----
-    samples = []
+    # ---- parse filters ----
+    genes_param = (request.GET.get("genes") or "").strip()
+    genes_selected = [g.strip() for g in genes_param.split(",") if g.strip()][:20]
+
+    variant_classes_param = (request.GET.get("variant_classes") or "").strip()
+    variant_classes = [v.strip() for v in variant_classes_param.split(",") if v.strip()]
+
+    impacts_param = (request.GET.get("impacts") or "").strip()
+    impacts = [v.strip() for v in impacts_param.split(",") if v.strip()]
+
+    hotspot = (request.GET.get("hotspot") or "__all__").strip()
+    if hotspot not in ("__all__", "Yes", "No", "Unknown"):
+        hotspot = "__all__"
+
+    # ---- compute available genes / available variant classes / impacts ----
     gene_counter = Counter()
+    vc_counter = Counter()
+    impact_counter = Counter()
+
+    for rec in qs:
+        for g in parse_listish(rec.Hugo_Symbol):
+            g = _clean_str(g)
+            if g:
+                gene_counter[g] += 1
+
+        for vc in parse_listish(getattr(rec, "Variant_Classification", None)):
+            vc = _clean_str(vc)
+            if vc:
+                vc_counter[vc] += 1
+
+        for imp in parse_listish(getattr(rec, "IMPACT", None)):
+            imp = _clean_str(imp)
+            if imp:
+                impact_counter[imp] += 1
+
+    available_genes = [g for g, _ in gene_counter.most_common(50)]
+    available_variant_classes = [vc for vc, _ in vc_counter.most_common(50)]
+    available_impacts = [im for im, _ in impact_counter.most_common(50)]
+
+    # ---- decide genes_used ----
+    if genes_selected:
+        genes_used = [g for g in genes_selected if g in gene_counter]
+        if not genes_used:
+            genes_used = [g for g, _ in gene_counter.most_common(10)]
+    else:
+        top_n = int(request.GET.get("top", 10) or 10)
+        top_n = max(2, min(top_n, 20))
+        genes_used = [g for g, _ in gene_counter.most_common(top_n)]
+
+    # ---- build sample-level data with ALL filters applied ----
+    # NOTE: DB age_at_diagnosis is days -> convert to years here.
+    samples = []
+    n_qs = qs.count()
 
     for rec in qs:
         genes = parse_listish(rec.Hugo_Symbol)
-        hgvs  = parse_listish(rec.HGVSc)
+        vcls  = parse_listish(getattr(rec, "Variant_Classification", None))
+        imps  = parse_listish(getattr(rec, "IMPACT", None))
+        hots  = parse_listish(getattr(rec, "hotspot", None))
+        hgvs  = parse_listish(getattr(rec, "HGVSc", None))
 
-        gset = set(g for g in genes if g)
+        # apply mutation-level filtering (best effort alignment)
+        gset = set()
+        mut_count = 0
 
-        if hgvs:
-            mut_count = len([m for m in hgvs if m])
-        else:
+        for g, vc, imp, hs, h in zip_longest(genes, vcls, imps, hots, hgvs, fillvalue=None):
+            g = _clean_str(g)
+            if not g:
+                continue
+
+            vc  = _clean_str(vc)
+            imp = _clean_str(imp)
+            hs  = yn_norm(hs)
+
+            if genes_used and g not in genes_used:
+                continue
+            if variant_classes and vc not in set(variant_classes):
+                continue
+            if impacts and imp not in set(impacts):
+                continue
+            if hotspot != "__all__" and hs != hotspot:
+                continue
+
+            gset.add(g)
+            # count mutations using HGVS if present; otherwise count 1 per mutation-row
+            mut_count += 1
+
+        # fallback if hgvs absent but genes exist
+        if mut_count == 0 and gset:
             mut_count = len(gset)
 
-        age_years = age_days_to_years(rec.age_at_diagnosis)
-        gender = normalize_gender(rec.gender)
-        race = normalize_race(rec.race)
-        ethnicity = normalize_ethnicity(rec.ethnicity)
+        # age in years
+        age_years = None
+        if rec.age_at_diagnosis is not None:
+            try:
+                age_years = float(rec.age_at_diagnosis)  # already years
+            except Exception:
+                age_years = None
 
         samples.append({
             "genes": gset,
             "mut_count": mut_count,
             "age_years": age_years,
-            "gender": gender,
-            "race": race,
-            "ethnicity": ethnicity,
+            "gender": normalize_gender(rec.gender),
+            "race": normalize_race(rec.race),
+            "ethnicity": normalize_ethnicity(rec.ethnicity),
         })
-        gene_counter.update(gset)
-
 
     n_samples = len(samples)
     if n_samples == 0:
         return JsonResponse({
-            "meta": {
-                "cancer": cancer_name,
-                "n_samples": 0,
-            },
-            "available_genes": [],
-            "genes_used": [],
+            "meta": {"cancer": cancer_name, "n_samples": 0},
+            "available_genes": available_genes,
+            "genes_used": genes_used,
+            "available_variant_classes": available_variant_classes,
+            "variant_classes_used": variant_classes,
+            "available_impacts": available_impacts,
+            "impacts_used": impacts,
+            "hotspot_used": hotspot,
             "age_vs_mut": {"age": [], "mut_count": []},
             "gender_burden": {"genders": [], "counts": []},
             "gene_by_race": {},
@@ -969,36 +1071,8 @@ def molecular_demographics_json(request, cancer_name):
             "gene_by_agebin": {},
         })
 
-    # ---- gene selection ----
-    available_genes = [g for g, _ in gene_counter.most_common(50)]
-
-    genes_param = request.GET.get("genes", "").strip()
-    if genes_param:
-        selected = [g.strip() for g in genes_param.split(",") if g.strip()]
-        selected = selected[:20]
-        genes_used = [g for g in selected if g in gene_counter]
-        if not genes_used:
-            genes_used = [g for g, _ in gene_counter.most_common(10)]
-    else:
-        top_n = int(request.GET.get("top", 10))
-        top_n = max(2, min(top_n, 20))
-        genes_used = [g for g, _ in gene_counter.most_common(top_n)]
-
-    # ---- variant class selection ----
-    variant_classes_param = (request.GET.get("variant_classes") or "").strip()
-    variant_classes = [v.strip() for v in variant_classes_param.split(",") if v.strip()]
-
-    vc_counter = Counter()
-    for rec in qs:
-        for vc in parse_listish(rec.Variant_Classification):
-            vc = _clean_str(vc)
-            if vc:
-                vc_counter[vc] += 1
-    available_variant_classes = [vc for vc, _ in vc_counter.most_common(20)]
-
     # ---- age vs mutation count ----
-    age_vals = []
-    mut_vals = []
+    age_vals, mut_vals = [], []
     for s in samples:
         if s["age_years"] is not None:
             age_vals.append(s["age_years"])
@@ -1007,130 +1081,88 @@ def molecular_demographics_json(request, cancer_name):
     # ---- mutation burden by gender ----
     gender_map = {}
     for s in samples:
-        g = s["gender"]
+        g = s["gender"] or "Unknown"
         gender_map.setdefault(g, []).append(s["mut_count"])
 
-    gender_labels = []
-    gender_counts = []
-    for g, vals in gender_map.items():
-        gender_labels.append(g)
-        gender_counts.append(vals)  # list of mut counts for boxplot
+    gender_labels = list(gender_map.keys())
+    gender_counts = [gender_map[g] for g in gender_labels]
 
-    # ---- group helpers for gene prevalence ----
+    # ---- gene prevalence matrices (ALL filters apply via compute_gene_group_matrix) ----
 
-    def age_bin(age):
-        if age is None:
+    def age_bin_years(rec):
+        a = rec.age_at_diagnosis 
+        if a is None:
             return "Unknown"
-        if age < 50:
-            return "< 50"
-        if age < 65:
-            return "50–64"
-        if age < 80:
-            return "65–79"
-        return "≥ 80"
-
-    # group counters: group -> count, gene_group_counts: gene -> group -> count
-    def build_gene_group_matrix(group_key_func, group_order=None):
-        group_counter = Counter()
-        gene_group_counts = {g: Counter() for g in genes_used}
-
-        for s in samples:
-            grp = group_key_func(s)
-            group_counter[grp] += 1
-            gset = s["genes"]
-            for g in genes_used:
-                if g in gset:
-                    gene_group_counts[g][grp] += 1
-
-        # group labels in nice order
-        if group_order:
-            labels = [g for g in group_order if g in group_counter]
-            # add any extra leftover
-            for g in group_counter:
-                if g not in labels:
-                    labels.append(g)
-        else:
-            labels = list(group_counter.keys())
-
-        # build matrix: rows = genes_used, cols = labels
-        matrix = []
-        for g in genes_used:
-            row = []
-            for grp in labels:
-                denom = group_counter[grp]
-                if denom > 0:
-                    freq = gene_group_counts[g][grp] / denom
-                    row.append(round(freq, 3))
-                else:
-                    row.append(None)
-            matrix.append(row)
-
-        return {
-            "genes": genes_used,
-            "groups": labels,
-            "matrix": matrix
-        }
+        try:
+            years = float(a)
+        except Exception:
+            return "Unknown"
+        if years < 0:
+            return "Unknown"
+        b = int(years // 10) * 10
+        return f"{b}-{b+9}"
 
     gene_by_race = compute_gene_group_matrix(
         qs, genes_used,
-        group_getter=lambda r: _clean_str(r.race) or "Unknown",
-        variant_classes=variant_classes
+        group_getter=lambda r: normalize_race(r.race) or "Unknown",
+        variant_classes=variant_classes,
+        impacts=impacts,
+        hotspot=hotspot
     )
 
     gene_by_ethnicity = compute_gene_group_matrix(
         qs, genes_used,
-        group_getter=lambda r: _clean_str(r.ethnicity) or "Unknown",
-        variant_classes=variant_classes
+        group_getter=lambda r: normalize_ethnicity(r.ethnicity) or "Unknown",
+        variant_classes=variant_classes,
+        impacts=impacts,
+        hotspot=hotspot
     )
 
     gene_by_gender = compute_gene_group_matrix(
         qs, genes_used,
         group_getter=lambda r: normalize_gender(r.gender) or "Unknown",
-        variant_classes=variant_classes
+        variant_classes=variant_classes,
+        impacts=impacts,
+        hotspot=hotspot
     )
-
-    # age bins (example: 0-39, 40-49, ... or 10-year bins)
-    def age_bin_years(rec):
-        a = rec.age_at_diagnosis  # stored as days in DB
-        if a is None:
-            return "Unknown"
-        try:
-            years = float(a) / 365.25
-        except Exception:
-            return "Unknown"
-
-        if years < 0:
-            return "Unknown"
-
-        b = int(years // 10) * 10
-        return f"{b}-{b+9}"
 
     gene_by_agebin = compute_gene_group_matrix(
         qs, genes_used,
         group_getter=age_bin_years,
-        variant_classes=variant_classes
+        variant_classes=variant_classes,
+        impacts=impacts,
+        hotspot=hotspot
     )
 
     payload = {
         "meta": {
             "cancer": cancer_name,
             "n_samples": n_samples,
+            "n_records_in_db": n_qs,
+            "filters": {
+                "genes": genes_used,
+                "variant_classes": variant_classes,
+                "impacts": impacts,
+                "hotspot": hotspot,
+            }
         },
         "available_genes": available_genes,
         "genes_used": genes_used,
-        "age_vs_mut": {
-            "age": age_vals,
-            "mut_count": mut_vals,
-        },
-        "gender_burden": {
-            "genders": gender_labels,
-            "counts": gender_counts,
-        },
+
+        "available_variant_classes": available_variant_classes,
+        "variant_classes_used": variant_classes,
+
+        "available_impacts": available_impacts,
+        "impacts_used": impacts,
+
+        "hotspot_used": hotspot,
+
+        "age_vs_mut": {"age": age_vals, "mut_count": mut_vals},
+        "gender_burden": {"genders": gender_labels, "counts": gender_counts},
+
         "gene_by_race": gene_by_race,
         "gene_by_ethnicity": gene_by_ethnicity,
         "gene_by_gender": gene_by_gender,
         "gene_by_agebin": gene_by_agebin,
-        "available_variant_classes": available_variant_classes,
-        "variant_classes_used": variant_classes,
     }
     return JsonResponse(payload)
