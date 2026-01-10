@@ -14,6 +14,7 @@ export class FilterManager {
         this.regressionPlot = regressionPlot;
         this.tableRenderer = tableRenderer;
         this.heatmapPlot = heatmapPlot;
+        this.isPCAActive = false; // Track if PCA is currently active
 
         this.initializeFilters();
         
@@ -69,13 +70,12 @@ export class FilterManager {
 
         if (this.runPcaBtn) {
             this.runPcaBtn.addEventListener('click', () => {
-                const factors = this.selectedFilters.factor;
-                if (!factors || factors.length < 2) {
-                    alert("Please select at least 2 factors to run PCA.");
-                    return;
-                }
-                if (this.heatmapPlot) {
-                    this.heatmapPlot.runPCA(this.selectedFilters);
+                if (this.isPCAActive) {
+                    // Remove PCA mode
+                    this.removePCA();
+                } else {
+                    // Run PCA mode
+                    this.runPCA();
                 }
             });
         }
@@ -314,5 +314,55 @@ export class FilterManager {
             this.selectedFilters.cancer_type = this.cancerSelect.value;
             this.selectedFilters.selectedCancerTypes = [this.cancerSelect.value];
         }
+    }
+
+    runPCA() {
+        const factors = this.selectedFilters.factor;
+        if (!factors || factors.length < 2) {
+            alert("Please select at least 2 factors to run PCA.");
+            return;
+        }
+        
+        // Set PCA as active
+        this.isPCAActive = true;
+        
+        // Lock factor filters
+        this.factorSelect.disabled = true;
+        this.factorSelect.style.opacity = '0.6';
+        this.factorSelect.style.cursor = 'not-allowed';
+        
+        // Update button text and styling
+        this.runPcaBtn.textContent = 'Remove PCs';
+        this.runPcaBtn.style.backgroundColor = '#f44336';
+        this.runPcaBtn.style.color = 'white';
+        
+        // Run PCA
+        if (this.heatmapPlot) {
+            this.heatmapPlot.runPCA(this.selectedFilters);
+        }
+        
+        console.log('[FilterManager] PCA activated - factor filters locked');
+    }
+
+    removePCA() {
+        // Set PCA as inactive
+        this.isPCAActive = false;
+        
+        // Unlock factor filters
+        this.factorSelect.disabled = false;
+        this.factorSelect.style.opacity = '1';
+        this.factorSelect.style.cursor = 'pointer';
+        
+        // Update button text and styling
+        this.runPcaBtn.textContent = 'Run PCA';
+        this.runPcaBtn.style.backgroundColor = '';
+        this.runPcaBtn.style.color = '';
+        
+        // Clear PCA visualization
+        if (this.heatmapPlot) {
+            this.heatmapPlot.clearPCA();
+        }
+        
+        console.log('[FilterManager] PCA deactivated - factor filters unlocked');
     }
 }
