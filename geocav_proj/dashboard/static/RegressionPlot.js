@@ -14,10 +14,16 @@ export class RegressionPlot {
         this.colorScale = d3.scaleOrdinal(d3.schemeCategory10);
     }
 
-    async renderPlot(selectedFilters) {
+    async renderPlot(selectedFilters, pcData = null) {
         /* Render regression plot based on selected filters */
         try {
-            const data = await this.dataManager.fetchRegressionData(selectedFilters); // Fetch data based on filters
+            let data = await this.dataManager.fetchRegressionData(selectedFilters); // Fetch data based on filters
+            
+            // If PCA is active, compute PC scores for each data point
+            if (pcData && pcData.isPCA) {
+                data = this.computePCForRegression(data, pcData);
+            }
+            
             d3.select('#regression-plot').selectAll('*').remove(); // Clear any existing plot
             const svg = d3.select('#regression-plot') // Create SVG container
                 .append("svg")
@@ -26,7 +32,10 @@ export class RegressionPlot {
                 .append("g")
                     .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
 
-            if (selectedFilters.factor.length > 1) {
+            if (pcData && pcData.isPCA) {
+                // For PCA, always render single regression with PC score
+                this.renderSingleRegression(svg, data, 'PC_score', selectedFilters, pcData);
+            } else if (selectedFilters.factor.length > 1) {
                 this.renderMultipleRegression(svg, data, selectedFilters.factor, selectedFilters);
             } else {
                 this.renderSingleRegression(svg, data, selectedFilters.factor[0], selectedFilters);
@@ -47,12 +56,85 @@ export class RegressionPlot {
         }
     }
 
-    renderSingleRegression(svg, data, factor, selectedFilters) {
+    computePCForRegression(data, pcData) {
+        const pcResults = pcData.pcResults;
+        const selectedPCs = pcData.selectedPCs;
+        const pcIndex = selectedPCs[0]; // Use first selected PC
+        const loadings = pcResults.loadings[pcIndex];
+        const factorNames = pcResults.factor_names;
+        const factorMeans = pcResults.factor_means || [];
+        const factorStds = pcResults.factor_stds || [];
+        
+        console.log('[RegressionPlot] Computing PC scores for regression data');
+        
+        // Calculate means and stds from the data if not provided
+        let computedMeans = factorMeans.length > 0 ? factorMeans : new Array(factorNames.length).fill(0);
+        let computedStds = factorStds.length > 0 ? factorStds : new Array(factorNames.length).fill(1);
+        
+        // If means/stds not provided, compute them from the data
+        if (computedMeans.length === 0 || computedMeans.every(m => m === 0)) {
+            console.log('[RegressionPlot] Computing means and stds from regression data...');
+            computedMeans = new Array(factorNames.length).fill(0);
+            computedStds = new Array(factorNames.length).fill(0);
+            const counts = new Array(factorNames.length).fill(0);
+            
+            // First pass: compute means
+            data.forEach((point) => {
+                factorNames.forEach((factorName, idx) => {
+                    const value = point[factorName];
+                    if (value !== undefined && value !== null && !isNaN(value)) {
+                        computedMeans[idx] += value;
+                        counts[idx]++;
+                    }
+                });
+            });
+            
+            computedMeans = computedMeans.map((sum, idx) => counts[idx] > 0 ? sum / counts[idx] : 0);
+            
+            // Second pass: compute stds
+            data.forEach((point) => {
+                factorNames.forEach((factorName, idx) => {
+                    const value = point[factorName];
+                    if (value !== undefined && value !== null && !isNaN(value)) {
+                        computedStds[idx] += Math.pow(value - computedMeans[idx], 2);
+                    }
+                });
+            });
+            
+            computedStds = computedStds.map((sum, idx) => counts[idx] > 0 ? Math.sqrt(sum / counts[idx]) : 1);
+        }
+        
+        // Compute PC score for each data point
+        data.forEach((point) => {
+            let pcScore = 0;
+            
+            factorNames.forEach((factorName, idx) => {
+                const factorValue = point[factorName];
+                const loading = loadings[idx];
+                
+                if (factorValue !== undefined && factorValue !== null && !isNaN(factorValue)) {
+                    let standardizedValue = factorValue;
+                    if (computedStds[idx] && computedStds[idx] !== 0) {
+                        const mean = computedMeans[idx] || 0;
+                        standardizedValue = (factorValue - mean) / computedStds[idx];
+                    }
+                    
+                    pcScore += standardizedValue * loading;
+                }
+            });
+            
+            point['PC_score'] = pcScore;
+        });
+        
+        return data;
+    }
+
+    renderSingleRegression(svg, data, factor, selectedFilters, pcData = null) {
         /* Render single factor regression plot */
         console.log('[Regression Plot] Rendering single regression for factor:', factor);
 
         // Calculate actual data domains
-        const xExtent = d3.extent(data, d => +d["factor_value"]);
+        const xExtent = d3.extent(data, d => +d[factor]);
         const yExtent = d3.extent(data, d => +d["cancer_rate"]);
         
         const x = d3.scaleLinear()
@@ -63,7 +145,7 @@ export class RegressionPlot {
             .domain(yExtent)
             .range([this.height, 0]);
 
-        const regressionLine = calculateLinearRegression(data, "factor_value", "cancer_rate");
+        const regressionLine = calculateLinearRegression(data, factor, "cancer_rate");
         
         // Prepare labels
         let cancerLabel = selectedFilters.cancer_type + " Cancer Rate Per 100,000";
@@ -74,8 +156,16 @@ export class RegressionPlot {
             cancerLabel += ` (${selectedFilters.race})`;
         }
         
-        const factorUnit = FACTORS_UNITS[factor] || '';
-        const factorLabel = factor.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') + (factorUnit ? ` (${factorUnit})` : '');
+        let factorLabel;
+        if (pcData && pcData.isPCA) {
+            const pcIndex = pcData.selectedPCs[0];
+            const explainedVariance = pcData.pcResults.explained_variance_ratio[pcIndex];
+            const variancePercent = explainedVariance ? (explainedVariance * 100).toFixed(1) : '';
+            factorLabel = `PC${pcIndex + 1}${variancePercent ? ` (${variancePercent}% variance explained)` : ''}`;
+        } else {
+            const factorUnit = FACTORS_UNITS[factor] || '';
+            factorLabel = factor.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') + (factorUnit ? ` (${factorUnit})` : '');
+        }
 
         const line = d3.line()
             .x(d => x(d.x))
@@ -93,11 +183,17 @@ export class RegressionPlot {
         addRegressionLabels(svg, factorLabel, cancerLabel, this.width, this.height, this.margin);
 
         // Add title
-        const factorName = factor.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-        addRegressionTitle(svg, `${selectedFilters.cancer_type} vs ${factorName} (${selectedFilters.level.charAt(0).toUpperCase() + selectedFilters.level.slice(1)})`, this.width);
+        let titleFactorName;
+        if (pcData && pcData.isPCA) {
+            const pcIndex = pcData.selectedPCs[0];
+            titleFactorName = `PC${pcIndex + 1}`;
+        } else {
+            titleFactorName = factor.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        }
+        addRegressionTitle(svg, `${selectedFilters.cancer_type} vs ${titleFactorName} (${selectedFilters.level.charAt(0).toUpperCase() + selectedFilters.level.slice(1)})`, this.width);
 
         // Add data points
-        addDataPoints(svg, data, x, y, "factor_value", "cancer_rate", this.colorScale);
+        addDataPoints(svg, data, x, y, factor, "cancer_rate", this.colorScale);
 
         // Add R-squared label
         addRSquaredLabel(svg, regressionLine.rSquared);

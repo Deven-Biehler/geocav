@@ -38,6 +38,8 @@ export class FilterManager {
         this.runPcaBtn = document.getElementById('run-pca-btn');
         this.visualizeBtn = document.getElementById('visualize-btn');
         this.analysisModeToggle = document.getElementById('analysis-mode-toggle');
+        this.pcSelect = document.getElementById('pc-select');
+        this.pcSelectionGroup = document.getElementById('pc-selection-group');
 
 
         // Set default selections
@@ -115,6 +117,15 @@ export class FilterManager {
                 this.filterChanged();
             });
         });
+
+        // PC select listener
+        if (this.pcSelect) {
+            this.pcSelect.addEventListener('change', (e) => {
+                const selectedPCs = Array.from(this.pcSelect.selectedOptions).map(opt => parseInt(opt.value));
+                this.heatmapPlot.setSelectedPCs(selectedPCs);
+                console.log('[FilterManager] Selected PCs:', selectedPCs);
+            });
+        }
     }
 
     filterChanged() {
@@ -128,15 +139,33 @@ export class FilterManager {
 
     updateVisualization() {
         console.log('[FilterManager] Visualize button clicked. Updating plots with:', this.selectedFilters);
-        // Then update the map and regression plot based on new filters / new selections
-        this.mapRenderer.renderMap(this.selectedFilters);
-        this.regressionPlot.renderPlot(this.selectedFilters);
-        this.tableRenderer.renderTable(this.selectedFilters);
+        
+        // If PCA is active, visualize selected PCs instead of regular factors
+        if (this.isPCAActive) {
+            const selectedPCs = this.heatmapPlot ? this.heatmapPlot.getSelectedPCs() : [];
+            if (selectedPCs.length === 0) {
+                alert("Please select at least one Principal Component to visualize.");
+                return;
+            }
+            console.log('[FilterManager] Visualizing selected PCs:', selectedPCs);
+            // Pass PC data to map renderer and regression plot
+            const pcData = {
+                isPCA: true,
+                selectedPCs: selectedPCs,
+                pcResults: this.heatmapPlot.pcResults,
+                originalFilters: this.selectedFilters
+            };
+            this.mapRenderer.renderMap(this.selectedFilters, pcData);
+            this.regressionPlot.renderPlot(this.selectedFilters, pcData);
+            this.tableRenderer.renderTable(this.selectedFilters);
+        } else {
+            // Normal visualization with regular factors
+            this.mapRenderer.renderMap(this.selectedFilters);
+            this.regressionPlot.renderPlot(this.selectedFilters);
+            this.tableRenderer.renderTable(this.selectedFilters);
 
-        // Update PCA placeholder or clear data if filters change?
-        if(this.heatmapPlot) {
-             // Optional: reset or notify user to re-run PCA
-             this.heatmapPlot.renderPlot(this.selectedFilters);
+            // Update PCA placeholder or clear data if filters change?
+            this.heatmapPlot.renderPlot(this.selectedFilters);
         }
     }
 
@@ -316,7 +345,7 @@ export class FilterManager {
         }
     }
 
-    runPCA() {
+    async runPCA() {
         const factors = this.selectedFilters.factor;
         if (!factors || factors.length < 2) {
             alert("Please select at least 2 factors to run PCA.");
@@ -336,9 +365,16 @@ export class FilterManager {
         this.runPcaBtn.style.backgroundColor = '#f44336';
         this.runPcaBtn.style.color = 'white';
         
-        // Run PCA
+        // Show PC selection box
+        if (this.pcSelectionGroup) {
+            this.pcSelectionGroup.style.display = 'block';
+        }
+        
+        // Run PCA and wait for it to complete
         if (this.heatmapPlot) {
-            this.heatmapPlot.runPCA(this.selectedFilters);
+            await this.heatmapPlot.runPCA(this.selectedFilters);
+            // Populate PC select after PCA runs
+            this.populatePCSelect();
         }
         
         console.log('[FilterManager] PCA activated - factor filters locked');
@@ -358,11 +394,41 @@ export class FilterManager {
         this.runPcaBtn.style.backgroundColor = '';
         this.runPcaBtn.style.color = '';
         
+        // Hide PC selection box
+        if (this.pcSelectionGroup) {
+            this.pcSelectionGroup.style.display = 'none';
+        }
+        
+        // Clear PC select
+        if (this.pcSelect) {
+            this.pcSelect.innerHTML = '';
+        }
+        
         // Clear PCA visualization
         if (this.heatmapPlot) {
             this.heatmapPlot.clearPCA();
         }
         
         console.log('[FilterManager] PCA deactivated - factor filters unlocked');
+    }
+
+    populatePCSelect() {
+        const pcResults = this.heatmapPlot.pcResults;
+        const n_components = pcResults.loadings.length;
+        const explainedVariance = pcResults.explained_variance_ratio || [];
+
+        // Clear existing options
+        this.pcSelect.innerHTML = '';
+
+        // Add options for each PC
+        for (let i = 0; i < n_components; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            const variance = explainedVariance[i] ? `(${(explainedVariance[i] * 100).toFixed(1)}%)` : '';
+            option.textContent = `PC${i + 1} ${variance}`;
+            this.pcSelect.appendChild(option);
+        }
+
+        console.log('[FilterManager] PC select populated with', n_components, 'components');
     }
 }

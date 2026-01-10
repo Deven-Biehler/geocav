@@ -28,8 +28,15 @@ export class MapRenderer {
 
 
     
-    async renderMap(selectedFilters) {
+    async renderMap(selectedFilters, pcData = null) {
         console.log('[MapRenderer] Rendering map with cancer type:', selectedFilters.cancer_type, 'and level:', selectedFilters.level);
+        
+        // Check if PCA visualization is requested
+        if (pcData && pcData.isPCA) {
+            console.log('[MapRenderer] Rendering PC visualization with PCs:', pcData.selectedPCs);
+            await this.renderPCVisualization(selectedFilters, pcData);
+            return;
+        }
 
         if (selectedFilters.mapType === 'choropleth') {
             this.map_type = new ChoroplethMap(selectedFilters);
@@ -82,5 +89,112 @@ export class MapRenderer {
         }
     }
 
+    async renderPCVisualization(selectedFilters, pcData) {
+        console.log('[MapRenderer] Creating PC visualization');
+        
+        const pcResults = pcData.pcResults;
+        const selectedPCs = pcData.selectedPCs;
+        
+        if (selectedPCs.length === 0) {
+            console.error('[MapRenderer] No PCs selected');
+            return;
+        }
+        
+        // Use the first selected PC for visualization
+        const pcIndex = selectedPCs[0];
+        
+        // Clear existing layers
+        const layers = this.getMapLayers();
+        this.clearMap(layers);
 
+        // Fetch all data needed for computation
+        await this.dataManager.fetchData(selectedFilters);
+        const statesLayer = await this.dataManager.fetchStatesLayer(selectedFilters);
+        
+        // Calculate PC scores for each region
+        this.computePCScores(statesLayer, pcResults, pcIndex, selectedFilters);
+        
+        // Create a modified filters object that indicates PC visualization
+        const pcFilters = {...selectedFilters, isPCVisualization: true, pcIndex: pcIndex};
+        
+        // Create choropleth map and render with PC scores
+        this.map_type = new ChoroplethMap(pcFilters);
+        this.map_type.renderMap(this.map, statesLayer);
+    }
+
+    computePCScores(statesLayer, pcResults, pcIndex, selectedFilters) {
+        const loadings = pcResults.loadings[pcIndex]; // Loadings for this PC
+        const factorNames = pcResults.factor_names;
+        const factorMeans = pcResults.factor_means || [];
+        const factorStds = pcResults.factor_stds || [];
+        
+        console.log('[MapRenderer] Computing PC scores for PC', pcIndex, 'with loadings:', loadings);
+        
+        // Calculate means and stds from the data if not provided
+        let computedMeans = factorMeans.length > 0 ? factorMeans : new Array(factorNames.length).fill(0);
+        let computedStds = factorStds.length > 0 ? factorStds : new Array(factorNames.length).fill(1);
+        
+        // If means/stds not provided, compute them from the data
+        if (computedMeans.length === 0 || computedMeans.every(m => m === 0)) {
+            console.log('[MapRenderer] Computing means and stds from data...');
+            computedMeans = new Array(factorNames.length).fill(0);
+            computedStds = new Array(factorNames.length).fill(0);
+            const counts = new Array(factorNames.length).fill(0);
+            
+            // First pass: compute means
+            statesLayer.features.forEach((feature) => {
+                factorNames.forEach((factorName, idx) => {
+                    const value = feature.properties[factorName];
+                    if (value !== undefined && value !== null && !isNaN(value)) {
+                        computedMeans[idx] += value;
+                        counts[idx]++;
+                    }
+                });
+            });
+            
+            computedMeans = computedMeans.map((sum, idx) => counts[idx] > 0 ? sum / counts[idx] : 0);
+            
+            // Second pass: compute stds
+            statesLayer.features.forEach((feature) => {
+                factorNames.forEach((factorName, idx) => {
+                    const value = feature.properties[factorName];
+                    if (value !== undefined && value !== null && !isNaN(value)) {
+                        computedStds[idx] += Math.pow(value - computedMeans[idx], 2);
+                    }
+                });
+            });
+            
+            computedStds = computedStds.map((sum, idx) => counts[idx] > 0 ? Math.sqrt(sum / counts[idx]) : 1);
+        }
+        
+        // For each region in the statesLayer, compute its PC score
+        statesLayer.features.forEach((feature, idx) => {
+            if (!feature.properties) feature.properties = {};
+            
+            let pcScore = 0;
+            let validFactorCount = 0;
+            
+            // Sum (standardized_factor_value * loading) for each factor
+            factorNames.forEach((factorName, factorIdx) => {
+                const factorValue = feature.properties[factorName];
+                const loading = loadings[factorIdx];
+                
+                if (factorValue !== undefined && factorValue !== null && !isNaN(factorValue)) {
+                    // Standardize the factor value
+                    let standardizedValue = factorValue;
+                    if (computedStds[factorIdx] && computedStds[factorIdx] !== 0) {
+                        const mean = computedMeans[factorIdx] || 0;
+                        standardizedValue = (factorValue - mean) / computedStds[factorIdx];
+                    }
+                    
+                    pcScore += standardizedValue * loading;
+                    validFactorCount++;
+                }
+            });
+            
+            // Store the PC score as the visualization value
+            feature.properties['pc_score'] = pcScore;
+            feature.properties['factor_value'] = pcScore; // Use this for compatibility with rendering
+        });
+    }
 }

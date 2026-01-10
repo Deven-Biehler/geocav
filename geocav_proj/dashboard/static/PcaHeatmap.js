@@ -5,6 +5,8 @@ export class HeatmapPlot {
     constructor(dataManager) {
         this.dataManager = dataManager;
         this.containerId = 'heatmap-container';
+        this.pcResults = null; // Store PCA results
+        this.selectedPCs = []; // Track selected PCs for visualization
         
         // Dimensions
         this.margin = {top: 40, right: 30, bottom: 80, left: 100};
@@ -18,6 +20,8 @@ export class HeatmapPlot {
 
         try {
             const data = await this.dataManager.fetchPCAData(filters);
+            this.pcResults = data; // Store results
+            this.selectedPCs = []; // Reset selected PCs
             this.render(data);
         } catch (error) {
             container.html(`<div style="color: red; padding: 20px;">Error running PCA: ${error.message}</div>`);
@@ -146,5 +150,21 @@ export class HeatmapPlot {
                 d3.select(this).style("stroke", "#eee");
                 tooltip.style("opacity", 0);
             });
+    }
+
+    clearPCA() {
+        const container = d3.select("#" + this.containerId);
+        container.selectAll("*").remove();
+        this.pcResults = null;
+        this.selectedPCs = [];
+        container.html('<div style="text-align: center; padding: 20px; color: #666; display: flex; flex-direction: column; justify-content: center; height: 100%;"><div>PCA Analysis</div><div style="font-size: 0.8em; margin-top: 10px;">Select 2+ factors and click "Run PCA"</div></div>');
+    }
+
+    getSelectedPCs() {
+        return this.selectedPCs;
+    }
+
+    setSelectedPCs(pcIndices) {
+        this.selectedPCs = pcIndices;
     }
 }
