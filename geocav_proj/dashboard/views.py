@@ -96,6 +96,7 @@ from scipy.sparse import csr_matrix  # Optional for sparse efficiency if many Na
 
 
 @require_http_methods(["GET"])
+@handle_errors
 def get_pca_view(request):
     """
     View to compute PCA on selected factors across geographic units.
@@ -104,25 +105,23 @@ def get_pca_view(request):
     - factor: list of factor names (e.g., ?factor=poverty&factor=obesity) (required, min 2)
     - cancer_type, gender, race, cancer_year: Optional for aligning cancer rates
     - factor_year: Year filter for factors
-    - n_components: Max PCs (default=3)
-    Returns: PCA scores, loadings, variance explained, factor names, geo data, optional cancer rates.
-    Usage: Plot PC1 vs PC2 scatter (size/color by cancer rate).
+    - n_components: Max PCs to compute (optional; default=Kaiser rule)
+    Returns: JSON with PCA results and optional cancer rates for coloring.
     """
     params = get_query_params(
         request, optional_params=['level', 'cancer_type', 'gender', 'race', 'cancer_year', 'factor_year', 'n_components']
     )
     level = params['level']
-    factor_names = request.GET.getlist('factor')
-    n_components = int(params.get('n_components', min(3, len(factor_names))))
+    factor_names = request.GET.getlist('factor') # multiple factors
+    n_components_val = params.get('n_components')
+    n_components = int(n_components_val) if n_components_val is not None else None # optional int
     
     if len(factor_names) < 2:
-        return handle_errors(request, "At least 2 factors required for PCA.", status=400)
+        return JsonResponse({'error': "At least 2 factors required for PCA."}, status=400)
     
-    valid_factors = [f for f in factor_names if f.lower() != 'none']
-    if not valid_factors:
-        return handle_errors(request, "No valid factors selected.", status=400)
+    valid_factors = [f for f in factor_names if f.lower() != 'none'] # filter out 'none'
     
-    # Fetch factor data (reuse your pipeline)
+    # Fetch factor data
     factors = Factor.objects.filter(name__in=valid_factors)
     factor_queryset = FactorMeasurement.objects.filter(factor__in=factors)
     factor_queryset = apply_geographic_filter(factor_queryset, level)
@@ -132,18 +131,18 @@ def get_pca_view(request):
     cancer_data = {}
     if params['cancer_type'] and params['cancer_type'].lower() != 'none':
         cancer_type = get_model_instance(CancerType, 'name', params['cancer_type'])
-        cancer_qs = CancerIncidence.objects.filter(cancer_type=cancer_type)
+        cancer_queryset = CancerIncidence.objects.filter(cancer_type=cancer_type)
         if params['gender'].lower() != 'all':
             gender = get_model_instance(Gender, 'name', params['gender'])
-            cancer_qs = cancer_qs.filter(gender=gender)
+            cancer_queryset = cancer_queryset.filter(gender=gender)
         if params['race'].lower() != 'all':
             race = get_model_instance(Race, 'name', params['race'])
-            cancer_qs = cancer_qs.filter(race=race)
-        cancer_qs = apply_geographic_filter(cancer_qs, level)
-        cancer_qs = apply_year_filter(cancer_qs, params['cancer_year'])
+            cancer_queryset = cancer_queryset.filter(race=race)
+        cancer_queryset = apply_geographic_filter(cancer_queryset, level)
+        cancer_queryset = apply_year_filter(cancer_queryset, params['cancer_year'])
         
         # Simple dict for lookup
-        for record in cancer_qs:
+        for record in cancer_queryset:
             if record.incidence_rate is not None:
                 key = generate_key(record, level)
                 cancer_data[key] = record.incidence_rate
@@ -162,33 +161,56 @@ def get_pca_view(request):
                 }
             factor_df_dict.setdefault(key, {})[record.factor.name] = record.factor_value
     
-    if len(factor_df_dict) < 2:  # Need min 2 units for PCA
-        return handle_errors(request, "Insufficient geographic units with factor data.", status=400)
-    
     # Build DataFrame: Drop units with any missing factor (complete cases only)
     factor_df = pd.DataFrame.from_dict(factor_df_dict, orient='index')
     factor_df = factor_df.dropna()  # Rows with NaN in any factor -> drop
     if factor_df.shape[0] < 2 or factor_df.shape[1] < 2:
-        return handle_errors(request, "Insufficient complete data after dropping NaNs.", status=400)
+        return JsonResponse({'error': "Insufficient complete data."}, status=400)
     
     # Standardize (zero mean, unit variance)
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(factor_df)
     
     # Fit PCA
-    pca = PCA(n_components=n_components)
-    pc_scores = pca.fit_transform(X_scaled)  # Shape: (n_samples, n_components)
+    # If n_components was not set by user, we fit all initially to apply Kaiser rule
+    pca_fit_components = n_components if n_components is not None else min(X_scaled.shape)
+    pca = PCA(n_components=pca_fit_components)
+    pc_scores_all = pca.fit_transform(X_scaled)  # Shape: (n_samples, n_components)
     
+    # Apply Kaiser Rule if n_components was not manually specified
+    if n_components is None:
+        # Keep components with eigenvalue (explained variance) > 1.0
+        # If no component > 1.0, keep at least the top one.
+        eigenvalues = pca.explained_variance_
+        k = 0
+        for ev in eigenvalues:
+            if ev > 1.0: # Kaiser criterion
+                k += 1
+        k = max(k, 1) # Fallback to 1 component if none qualify
+        
+        # Slice results
+        pc_scores = pc_scores_all[:, :k]
+        loadings = pca.components_[:k]
+        explained_variance_ratio = pca.explained_variance_ratio_[:k]
+        explained_variance = pca.explained_variance_[:k]
+        singular_values = pca.singular_values_[:k] if hasattr(pca, 'singular_values_') else None
+    else:
+        pc_scores = pc_scores_all
+        loadings = pca.components_
+        explained_variance_ratio = pca.explained_variance_ratio_
+        explained_variance = pca.explained_variance_
+        singular_values = pca.singular_values_ if hasattr(pca, 'singular_values_') else None
+
     # Results dict
     results = {
         'geo_keys': list(factor_df.index),  # e.g., ['state:WA', 'county:WA,001']
         'pc_scores': pc_scores.tolist(),     # [[PC1, PC2, ...], ...]
-        'loadings': pca.components_.tolist(), # [[factor1_load_PC1, factor2_load_PC1, ...], ...]
-        'explained_variance_ratio': pca.explained_variance_ratio_.tolist(),
-        'explained_variance': pca.explained_variance_.tolist(),
+        'loadings': loadings.tolist(), # [[factor1_load_PC1, factor2_load_PC1, ...], ...]
+        'explained_variance_ratio': explained_variance_ratio.tolist(),
+        'explained_variance': explained_variance.tolist(),
         'factor_names': list(factor_df.columns),
         'n_samples': factor_df.shape[0],
-        'singular_values': pca.singular_values_.tolist() if hasattr(pca, 'singular_values_') else None,
+        'singular_values': singular_values.tolist() if singular_values is not None else None,
         'metadata': {key: factor_metadata[key] for key in factor_df.index},
         'cancer_rates': {key: cancer_data.get(key, None) for key in factor_df.index},  # Optional for coloring
         'level': level

@@ -16,19 +16,34 @@ export class RegressionPlot {
 
     async renderPlot(selectedFilters) {
         /* Render regression plot based on selected filters */
-        const data = await this.dataManager.fetchRegressionData(selectedFilters); // Fetch data based on filters
-        d3.select('#regression-plot').selectAll('*').remove(); // Clear any existing plot
-        const svg = d3.select('#regression-plot') // Create SVG container
-            .append("svg")
-                .attr('width', this.width + this.margin.left + this.margin.right)
-                .attr('height', this.height + this.margin.top + this.margin.bottom)
-            .append("g")
-                .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
+        try {
+            const data = await this.dataManager.fetchRegressionData(selectedFilters); // Fetch data based on filters
+            d3.select('#regression-plot').selectAll('*').remove(); // Clear any existing plot
+            const svg = d3.select('#regression-plot') // Create SVG container
+                .append("svg")
+                    .attr('width', this.width + this.margin.left + this.margin.right)
+                    .attr('height', this.height + this.margin.top + this.margin.bottom)
+                .append("g")
+                    .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
 
-        if (selectedFilters.factor.length > 1) {
-            this.renderMultipleRegression(svg, data, selectedFilters.factor, selectedFilters);
-        } else {
-            this.renderSingleRegression(svg, data, selectedFilters.factor[0], selectedFilters);
+            if (selectedFilters.factor.length > 1) {
+                this.renderMultipleRegression(svg, data, selectedFilters.factor, selectedFilters);
+            } else {
+                this.renderSingleRegression(svg, data, selectedFilters.factor[0], selectedFilters);
+            }
+        } catch (error) {
+            console.error('[RegressionPlot] Error rendering plot:', error);
+            d3.select('#regression-plot').selectAll('*').remove();
+            d3.select('#regression-plot')
+                .append("div")
+                .style("color", "red")
+                .style("text-align", "center")
+                .style("padding", "20px")
+                .style("height", "100%")
+                .style("display", "flex")
+                .style("align-items", "center")
+                .style("justify-content", "center")
+                .html(`<strong>Error:</strong> ${error.message}`);
         }
     }
 
@@ -93,98 +108,88 @@ export class RegressionPlot {
     renderMultipleRegression(svg, data, factors, selectedFilters) {
         console.log('[Regression Plot] Rendering multiple regression for factors:', factors);
         
-        try {
-            // Prepare data for multiple regression
-            // Filter out data points with missing values
-            const validData = data.filter(d => {
-                if (d.cancer_rate == null) return false;
-                for (const f of factors) {
-                    if (d[f] == null) return false;
-                }
-                return true;
-            });
-
-            if (validData.length < factors.length + 1) {
-                throw new Error("Not enough data points for regression");
+        // Prepare data for multiple regression
+        // Filter out data points with missing values
+        const validData = data.filter(d => {
+            if (d.cancer_rate == null) return false;
+            for (const f of factors) {
+                if (d[f] == null) return false;
             }
+            return true;
+        });
 
-            // X matrix: [1, x1, x2, ...]
-            const X = validData.map(d => [1, ...factors.map(f => +d[f])]);
-            // Y vector: [y]
-            const Y = validData.map(d => +d.cancer_rate);
-
-            const { beta, predictedY, rSquared } = calculateMultipleLinearRegression(X, Y);
-
-            const n = validData.length;                    // number of observations
-            const p = factors.length;                      // number of predictors (excluding intercept)
-
-            let adjustedRSquared = rSquared;
-            if (p > 1) {  // Only adjust if more than 1 predictor
-                adjustedRSquared = 1 - (1 - rSquared) * (n - 1) / (n - p - 1);
-            }
-            
-            if (adjustedRSquared < 0) adjustedRSquared = 0; // negative adjusted R² means poor fit
-
-            // Plot Predicted vs Actual
-            const plotData = validData.map((d, i) => ({
-                actual: Y[i],
-                predicted: predictedY[i],
-                state: d.state,
-                county: d.county
-            }));
-
-            const xExtent = d3.extent(plotData, d => d.predicted);
-            const yExtent = d3.extent(plotData, d => d.actual);
-            
-            const x = d3.scaleLinear().domain(xExtent).range([0, this.width]);
-            const y = d3.scaleLinear().domain(yExtent).range([this.height, 0]);
-
-            addPredictionIdentityLine(svg, x, y, xExtent);
-            addRegressionAxes(svg, x, y, this.height);
-            addRegressionLabels(svg, "Predicted Cancer Rate", "Actual Cancer Rate", this.width, this.height, this.margin);
-            addRegressionTitle(svg, `Multiple Regression (${factors.length} factors)`, this.width);
-
-            addDataPoints(svg, plotData, x, y, "predicted", "actual", this.colorScale);
-            addRSquaredLabel(svg, adjustedRSquared);
-
-            // Tooltip for multiple regression
-            const tooltip = d3.select("body").append("div")
-                .attr("class", "tooltip")
-                .style("opacity", 0)
-                .style("position", "absolute")
-                .style("background-color", "white")
-                .style("border", "solid")
-                .style("border-width", "1px")
-                .style("border-radius", "5px")
-                .style("padding", "10px");
-                
-            svg.selectAll("circle")
-                .on("mouseover", (event, d) => {
-                    tooltip.transition()
-                        .duration(200)
-                        .style("opacity", .9);
-                    tooltip.html(`
-                        <strong>${d.county ? d.county + ', ' : ''}${d.state}</strong><br>
-                        Actual: ${d.actual.toFixed(2)}<br>
-                        Predicted: ${d.predicted.toFixed(2)}
-                    `)
-                        .style("left", (event.pageX + 10) + "px")
-                        .style("top", (event.pageY - 28) + "px");
-                })
-                .on("mouseout", () => {
-                    tooltip.transition()
-                        .duration(500)
-                        .style("opacity", 0);
-                });
-
-        } catch (error) {
-            console.error('Error rendering multiple regression plot:', error);
-            svg.append("text")
-                .attr("x", this.width / 2)
-                .attr("y", this.height / 2)
-                .style("text-anchor", "middle")
-                .text("Error calculating regression");
+        if (validData.length < factors.length + 1) {
+            throw new Error("Not enough data points for regression");
         }
+
+        // X matrix: [1, x1, x2, ...]
+        const X = validData.map(d => [1, ...factors.map(f => +d[f])]);
+        // Y vector: [y]
+        const Y = validData.map(d => +d.cancer_rate);
+
+        const { beta, predictedY, rSquared } = calculateMultipleLinearRegression(X, Y);
+
+        const n = validData.length;                    // number of observations
+        const p = factors.length;                      // number of predictors (excluding intercept)
+
+        let adjustedRSquared = rSquared;
+        if (p > 1) {  // Only adjust if more than 1 predictor
+            adjustedRSquared = 1 - (1 - rSquared) * (n - 1) / (n - p - 1);
+        }
+        
+        if (adjustedRSquared < 0) adjustedRSquared = 0; // negative adjusted R² means poor fit
+
+        // Plot Predicted vs Actual
+        const plotData = validData.map((d, i) => ({
+            actual: Y[i],
+            predicted: predictedY[i],
+            state: d.state,
+            county: d.county
+        }));
+
+        const xExtent = d3.extent(plotData, d => d.predicted);
+        const yExtent = d3.extent(plotData, d => d.actual);
+        
+        const x = d3.scaleLinear().domain(xExtent).range([0, this.width]);
+        const y = d3.scaleLinear().domain(yExtent).range([this.height, 0]);
+
+        addPredictionIdentityLine(svg, x, y, xExtent);
+        addRegressionAxes(svg, x, y, this.height);
+        addRegressionLabels(svg, "Predicted Cancer Rate", "Actual Cancer Rate", this.width, this.height, this.margin);
+        addRegressionTitle(svg, `Multiple Regression (${factors.length} factors)`, this.width);
+
+        addDataPoints(svg, plotData, x, y, "predicted", "actual", this.colorScale);
+        addRSquaredLabel(svg, adjustedRSquared);
+
+        // Tooltip for multiple regression
+        const tooltip = d3.select("body").append("div")
+            .attr("class", "tooltip")
+            .style("opacity", 0)
+            .style("position", "absolute")
+            .style("background-color", "white")
+            .style("border", "solid")
+            .style("border-width", "1px")
+            .style("border-radius", "5px")
+            .style("padding", "10px");
+            
+        svg.selectAll("circle")
+            .on("mouseover", (event, d) => {
+                tooltip.transition()
+                    .duration(200)
+                    .style("opacity", .9);
+                tooltip.html(`
+                    <strong>${d.county ? d.county + ', ' : ''}${d.state}</strong><br>
+                    Actual: ${d.actual.toFixed(2)}<br>
+                    Predicted: ${d.predicted.toFixed(2)}
+                `)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+            })
+            .on("mouseout", () => {
+                tooltip.transition()
+                    .duration(500)
+                    .style("opacity", 0);
+            });
     }
 
 

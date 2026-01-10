@@ -82,6 +82,34 @@ export class DataManager {
         return result;
     }
 
+    async fetchPCAData(filters) {
+        console.log('[DataManager] Fetching PCA data with filters:', filters);
+        const params = new URLSearchParams();
+        params.append('level', filters.level);
+        params.append('cancer_type', filters.cancer_type);
+        
+        // Handle multiple factors
+        if (Array.isArray(filters.factor)) {
+            filters.factor.forEach(f => params.append('factor', f));
+        } else {
+            params.append('factor', filters.factor);
+        }
+        
+        params.append('cancer_year', parseInt(filters.cancer_year));
+        params.append('factor_year', parseInt(filters.factor_year));
+        params.append('gender', filters.gender || 'all');
+        params.append('race', filters.race || 'all');
+        
+        const response = await fetch(`/get_pca?${params.toString()}`);
+        if (!response.ok) {
+             const err = await response.json();
+             throw new Error(err.error || 'Failed to fetch PCA data');
+        }
+        const result = await response.json();
+        console.log('[DataManager] PCA Data fetched:', result);
+        return result;
+    }
+
     addGeoJSONProperties(geojson, level, cancerData, factorData, filters) {
         // Preprocessing step to merge GeoJSON features with cancer and factor data based on level (state or county)
         console.log('[DataManager] Merging GeoJSON with cancer and factor data for level:', level);

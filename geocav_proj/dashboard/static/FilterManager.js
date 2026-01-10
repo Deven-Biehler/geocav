@@ -7,17 +7,21 @@ import {DEFAULT_LEAFLET_CONFIG, DEFAULT_FILTERS, COUNTY_FACTOR_FILTERS, STATE_FA
 import {PieMap} from './maps/PieMap.js';
 
 export class FilterManager {
-    constructor(mapRenderer, regressionPlot) {
+    constructor(mapRenderer, regressionPlot, tableRenderer, heatmapPlot) {
         console.log('[FilterManager] Initializing FilterManager');
         this.selectedFilters = DEFAULT_FILTERS;
         this.mapRenderer = mapRenderer;
         this.regressionPlot = regressionPlot;
+        this.tableRenderer = tableRenderer;
+        this.heatmapPlot = heatmapPlot;
 
         this.initializeFilters();
         
         // update all map elements based on initial filters
         this.mapRenderer.renderMap(this.selectedFilters);
         this.regressionPlot.renderPlot(this.selectedFilters);
+        this.tableRenderer.renderTable(this.selectedFilters);
+        if(this.heatmapPlot) this.heatmapPlot.renderPlot(this.selectedFilters);
     }
 
     initializeFilters() {
@@ -30,6 +34,10 @@ export class FilterManager {
         this.raceSelect = document.getElementById('race-select');
         this.cancerSlider = document.getElementById('cancer-year-selector');
         this.factorSlider = document.getElementById('factor-year-selector');
+        this.runPcaBtn = document.getElementById('run-pca-btn');
+        this.visualizeBtn = document.getElementById('visualize-btn');
+        this.analysisModeToggle = document.getElementById('analysis-mode-toggle');
+
 
         // Set default selections
         this.cancerSelect.value = this.selectedFilters.cancer_type;
@@ -53,6 +61,25 @@ export class FilterManager {
     }
 
     addEventListeners() {
+        if (this.visualizeBtn) {
+            this.visualizeBtn.addEventListener('click', () => {
+                this.updateVisualization();
+            });
+        }
+
+        if (this.runPcaBtn) {
+            this.runPcaBtn.addEventListener('click', () => {
+                const factors = this.selectedFilters.factor;
+                if (!factors || factors.length < 2) {
+                    alert("Please select at least 2 factors to run PCA.");
+                    return;
+                }
+                if (this.heatmapPlot) {
+                    this.heatmapPlot.runPCA(this.selectedFilters);
+                }
+            });
+        }
+
         const selectElements = [
             { element: 'map-select', key: 'mapType' },
             { element: this.cancerSelect, key: 'cancer_type' },
@@ -97,10 +124,20 @@ export class FilterManager {
         this.raceGenderToggle(); // Ensure race/gender toggling is respected
         this.updateCancerOptions();
         this.checkMultiSelect(); // Adjust cancer type select for pie map multi-select
+    }
 
+    updateVisualization() {
+        console.log('[FilterManager] Visualize button clicked. Updating plots with:', this.selectedFilters);
         // Then update the map and regression plot based on new filters / new selections
         this.mapRenderer.renderMap(this.selectedFilters);
         this.regressionPlot.renderPlot(this.selectedFilters);
+        this.tableRenderer.renderTable(this.selectedFilters);
+
+        // Update PCA placeholder or clear data if filters change?
+        if(this.heatmapPlot) {
+             // Optional: reset or notify user to re-run PCA
+             this.heatmapPlot.renderPlot(this.selectedFilters);
+        }
     }
 
     updateCancerOptions() {

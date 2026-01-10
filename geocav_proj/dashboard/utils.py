@@ -32,7 +32,8 @@ def get_query_params(request, required_params=None, optional_params=None):
     # Handle optional parameters
     if optional_params:
         for param in optional_params:
-            params[param] = request.GET.get(param, defaults.get(param))
+            if param not in params:  # Don't overwrite if already handled? Though this shouldn't happen with current logic
+                 params[param] = request.GET.get(param, defaults.get(param))
     
     return params
 

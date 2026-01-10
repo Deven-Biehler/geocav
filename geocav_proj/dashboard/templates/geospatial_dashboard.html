@@ -28,8 +28,9 @@
     <h1>Geospatial Dashboard</h1>
 </div>
     
-    <div class="center-div">
-        <div id="map"></div>
+    <div class="center-div" style="display: block; overflow-y: auto;">
+        <div class="map-wrapper" style="position: relative; height: 100%; width: 100%;">
+            <div id="map"></div>
         <div class="filter-box">
             <h3>Filters</h3>
             <div class="filter-content">
@@ -62,6 +63,10 @@
                         <option value="None">None</option>
                     </select>
                 </div>
+                <div id="analysis-mode-toggle" style="margin-bottom: 10px; text-align: center;">
+                    <button class="mode-btn active" data-mode="raw">Raw Factors</button>
+                    <button class="mode-btn" data-mode="pca">Principal Components</button>
+                </div>
                 <div class="filter-group">
                     <label for="factor-select">Factor:</label>
                     <select id="factor-select" name="factor" multiple>
@@ -76,6 +81,10 @@
                         <option value="No_Health_Insurance">No Health Insurance</option>
                         <option value="Smoking">Smoking</option>
                     </select>
+                </div>
+                <div class="filter-group" style="text-align: right;">
+                    <button id="visualize-btn" style="padding: 5px 10px; cursor: pointer; margin-right: 5px; background-color: #4CAF50; color: white; border: none; border-radius: 4px;">Visualize</button>
+                    <button id="run-pca-btn" style="padding: 5px 10px; cursor: pointer;">Run PCA</button>
                 </div>
                 <div class="filter-group">
                     <label for="gender-select">Gender:</label>
@@ -134,6 +143,12 @@
 
         </div>
     </div>
+    <div style="display: flex; gap: 20px; padding: 20px;">
+        <div id="table-container" class="container-fluid" style="background-color: white; padding: 20px; position: relative; z-index: 10; min-height: 400px; flex: 1;"></div>
+        <div id="heatmap-container" style="background-color: white; padding: 20px; min-height: 400px; width: 500px; display: flex; flex-direction: column; align-items: center;"></div>
+    </div>
+</div>
 
     <script type="module" src="{% static 'main.js' %}"></script>
 {% endblock %}
+    
