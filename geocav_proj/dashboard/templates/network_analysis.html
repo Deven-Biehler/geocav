@@ -46,6 +46,23 @@
          overflow:hidden;
        ">
   </div>
+
+  <div id="cy-tooltip"
+      style="
+        position:absolute;
+        display:none;
+        z-index:2000;
+        pointer-events:none;
+        background:rgba(20,20,20,0.92);
+        color:#fff;
+        padding:8px 10px;
+        border-radius:8px;
+        font-size:12px;
+        line-height:1.35;
+        max-width:320px;
+        box-shadow:0 8px 22px rgba(0,0,0,0.18);
+      ">
+  </div>
 </div>
 
 <!-- Cytoscape + fast layout plugin -->
@@ -144,12 +161,78 @@
       boxSelectionEnabled: true
     });
 
-    // 1) Instant layout so something appears right away
+    // ---- Hover tooltip ----
+    const tip = document.getElementById("cy-tooltip");
+    const nodeCache = new Map();  // node_id -> payload
+
+    function esc(s){
+      return String(s ?? "")
+        .replaceAll("&","&amp;").replaceAll("<","&lt;")
+        .replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+    }
+
+    function renderTipHTML(d){
+      const lines = [];
+      lines.push(`<div style="font-weight:700;margin-bottom:4px;">${esc(d.node_index)}</div>`);
+      const fields = [
+        ["Sample_ID", "Tumor_Sample_Barcode"],
+        ["Age", "age_at_initial_pathologic_diagnosis"],
+        ["Gender", "gender"],
+        ["Vital status", "vital_status"],
+        ["Race", "race_list"],
+        ["Ethnicity", "ethnicity"],
+        ["#Mutations", "n_events"],
+        ["#Genes", "n_genes"],
+        ["Mutations", "event_ids"],
+        ["Genes", "genes"]
+      ];
+      for (const [lab, key] of fields){
+        if (d[key] !== undefined && d[key] !== null && String(d[key]).trim() !== ""){
+          lines.push(`<div><span style="opacity:.75;">${esc(lab)}:</span> ${esc(d[key])}</div>`);
+        }
+      }
+      return lines.join("");
+    }
+
+    function positionTip(evt){
+      const p = evt.renderedPosition;
+      tip.style.left = `${p.x + 14}px`;
+      tip.style.top  = `${p.y + 14}px`;
+    }
+
+    async function fetchNodeMeta(cancerSlug, nodeId){
+      const url = `/dashboard/api/network/${encodeURIComponent(cancerSlug)}/node/${encodeURIComponent(nodeId)}.json`;
+      const resp = await fetch(url, { cache: "no-store" });
+      if (!resp.ok) throw new Error(await resp.text());
+      return await resp.json();
+    }
+
+    cy.on("mouseover", "node", async (evt) => {
+      const nodeId = evt.target.id();          // numeric index from GML
+      const slug = select.value;               // your selected cancer type slug
+
+      tip.style.display = "block";
+      tip.innerHTML = "<div style='opacity:.75;'>Loading…</div>";
+      positionTip(evt);
+
+      try {
+        const d = await fetchNodeMeta(slug, nodeId);
+        tip.innerHTML = renderTipHTML(d);
+      } catch(e) {
+        tip.innerHTML = "<div style='color:#ffb3b3;'>No metadata found</div>";
+      }
+    });
+
+    cy.on("mousemove", "node", (evt) => positionTip(evt));
+    cy.on("mouseout", "node", () => { tip.style.display = "none"; tip.innerHTML = ""; });
+
+
+    // Instant layout so something appears right away
     cy.layout({ name: 'concentric', animate: false, fit: true, padding: 30 }).run();
     forceRender();
     updateMeta(N, M, slug, "placed");
 
-    // 2) Fast "Kamada–Kawai-like" refine with fcose (DRAFT + HARD TIMEOUT)
+    // Fast "Kamada–Kawai-like" refine with fcose (DRAFT + HARD TIMEOUT)
     const haveFCoSE = !!cy.layouts && typeof cytoscape !== 'undefined' && cytoscape('core', 'fcose') !== undefined;
     if (haveFCoSE) {
       const fcoseOpts = {
@@ -173,7 +256,7 @@
       return;
     }
 
-    // 3) Fallback: short COSE pass with reduced iterations
+    // Fallback: short COSE pass with reduced iterations
     const coseController = cy.layout({
       name: 'cose',
       animate: false,

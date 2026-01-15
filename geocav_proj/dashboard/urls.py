@@ -56,4 +56,10 @@ urlpatterns = [
         views.molecular_demographics_json,
         name="molecular_demographics_json",
     ),
+    path(
+        "dashboard/api/network/<str:cancer>/node/<str:node_id>.json", 
+        views.network_node_meta, 
+        name="network_node_meta"
+    ),
+
 ]

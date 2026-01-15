@@ -12,7 +12,7 @@ from .utils import (
     get_query_params, get_model_instance, apply_geographic_filter,
     apply_year_filter, load_geojson, generate_key, handle_errors
 )
-from .models import CancerIncidence, CancerType, Factor, Gender, Race, FactorMeasurement, TotalRecordAgg
+from .models import CancerIncidence, CancerType, Factor, Gender, Race, FactorMeasurement, TotalRecordAgg, NetworkNodeMeta
 
 # Path to the app's static networks directory
 APP_DIR = Path(__file__).resolve().parent
@@ -297,12 +297,24 @@ def network_json_by_slug(request, cancer: str):
         )
 
     def label_for(node, attrs):
-        return str(attrs.get("label") or attrs.get("name") or attrs.get("id") or node)
+        """
+        The node label shown in Cytoscape (NOT hover content).
+        """
+        return str(
+            attrs.get("label")
+            or attrs.get("id")
+            or node
+        )
 
     elements = []
     for n, attrs in G.nodes(data=True):
         nid = str(n)
-        elements.append({"data": {"id": nid, "label": label_for(n, attrs)}})
+        elements.append({
+            "data": {
+                "id": nid,
+                "label": label_for(n, attrs),
+            }
+        })
 
     for u, v, attrs in G.edges(data=True):
         elements.append({
@@ -315,6 +327,58 @@ def network_json_by_slug(request, cancer: str):
         })
 
     return JsonResponse({"elements": elements, "meta": {"nodes": n_nodes, "edges": n_edges}})
+
+def network_node_meta(request, cancer: str, node_id: str):
+    try:
+        node_index = int(node_id)
+    except ValueError:
+        return JsonResponse({"error": "node_id must be an integer"}, status=400)
+
+    # Accept folder slug OR display name
+    key = (cancer or "").strip()
+
+    candidates = [
+        key,                   
+        key.title(),             
+        f"{key} Cancer",          
+        f"{key.title()} Cancer",   
+    ]
+
+    cancer_obj = None
+    for nm in candidates:
+        cancer_obj = CancerType.objects.filter(name__iexact=nm).first()
+        if cancer_obj:
+            break
+
+    if cancer_obj is None:
+        return JsonResponse(
+            {"error": f"Unknown cancer type: {key}. Tried: {candidates}"},
+            status=404
+        )
+
+    rec = NetworkNodeMeta.objects.filter(cancer=cancer_obj, node_index=node_index).first()
+    if not rec:
+        return JsonResponse({"error": f"No metadata for node {node_index} ({cancer})"}, status=404)
+
+    return JsonResponse({
+        "node_index": rec.node_index,
+        #"Tumor_Sample_Barcode": rec.Tumor_Sample_Barcode,
+
+        # list fields
+        "event_ids": rec.event_ids or [],
+        "genes": rec.genes or [],
+
+        # clinical
+        "age_at_initial_pathologic_diagnosis": rec.age_at_initial_pathologic_diagnosis,
+        "gender": rec.gender,
+        "vital_status": rec.vital_status,
+        "race_list": rec.race_list,
+        "ethnicity": rec.ethnicity,
+
+        # optional counts
+        "n_events": rec.n_events,
+        "n_genes": rec.n_genes,
+    })
 
 def _flatten_to_list(obj):
     """

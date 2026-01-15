@@ -141,3 +141,25 @@ class TotalRecordAgg(models.Model):
 
     def __str__(self):
         return f"{self.cancer.name} - {self.Tumor_Sample_Barcode}"
+
+class NetworkNodeMeta(models.Model):
+    cancer = models.ForeignKey(CancerType, on_delete=models.CASCADE)
+    node_index = models.IntegerField()  # 0..N-1 from GML
+
+    Tumor_Sample_Barcode = models.CharField(max_length=64, blank=True)
+
+    age_at_initial_pathologic_diagnosis = models.IntegerField(null=True, blank=True)
+    gender = models.CharField(max_length=32, blank=True)
+    vital_status = models.CharField(max_length=32, blank=True)
+    race_list = models.CharField(max_length=128, blank=True)
+    ethnicity = models.CharField(max_length=128, blank=True)
+
+    # optional useful ones
+    n_events = models.IntegerField(null=True, blank=True)
+    n_genes = models.IntegerField(null=True, blank=True)
+    # List fields stored as JSON 
+    event_ids = models.JSONField(default=list, blank=True)
+    genes = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        unique_together = (("cancer", "node_index"),)
