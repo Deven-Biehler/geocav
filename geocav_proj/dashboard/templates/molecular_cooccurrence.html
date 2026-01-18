@@ -41,8 +41,16 @@
       <label style="display:block;font-weight:600;margin-bottom:4px;">Select genes (max 20)</label>
       <select id="geneSelect" class="genes-box" multiple></select>
       <div style="font-size:12px;color:#6b7280;margin-top:4px;">
-        Showing top 50 genes for selection.<br>
+        Showing top 100 genes for selection.<br>
         Default = top 10 if none selected.
+      </div>
+    </div>
+
+    <div>
+      <label style="display:block;font-weight:600;margin-bottom:4px;">Impact (optional)</label>
+      <select id="impactSelect" class="genes-box" multiple></select>
+      <div style="font-size:12px;color:#6b7280;margin-top:4px;">
+        Leave unselected = include all impacts.
       </div>
     </div>
 
@@ -65,6 +73,7 @@
 (function(){
   const cancerSelect = document.getElementById("cancerSelect");
   const geneSelect   = document.getElementById("geneSelect");
+  const impactSelect = document.getElementById("impactSelect");
   const computeBtn   = document.getElementById("computeBtn");
   const metaText     = document.getElementById("metaText");
   const modeRadios   = document.querySelectorAll("input[name='mode']");
@@ -75,21 +84,35 @@
     return Array.from(geneSelect.selectedOptions).map(o => o.value).slice(0, 20);
   }
 
+  function selectedImpacts(){
+    // no strict max needed, but keep consistent with other pages
+    return Array.from(impactSelect.selectedOptions).map(o => o.value).slice(0, 20);
+  }
+
   function currentMode(){
     return Array.from(modeRadios).find(r => r.checked)?.value || "raw";
   }
 
   async function fetchData(){
-    const cancer = cancerSelect.value;
-    const genes = selectedGenes();
+    const cancer  = cancerSelect.value;
+    const genes   = selectedGenes();
+    const impacts = selectedImpacts();
 
     let url = "{% url 'molecular_cooccurrence_json' cancer_name='__C__' %}"
-                .replace("__C__", cancer);
+                .replace("__C__", encodeURIComponent(cancer));
 
+    const params = [];
     if (genes.length > 0){
-      url += "?genes=" + encodeURIComponent(genes.join(","));
+      params.push("genes=" + encodeURIComponent(genes.join(",")));
     } else {
-      url += "?top=10";
+      params.push("top=10");
+    }
+    if (impacts.length > 0){
+      params.push("impacts=" + encodeURIComponent(impacts.join(",")));
+    }
+
+    if (params.length){
+      url += "?" + params.join("&");
     }
 
     metaText.textContent = "Loading…";
@@ -104,55 +127,89 @@
     }
 
     lastPayload = await resp.json();
-    metaText.textContent =
-      `Samples: ${lastPayload.n_samples} | Genes shown: ${lastPayload.genes.length}`;
 
-    // Populate picker only once per cancer load
-    populateGenePicker(lastPayload.available_genes, lastPayload.genes);
+    metaText.textContent =
+      `Samples: ${lastPayload.n_samples} | Genes shown: ${lastPayload.genes.length}` +
+      (lastPayload.impacts_used && lastPayload.impacts_used.length
+        ? ` | Impacts: ${lastPayload.impacts_used.join(", ")}`
+        : "");
+
+    // Populate pickers
+    populateGenePicker(lastPayload.available_genes || [], lastPayload.genes || []);
+    populateImpactPicker(lastPayload.available_impacts || [], lastPayload.impacts_used || []);
 
     renderHeatmap();
   }
 
   function populateGenePicker(available, preselect){
     geneSelect.innerHTML = "";
-    available.forEach(g => {
+    (available || []).forEach(g => {
       const opt = document.createElement("option");
       opt.value = g; opt.textContent = g;
-      if (preselect.includes(g)) opt.selected = true;
+      if ((preselect || []).includes(g)) opt.selected = true;
       geneSelect.appendChild(opt);
+    });
+  }
+
+  function populateImpactPicker(available, used){
+    impactSelect.innerHTML = "";
+    (available || []).forEach(im => {
+      const opt = document.createElement("option");
+      opt.value = im; opt.textContent = im;
+      if ((used || []).includes(im)) opt.selected = true;
+      impactSelect.appendChild(opt);
     });
   }
 
   function renderHeatmap(){
     if (!lastPayload) return;
 
-    const genes = lastPayload.genes;
+    const genes = lastPayload.genes || [];
     const mode  = currentMode();
 
-    let z, text, hover, colorscale, title;
+    let z = [];
+    let text = [];
+    let hover = "";
+    let colorscale = "Viridis";
+    let title = "";
 
     if (mode === "raw"){
-      z = lastPayload.raw_matrix;
-      text = lastPayload.raw_matrix;
-      colorscale = "Viridis";
+      // Raw co-occurrence (fraction of samples)
+      z = lastPayload.raw_matrix || [];
+      text = (z || []).map(row => (row || []).map(v => (v == null ? "" : Number(v).toFixed(2))));
       title = "Raw Co-occurrence Frequency (fraction of samples)";
       hover = "Genes %{y} & %{x}<br>Raw co-occurrence: %{z}<extra></extra>";
+      colorscale = "Viridis";
     } else {
-      z = lastPayload.fisher_p_matrix;      // color
-      text = lastPayload.fisher_or_matrix;  // text
-      colorscale = "RdBu";
-      title = "Fisher’s Exact Test: OR text, color = -log10(p)";
-      hover = "Genes %{y} & %{x}<br>Odds Ratio: %{text}<br>-log10(p): %{z}<extra></extra>";
+      // Option A: Fisher mode shows -log10(p) as BOTH color and text
+      const pMat = lastPayload.fisher_p_matrix || [];
+      z = pMat;
+
+      // Build text labels matching the color scale exactly
+      text = (pMat || []).map(row =>
+        (row || []).map(v => (v == null ? "" : Number(v).toFixed(2)))
+      );
+
+      title = "Fisher significance: -log10(p) (text & color)";
+      hover = "Genes %{y} & %{x}<br>-log10(p): %{z}<extra></extra>";
+
+      // Keep it simple/consistent: use same direction scale (higher = more significant)
+      colorscale = "Viridis";
     }
 
     const trace = {
-      z, x: genes, y: genes,
+      z,
+      x: genes,
+      y: genes,
       type: "heatmap",
       colorscale,
-      reversescale: mode === "fisher",
       showscale: true,
-      text, texttemplate: "%{text}",
+
+      // ✅ text matches z (scale)
+      text,
+      texttemplate: "%{text}",
       textfont: {size: 10, color: "white"},
+
       hovertemplate: hover
     };
 
@@ -166,20 +223,22 @@
     Plotly.newPlot("heatmap", [trace], layout, {responsive:true});
   }
 
+
   // --- Events ---
   computeBtn.addEventListener("click", fetchData);
 
-  // When cancer changes, refresh available genes but DO NOT compute until button click
+  // When cancer changes, refresh once (fills pickers + renders default)
   cancerSelect.addEventListener("change", async () => {
     lastPayload = null;
     geneSelect.innerHTML = "";
-    metaText.textContent = "Select genes, then click Compute Heatmap.";
-    await fetchData(); // this fetch fills available genes + default genes + draws once
+    impactSelect.innerHTML = "";
+    metaText.textContent = "Select filters, then click Compute Heatmap.";
+    await fetchData(); // keeps your current behavior: loads defaults and draws once
   });
 
   modeRadios.forEach(r => r.addEventListener("change", renderHeatmap));
 
-  // Initial load: fetch once to populate genes + draw default top10
+  // Initial load
   fetchData();
 
 })();

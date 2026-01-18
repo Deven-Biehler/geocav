@@ -1,12 +1,14 @@
 from django.shortcuts import render
 from django.http import JsonResponse, Http404
 from collections import Counter
+from itertools import zip_longest
 import numpy as np
 import os
 import ast
 from pathlib import Path
 import math
 import networkx as nx
+import igraph as ig
 from django.views.decorators.http import require_http_methods, require_GET
 from .utils import (
     get_query_params, get_model_instance, apply_geographic_filter,
@@ -268,6 +270,119 @@ def _read_graph_any(path: str):
         except Exception:
             return nx.read_gml(path, label=None)
 
+# network clustring
+def _to_similarity_weight(dist: float) -> float:
+    # dist is edit distance; convert to similarity
+    # small dist => high similarity
+    dist = max(float(dist), 0.0)
+    return 1.0 / (1.0 + dist)
+
+def nx_to_ig(G):
+    # undirected for community detection
+    if G.is_directed():
+        G = G.to_undirected()
+
+    # nodes are "0".."N-1"
+    node_ids = sorted([int(n) for n in G.nodes()])
+    idx = {nid: i for i, nid in enumerate(node_ids)}
+
+    edges = []
+    sims = []
+    for u, v, a in G.edges(data=True):
+        ui = idx[int(u)]
+        vi = idx[int(v)]
+
+        dist = a.get("weight", 1.0)
+        try: dist = float(dist)
+        except Exception: dist = 1.0
+
+        sim = 1.0 / (1.0 + max(dist, 0.0))   # distance->similarity
+        edges.append((ui, vi))
+        sims.append(sim)
+    
+    g = ig.Graph(n=len(node_ids), edges=edges, directed=False)
+    g.es["sim"] = sims
+
+    print(np.percentile(g.es["sim"], [1,5,10,25,50,75,90,95,99]))
+
+    # crucial: store the original node id for mapping back
+    g.vs["nx_id"] = [str(nid) for nid in node_ids]
+    return g
+
+def leiden_membership(g: ig.Graph, resolution: float = 1.0):
+    """
+    Version-safe Leiden wrapper:
+    - No seed kwarg (often unsupported).
+    - Tries both resolution_parameter and resolution.
+    """
+    weights = "sim" if "sim" in g.es.attributes() else None
+
+    try:
+        # Most common in newer python-igraph
+        cl = g.community_leiden(weights=weights, resolution_parameter=resolution)
+    except TypeError:
+        # Some builds used a different kw name
+        cl = g.community_leiden(weights=weights, resolution=resolution)
+
+    return cl.membership
+
+def louvain_membership(g: ig.Graph):
+    weights = "sim" if "sim" in g.es.attributes() else None
+    return g.community_multilevel(weights=weights).membership
+
+def cluster_aware_positions(g: ig.Graph, membership):
+    """
+    Returns dict: node_id(str) -> (x,y)
+    """
+    n_clusters = max(membership) + 1 if membership else 0
+
+    # Build cluster super-graph with summed weights between communities
+    super_w = {}
+    for e in g.es:
+        a = membership[e.source]
+        b = membership[e.target]
+        if a == b:
+            continue
+        key = (a, b) if a < b else (b, a)
+        super_w[key] = super_w.get(key, 0.0) + float(e["sim"])
+
+    super_g = ig.Graph(n=n_clusters, directed=False)
+    if super_w:
+        super_g.add_edges(list(super_w.keys()))
+        super_g.es["w"] = list(super_w.values())
+
+    # Layout cluster graph (no seed kwarg)
+    super_layout = super_g.layout_fruchterman_reingold(weights="w" if super_w else None)
+    centers = [(float(p[0]), float(p[1])) for p in super_layout]
+
+    # Group vertices by cluster
+    vids_by_c = [[] for _ in range(n_clusters)]
+    for vid, c in enumerate(membership):
+        vids_by_c[c].append(vid)
+
+    pos = {}
+    for c, vids in enumerate(vids_by_c):
+        cx, cy = centers[c] if c < len(centers) else (0.0, 0.0)
+
+        if len(vids) == 1:
+            v = vids[0]
+            pos[g.vs[v]["nx_id"]] = (cx, cy)
+            continue
+
+        sub = g.subgraph(vids)
+
+        # Internal cluster layout (no seed kwarg)
+        sub_layout = sub.layout_fruchterman_reingold(weights="sim")
+        sub_xy = [(float(p[0]), float(p[1])) for p in sub_layout]
+
+        spread = 2.0 + 0.35 * math.sqrt(len(vids))
+        for i_local, v in enumerate(vids):
+            x, y = sub_xy[i_local]
+            pos[g.vs[v]["nx_id"]] = (cx + spread * x, cy + spread * y)
+
+    return pos
+
+
 def network_json_by_slug(request, cancer: str):
     nets = _available_networks()
     entry = next((n for n in nets if n["slug"] == cancer.lower()), None)
@@ -282,6 +397,30 @@ def network_json_by_slug(request, cancer: str):
         G = _read_graph_any(gml_path)
     except Exception as e:
         return JsonResponse({"error": f"Failed to parse graph file: {e}"}, status=400)
+    if G.is_directed():
+        H = G.to_undirected()
+    else:
+        H = G
+    print("connected components:", nx.number_connected_components(H))
+    do_cluster = request.GET.get("cluster", "0") in ("1", "true", "yes")
+    method = request.GET.get("method", "leiden").lower()
+    resolution = float(request.GET.get("res", "5"))
+
+    cluster_by_id = {}
+    pos = {}
+
+    if do_cluster:
+        g = nx_to_ig(G) 
+        print("IG nodes:", g.vcount(), "IG edges:", g.ecount())
+        print("NX nodes:", G.number_of_nodes(), "NX edges:", G.number_of_edges())
+        if method == "louvain":
+            membership = louvain_membership(g)
+        else:
+            membership = leiden_membership(g, resolution=resolution)
+        print("membership unique clusters:", len(set(membership)))
+        pos = cluster_aware_positions(g, membership)
+        cluster_by_id = {g.vs[i]["nx_id"]: int(membership[i]) for i in range(len(g.vs))}
+
 
     n_nodes, n_edges = G.number_of_nodes(), G.number_of_edges()
     if n_nodes == 0:
@@ -309,12 +448,22 @@ def network_json_by_slug(request, cancer: str):
     elements = []
     for n, attrs in G.nodes(data=True):
         nid = str(n)
-        elements.append({
-            "data": {
-                "id": nid,
-                "label": label_for(n, attrs),
-            }
-        })
+        node_data = {
+            "id": nid,
+            "label": label_for(n, attrs),
+        }
+        node_el = {
+            "data": node_data
+        }
+        if do_cluster:
+            node_el["data"]["cluster"] = cluster_by_id.get(nid, -1)
+            xy = pos.get(nid)
+            if xy:
+                node_el["position"] = {
+                    "x": float(xy[0]),
+                    "y": float(xy[1]),
+                }
+        elements.append(node_el)
 
     for u, v, attrs in G.edges(data=True):
         elements.append({
@@ -325,6 +474,17 @@ def network_json_by_slug(request, cancer: str):
                 "weight": float(attrs.get("weight", 1.0)),
             }
         })
+
+    meta = {"nodes": G.number_of_nodes(), "edges": G.number_of_edges()}
+    if do_cluster:
+        meta.update({
+            "clustered": True,
+            "cluster_method": method,
+            "resolution": resolution,
+            "n_clusters": int(max(cluster_by_id.values()) + 1) if cluster_by_id else 0
+        })
+    else:
+        meta.update({"clustered": False})
 
     return JsonResponse({"elements": elements, "meta": {"nodes": n_nodes, "edges": n_edges}})
 
@@ -566,6 +726,16 @@ def molecular_landscape_json(request, cancer_name):
 
     qs = TotalRecordAgg.objects.filter(cancer=ct)
 
+    # -------------------------
+    # IMPACT filter (same approach as demographics)
+    # -------------------------
+    impacts_param = (request.GET.get("impacts") or "").strip()
+    impacts = [v.strip().upper() for v in impacts_param.split(",") if v.strip()]
+    iset = set(impacts)
+
+    # -------------------------
+    # group_by (unchanged)
+    # -------------------------
     group_by = (request.GET.get("group_by") or "none").strip().lower()
     allowed = {"none", "gender", "stage", "vital_status", "pharma_treatment", "radiation_treatment"}
     if group_by not in allowed:
@@ -601,45 +771,86 @@ def molecular_landscape_json(request, cancer_name):
             return yn_unknown(rec.treatments_radiation_treatment_or_therapy)
         return "All Samples"
 
+    # -------------------------
+    # Available impacts (unchanged idea; keep top 10)
+    # -------------------------
+    impact_counter = Counter()
     for rec in qs:
-        genes = clean_tokens(rec.Hugo_Symbol)
-        hgvs  = clean_tokens(rec.HGVSc)
-        vcls  = clean_tokens(rec.Variant_Classification)
+        for imp in parse_listish(getattr(rec, "IMPACT", None)):
+            imp = _clean_str(imp).upper()
+            if imp:
+                impact_counter[imp] += 1
+    available_impacts = [im for im, _ in impact_counter.most_common(10)]
 
+    # -------------------------
+    # Main aggregation loop (UPDATED to respect IMPACT filter)
+    # -------------------------
+    for rec in qs:
+        genes_all = clean_tokens(rec.Hugo_Symbol)
+        hgvs_all  = clean_tokens(rec.HGVSc)
+        vcls_all  = clean_tokens(rec.Variant_Classification)
+        imps_all  = [(_clean_str(x).upper()) for x in parse_listish(getattr(rec, "IMPACT", None)) if _clean_str(x)]
+
+        # If no impacts filter selected -> use all tokens as before
+        if not iset:
+            genes = genes_all
+            hgvs  = hgvs_all
+            vcls  = vcls_all
+        else:
+            # Apply IMPACT filter with best-effort alignment across mutation-level lists
+            genes_f, hgvs_f, vcls_f = [], [], []
+
+            # zip_longest ensures we don't crash if list lengths differ
+            for g, h, vc, imp in zip_longest(genes_all, hgvs_all, vcls_all, imps_all, fillvalue=None):
+                imp_u = (_clean_str(imp).upper() if imp is not None else "")
+
+                # If IMPACT list is missing or shorter, imp_u becomes "" and will be excluded (strict behavior)
+                if imp_u not in iset:
+                    continue
+
+                if g:
+                    genes_f.append(g)
+                if h:
+                    hgvs_f.append(h)
+                if vc:
+                    vcls_f.append(vc)
+
+            genes = genes_f
+            hgvs  = hgvs_f
+            vcls  = vcls_f
+
+        # Unique mutated genes per sample
         gset = set(genes)
-        # print('gset:', len(gset))
 
-        # total mutations per sample = number of HGVSc entries (mutation events)
-        # No fallback to gene count (that was making both plots look the same).
+        # Total mutations per sample = number of HGVSc entries (mutation events)
         mut_count = len(hgvs)
-        #print('mut_count:', mut_count)
 
-        # number of unique mutated genes per sample
+        # Number of unique mutated genes per sample
         gene_count = len(gset)
 
-        # counters for other plots
+        # Counters for other plots (respect filters)
         gene_counter.update(gset)
         variant_counter.update(vcls)
 
-        # grouped boxplot data
+        # Grouped boxplot data (respect filters)
         label = get_group_label(rec)
         grouped_mutations.setdefault(label, []).append(mut_count)
         grouped_genes.setdefault(label, []).append(gene_count)
 
-    # variant type distribution (descending)
+    # Variant type distribution (descending)
     if variant_counter:
         variant_labels, variant_counts = zip(*variant_counter.most_common())
     else:
         variant_labels, variant_counts = ([], [])
 
-    # top genes (descending)
+    # Top genes (descending)
     top_n = int(request.GET.get("top_genes", 10) or 10)
     top_n = max(1, min(top_n, 50))
     top = gene_counter.most_common(top_n)
     top_genes = [g for g, _ in top]
     top_gene_counts = [c for _, c in top]
 
-    # stable group order (optional: push Unknown last)
+    # Stable group order (push Unknown last)
     def group_sort_key(k):
         return (k == "Unknown", k)
 
@@ -651,7 +862,11 @@ def molecular_landscape_json(request, cancer_name):
             "n_samples": qs.count(),
             "group_by": group_by,
             "groups": groups_sorted,
+            "impacts_used": impacts,  # helpful for UI + debugging
         },
+        "available_impacts": available_impacts,
+        "impacts_used": impacts,
+
         "variant_distribution": {
             "labels": list(variant_labels),
             "counts": list(variant_counts),
@@ -667,6 +882,7 @@ def molecular_landscape_json(request, cancer_name):
         }
     }
     return JsonResponse(payload)
+
 
 
 
@@ -715,22 +931,64 @@ def molecular_cooccurrence_json(request, cancer_name):
     Query params:
       - genes=TP53,KRAS,...  (comma-separated, max 20)
       - top=10               (default top genes if genes not provided)
-    Returns BOTH raw + fisher matrices plus top-50 genes for picker.
+      - impacts=HIGH,MODERATE,... (optional; if provided, filters mutations to these impacts)
+
+    Returns BOTH raw + fisher matrices plus top-50 genes for picker,
+    plus available_impacts + impacts_used for UI.
     """
     try:
-        ct = CancerType.objects.get(name=cancer_name)
+        ct = CancerType.objects.get(name__iexact=cancer_name)
     except CancerType.DoesNotExist:
         raise Http404(f"Cancer '{cancer_name}' not found")
 
     qs = TotalRecordAgg.objects.filter(cancer=ct)
 
-    # Per-sample unique gene sets + frequency counter
+    # --- IMPACT filter parsing (consistent approach) ---
+    impacts_param = (request.GET.get("impacts") or "").strip()
+    impacts_used = [v.strip().upper() for v in impacts_param.split(",") if v.strip()]
+    iset = set(impacts_used)
+
+    # --- build available impacts for UI ---
+    impact_counter = Counter()
+    for rec in qs:
+        for imp in parse_listish(getattr(rec, "IMPACT", None)):
+            imp = _clean_str(imp).upper()
+            if imp:
+                impact_counter[imp] += 1
+    available_impacts = [im for im, _ in impact_counter.most_common(50)]
+
+    # Per-sample unique gene sets + frequency counter (AFTER applying IMPACT filter)
     sample_sets = []
     gene_counter = Counter()
 
     for rec in qs:
         genes = parse_listish(rec.Hugo_Symbol)
-        gset = set([g for g in genes if g])
+        imps  = parse_listish(getattr(rec, "IMPACT", None))
+
+        gset = set()
+
+        if iset:
+            # best-effort alignment: gene[i] corresponds to impact[i]
+            for g, imp in zip_longest(genes, imps, fillvalue=None):
+                g = _clean_str(g)
+                if not g:
+                    continue
+                imp = _clean_str(imp).upper()
+                if imp and imp in iset:
+                    gset.add(g)
+
+            # Fallback if we couldn't align lengths well:
+            # If there is at least one selected impact present, include all genes;
+            # otherwise keep empty.
+            if not gset:
+                if any((_clean_str(x).upper() in iset) for x in imps):
+                    gset = set(_clean_str(g) for g in genes if _clean_str(g))
+                else:
+                    gset = set()
+        else:
+            # No impact filter => include all genes for that sample
+            gset = set(_clean_str(g) for g in genes if _clean_str(g))
+
         sample_sets.append(gset)
         gene_counter.update(gset)
 
@@ -742,14 +1000,29 @@ def molecular_cooccurrence_json(request, cancer_name):
             "fisher_or_matrix": [],
             "fisher_p_matrix": [],
             "available_genes": [],
+            "available_impacts": available_impacts,
+            "impacts_used": impacts_used,
             "n_samples": 0,
         })
 
+    # If IMPACT filter removed everything, gene_counter might be empty
+    if not gene_counter:
+        return JsonResponse({
+            "genes": [],
+            "raw_matrix": [],
+            "fisher_or_matrix": [],
+            "fisher_p_matrix": [],
+            "available_genes": [],
+            "available_impacts": available_impacts,
+            "impacts_used": impacts_used,
+            "n_samples": n_samples,
+        })
+
     # Top 50 genes only for picker
-    available_genes = [g for g, _ in gene_counter.most_common(50)]
+    available_genes = [g for g, _ in gene_counter.most_common(100)]
 
     # Determine gene list for heatmap
-    genes_param = request.GET.get("genes", "").strip()
+    genes_param = (request.GET.get("genes") or "").strip()
     if genes_param:
         selected = [g.strip() for g in genes_param.split(",") if g.strip()]
         selected = selected[:20]
@@ -757,20 +1030,18 @@ def molecular_cooccurrence_json(request, cancer_name):
         if not genes:
             genes = [g for g, _ in gene_counter.most_common(10)]
     else:
-        top_n = int(request.GET.get("top", 10))
+        top_n = int(request.GET.get("top", 10) or 10)
         top_n = max(2, min(top_n, 20))
         genes = [g for g, _ in gene_counter.most_common(top_n)]
 
     n = len(genes)
 
     # Precompute mutation flags per gene (list of 0/1 across samples)
-    flags = {}
-    for g in genes:
-        flags[g] = [1 if g in s else 0 for s in sample_sets]
+    flags = {g: [1 if g in s else 0 for s in sample_sets] for g in genes}
 
-    raw = [[0.0]*n for _ in range(n)]
-    fisher_or = [[None]*n for _ in range(n)]
-    fisher_pneglog = [[None]*n for _ in range(n)]
+    raw = [[0.0] * n for _ in range(n)]
+    fisher_or = [[None] * n for _ in range(n)]
+    fisher_pneglog = [[None] * n for _ in range(n)]
 
     for i, gi in enumerate(genes):
         fi = flags[gi]
@@ -800,8 +1071,11 @@ def molecular_cooccurrence_json(request, cancer_name):
         "fisher_or_matrix": fisher_or,
         "fisher_p_matrix": fisher_pneglog,
         "available_genes": available_genes,
+        "available_impacts": available_impacts,
+        "impacts_used": impacts_used,
         "n_samples": n_samples,
     })
+
 
 # clinical associations
 def normalize_stage(raw):

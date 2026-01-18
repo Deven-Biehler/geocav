@@ -36,6 +36,18 @@
     <div id="netMeta" style="margin-top:8px; font-size:13px; color:#6c757d;"></div>
   </div>
 
+  <div style="display:flex; gap:8px; margin-top:10px;">
+    <button id="btnDefault"
+            style="flex:1; padding:8px; border:1px solid #ced4da; border-radius:6px; background:#fff;">
+      Default View
+    </button>
+
+    <button id="btnCluster"
+            style="flex:1; padding:8px; border:none; border-radius:6px; background:#0d6efd; color:#fff;">
+      Cluster Network
+    </button>
+  </div>
+
   <!-- Cytoscape canvas covers the entire viewport -->
   <div id="cy"
        style="
@@ -95,13 +107,21 @@
     requestAnimationFrame(() => { cy.resize(); cy.fit(); });
   }
 
-  async function loadNetwork(slug) {
+  async function loadNetwork(slug, clustered=false) {
     // Nuke old instance to avoid stale state
     if (cy) { try { cy.destroy(); } catch(e){} cy = null; }
     cyDiv.innerHTML = "";
     if (metaEl) metaEl.textContent = "Loading…";
 
-    const url = "{% url 'network_json_by_slug' cancer='__slug__' %}".replace('__slug__', slug) + `?t=${Date.now()}`;
+    const params = new URLSearchParams();
+    params.set("t", Date.now());
+    if (clustered) {
+      params.set("cluster", "1");
+      params.set("method", "leiden");  // or make dropdown later
+      params.set("res", "1.0");
+    }
+
+    const url = "{% url 'network_json_by_slug' cancer='__slug__' %}".replace('__slug__', slug) + "?" + params.toString();
     let resp;
     try { resp = await fetch(url, { cache: 'no-store' }); } catch (e) { showError("Request error: " + e); return; }
     if (!resp.ok) { showError(await resp.text()); return; }
@@ -133,14 +153,16 @@
             //'label': 'data(label)',
             'font-size': 11,
             'min-zoomed-font-size': 10,
-            'color': '#212529',
+            //'color': '#212529',
             'text-valign': 'center',
             'text-halign': 'center',
-            'background-color': '#0d6efd',
-            'border-width': 0.5,
-            'border-color': '#fff',
+            'background-color': clustered
+              ? (ele) => clusterColor(ele.data('cluster'))
+              : '#0d6efd',
             'width': 14,
-            'height': 14
+            'height': 14,
+            'border-width': 0.5,
+            'border-color': '#fff'
           }
         },
         { selector: 'edge',
@@ -200,6 +222,12 @@
       tip.style.top  = `${p.y + 14}px`;
     }
 
+    function clusterColor(c){
+      if (c === null || c === undefined || c < 0) return "#0d6efd";
+      const hue = (c * 47) % 360;
+      return `hsl(${hue}, 65%, 50%)`;
+    }
+
     async function fetchNodeMeta(cancerSlug, nodeId){
       const url = `/dashboard/api/network/${encodeURIComponent(cancerSlug)}/node/${encodeURIComponent(nodeId)}.json`;
       const resp = await fetch(url, { cache: "no-store" });
@@ -228,57 +256,76 @@
 
 
     // Instant layout so something appears right away
-    cy.layout({ name: 'concentric', animate: false, fit: true, padding: 30 }).run();
-    forceRender();
-    updateMeta(N, M, slug, "placed");
+    if (clustered) {
+      cy.layout({ name: 'preset', fit: true, padding: 30 }).run();
+      forceRender();
+      updateMeta(N, M, slug, "clustered");
+      return;
+    } else {
+      cy.layout({ name: 'concentric', animate: false, fit: true, padding: 30 }).run();
+      forceRender();
+      updateMeta(N, M, slug, "placed");
 
-    // Fast "Kamada–Kawai-like" refine with fcose (DRAFT + HARD TIMEOUT)
-    const haveFCoSE = !!cy.layouts && typeof cytoscape !== 'undefined' && cytoscape('core', 'fcose') !== undefined;
-    if (haveFCoSE) {
-      const fcoseOpts = {
-        name: 'fcose',
-        quality: 'draft',          // speed over precision
+      // Fast "Kamada–Kawai-like" refine with fcose (DRAFT + HARD TIMEOUT)
+      const haveFCoSE = !!cy.layouts && typeof cytoscape !== 'undefined' && cytoscape('core', 'fcose') !== undefined;
+      if (haveFCoSE) {
+        const fcoseOpts = {
+          name: 'fcose',
+          quality: 'draft',          // speed over precision
+          animate: false,
+          randomize: true,
+          nodeSeparation: 60,
+          idealEdgeLength: 80,
+          linkCrossingFactor: 20,
+          packComponents: true,
+          samplingType: true,        // fast sampling on large graphs
+          nodeRepulsion: 4500
+        };
+        updateMeta(N, M, slug, "refining (fast)");
+
+        const controller = cy.layout(fcoseOpts);
+        const timeout = setTimeout(() => { try { controller.stop(); } catch(e){} forceRender(); updateMeta(N, M, slug, "ready"); }, 2000);
+        controller.on('layoutstop', () => { clearTimeout(timeout); cy.fit(); forceRender(); updateMeta(N, M, slug, "ready"); });
+        controller.run();
+        return;
+      }
+
+      // Fallback: short COSE pass with reduced iterations
+      const coseController = cy.layout({
+        name: 'cose',
         animate: false,
         randomize: true,
-        nodeSeparation: 60,
+        nodeRepulsion: 400000,
         idealEdgeLength: 80,
-        linkCrossingFactor: 20,
-        packComponents: true,
-        samplingType: true,        // fast sampling on large graphs
-        nodeRepulsion: 4500
-      };
-      updateMeta(N, M, slug, "refining (fast)");
-
-      const controller = cy.layout(fcoseOpts);
-      const timeout = setTimeout(() => { try { controller.stop(); } catch(e){} forceRender(); updateMeta(N, M, slug, "ready"); }, 2000);
-      controller.on('layoutstop', () => { clearTimeout(timeout); cy.fit(); forceRender(); updateMeta(N, M, slug, "ready"); });
-      controller.run();
-      return;
+        gravity: 0.25,
+        numIter: 500,                // shorter run
+        initialTemp: 1000,
+        coolingFactor: 0.99,
+        minTemp: 1.0,
+        fit: true
+      });
+      const coseTimeout = setTimeout(() => { try { coseController.stop(); } catch(e){} forceRender(); updateMeta(N, M, slug, "ready"); }, 1500);
+      coseController.on('layoutstop', () => { clearTimeout(coseTimeout); cy.fit(); forceRender(); updateMeta(N, M, slug, "ready"); });
+      coseController.run();
     }
-
-    // Fallback: short COSE pass with reduced iterations
-    const coseController = cy.layout({
-      name: 'cose',
-      animate: false,
-      randomize: true,
-      nodeRepulsion: 400000,
-      idealEdgeLength: 80,
-      gravity: 0.25,
-      numIter: 500,                // shorter run
-      initialTemp: 1000,
-      coolingFactor: 0.99,
-      minTemp: 1.0,
-      fit: true
-    });
-    const coseTimeout = setTimeout(() => { try { coseController.stop(); } catch(e){} forceRender(); updateMeta(N, M, slug, "ready"); }, 1500);
-    coseController.on('layoutstop', () => { clearTimeout(coseTimeout); cy.fit(); forceRender(); updateMeta(N, M, slug, "ready"); });
-    coseController.run();
-
-    window.addEventListener('resize', forceRender);
   }
 
-  if (select && select.value) loadNetwork(select.value);
-  if (select) select.addEventListener('change', e => loadNetwork(e.target.value));
+  window.addEventListener('resize', forceRender);
+
+  if (select && select.value) loadNetwork(select.value, false);
+  if (select) select.addEventListener('change', e => loadNetwork(e.target.value, false));
+
+  const btnCluster = document.getElementById("btnCluster");
+  const btnDefault = document.getElementById("btnDefault");
+
+  if (btnCluster) btnCluster.addEventListener("click", () => {
+    if (select && select.value) loadNetwork(select.value, true);
+  });
+
+  if (btnDefault) btnDefault.addEventListener("click", () => {
+    if (select && select.value) loadNetwork(select.value, false);
+  });
+
 })();
 </script>
 
