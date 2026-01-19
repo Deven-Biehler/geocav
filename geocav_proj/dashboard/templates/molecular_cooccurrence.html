@@ -54,6 +54,8 @@
       </div>
     </div>
 
+    <button id="resetBtn" type="button">Reset filters</button>
+
     <div class="toggle-group">
       <label><input type="radio" name="mode" value="raw" checked> Raw co-occurrence</label>
       <label><input type="radio" name="mode" value="fisher"> Fisher OR (sig)</label>
@@ -75,70 +77,26 @@
   const geneSelect   = document.getElementById("geneSelect");
   const impactSelect = document.getElementById("impactSelect");
   const computeBtn   = document.getElementById("computeBtn");
+  const resetBtn     = document.getElementById("resetBtn");
   const metaText     = document.getElementById("metaText");
   const modeRadios   = document.querySelectorAll("input[name='mode']");
 
   let lastPayload = null;
+
+  // ✅ Track whether user manually changed gene selection.
+  // If false, we DO NOT send genes= and we let backend pick top=10 based on filters (impact, etc).
+  let genePickerTouched = false;
 
   function selectedGenes(){
     return Array.from(geneSelect.selectedOptions).map(o => o.value).slice(0, 20);
   }
 
   function selectedImpacts(){
-    // no strict max needed, but keep consistent with other pages
-    return Array.from(impactSelect.selectedOptions).map(o => o.value).slice(0, 20);
+    return Array.from(impactSelect.selectedOptions).map(o => o.value).slice(0, 50);
   }
 
   function currentMode(){
     return Array.from(modeRadios).find(r => r.checked)?.value || "raw";
-  }
-
-  async function fetchData(){
-    const cancer  = cancerSelect.value;
-    const genes   = selectedGenes();
-    const impacts = selectedImpacts();
-
-    let url = "{% url 'molecular_cooccurrence_json' cancer_name='__C__' %}"
-                .replace("__C__", encodeURIComponent(cancer));
-
-    const params = [];
-    if (genes.length > 0){
-      params.push("genes=" + encodeURIComponent(genes.join(",")));
-    } else {
-      params.push("top=10");
-    }
-    if (impacts.length > 0){
-      params.push("impacts=" + encodeURIComponent(impacts.join(",")));
-    }
-
-    if (params.length){
-      url += "?" + params.join("&");
-    }
-
-    metaText.textContent = "Loading…";
-
-    const resp = await fetch(url, {cache:"no-store"});
-    if (!resp.ok){
-      const errText = await resp.text();
-      metaText.textContent = "Failed to load.";
-      console.error(errText);
-      alert("Failed to load co-occurrence API:\n" + errText);
-      return;
-    }
-
-    lastPayload = await resp.json();
-
-    metaText.textContent =
-      `Samples: ${lastPayload.n_samples} | Genes shown: ${lastPayload.genes.length}` +
-      (lastPayload.impacts_used && lastPayload.impacts_used.length
-        ? ` | Impacts: ${lastPayload.impacts_used.join(", ")}`
-        : "");
-
-    // Populate pickers
-    populateGenePicker(lastPayload.available_genes || [], lastPayload.genes || []);
-    populateImpactPicker(lastPayload.available_impacts || [], lastPayload.impacts_used || []);
-
-    renderHeatmap();
   }
 
   function populateGenePicker(available, preselect){
@@ -161,56 +119,93 @@
     });
   }
 
+  async function fetchData({auto=false} = {}){
+    const cancer  = cancerSelect.value;
+    const impacts = selectedImpacts();
+    const genes   = selectedGenes();
+
+    let url = "{% url 'molecular_cooccurrence_json' cancer_name='__C__' %}"
+                .replace("__C__", encodeURIComponent(cancer));
+
+    const params = [];
+
+    // ✅ genes= only if user touched the picker
+    // Otherwise backend should compute "top=10" based on current filters (impact).
+    if (genePickerTouched && genes.length > 0){
+      params.push("genes=" + encodeURIComponent(genes.join(",")));
+    } else {
+      params.push("top=10");
+    }
+
+    if (impacts.length > 0){
+      params.push("impacts=" + encodeURIComponent(impacts.join(",")));
+    }
+
+    url += "?" + params.join("&");
+
+    metaText.textContent = "Loading…";
+
+    const resp = await fetch(url, {cache:"no-store"});
+    if (!resp.ok){
+      const errText = await resp.text();
+      metaText.textContent = "Failed to load.";
+      console.error(errText);
+      alert("Failed to load co-occurrence API:\n" + errText);
+      return;
+    }
+
+    lastPayload = await resp.json();
+
+    metaText.textContent =
+      `Samples: ${lastPayload.n_samples} | Genes shown: ${(lastPayload.genes || []).length}` +
+      ((lastPayload.impacts_used && lastPayload.impacts_used.length)
+        ? ` | Impact: ${lastPayload.impacts_used.join(",")}` : "");
+
+    // Always refresh pickers based on current filter context
+    populateGenePicker(lastPayload.available_genes || [], lastPayload.genes || []);
+    populateImpactPicker(lastPayload.available_impacts || [], lastPayload.impacts_used || []);
+
+    // If we were in "auto default" mode, keep genePickerTouched false
+    // (so next filter change still recomputes top genes automatically).
+    if (auto) genePickerTouched = false;
+
+    renderHeatmap();
+  }
+
+  // ✅ Option A: show same value as scale for Fisher mode (you asked for this earlier)
   function renderHeatmap(){
     if (!lastPayload) return;
 
     const genes = lastPayload.genes || [];
     const mode  = currentMode();
 
-    let z = [];
-    let text = [];
-    let hover = "";
-    let colorscale = "Viridis";
-    let title = "";
+    let z, text, hover, colorscale, title;
 
     if (mode === "raw"){
-      // Raw co-occurrence (fraction of samples)
       z = lastPayload.raw_matrix || [];
-      text = (z || []).map(row => (row || []).map(v => (v == null ? "" : Number(v).toFixed(2))));
+      text = z;
+      colorscale = "Viridis";
       title = "Raw Co-occurrence Frequency (fraction of samples)";
       hover = "Genes %{y} & %{x}<br>Raw co-occurrence: %{z}<extra></extra>";
-      colorscale = "Viridis";
     } else {
-      // Option A: Fisher mode shows -log10(p) as BOTH color and text
-      const pMat = lastPayload.fisher_p_matrix || [];
-      z = pMat;
-
-      // Build text labels matching the color scale exactly
-      text = (pMat || []).map(row =>
-        (row || []).map(v => (v == null ? "" : Number(v).toFixed(2)))
-      );
-
-      title = "Fisher significance: -log10(p) (text & color)";
-      hover = "Genes %{y} & %{x}<br>-log10(p): %{z}<extra></extra>";
-
-      // Keep it simple/consistent: use same direction scale (higher = more significant)
+      // Color = -log10(p) and show the same value as text
+      z = lastPayload.fisher_p_matrix || [];
+      text = z;
       colorscale = "Viridis";
+      title = "Fisher’s Exact Test: -log10(p) (higher = more significant)";
+      hover = "Genes %{y} & %{x}<br>-log10(p): %{z}<extra></extra>";
     }
 
     const trace = {
-      z,
-      x: genes,
-      y: genes,
+      z, x: genes, y: genes,
       type: "heatmap",
       colorscale,
       showscale: true,
-
-      // ✅ text matches z (scale)
       text,
       texttemplate: "%{text}",
-      textfont: {size: 10, color: "white"},
-
-      hovertemplate: hover
+      hovertemplate: hover,
+      // keep blanks for diagonal if backend gives nulls; that's OK
+      textfont: {size: 10}
     };
 
     const layout = {
@@ -223,23 +218,52 @@
     Plotly.newPlot("heatmap", [trace], layout, {responsive:true});
   }
 
+  // --------------------
+  // Events
+  // --------------------
 
-  // --- Events ---
-  computeBtn.addEventListener("click", fetchData);
+  // User manually touched gene selection => we respect it and send genes=
+  geneSelect.addEventListener("change", () => {
+    genePickerTouched = true;
+  });
 
-  // When cancer changes, refresh once (fills pickers + renders default)
+  // Impact change should recompute default top genes under that impact:
+  // set genePickerTouched=false and fetch default top10 (auto mode).
+  impactSelect.addEventListener("change", () => {
+    genePickerTouched = false;
+    metaText.textContent = "Impact changed — recomputing top genes (top 10) for this impact…";
+  });
+
+  computeBtn.addEventListener("click", () => fetchData({auto: !genePickerTouched}));
+
+  // On cancer change, reset to default top genes
   cancerSelect.addEventListener("change", async () => {
-    lastPayload = null;
-    geneSelect.innerHTML = "";
-    impactSelect.innerHTML = "";
-    metaText.textContent = "Select filters, then click Compute Heatmap.";
-    await fetchData(); // keeps your current behavior: loads defaults and draws once
+    genePickerTouched = false;
+    // Clear current UI selections (optional but makes behavior obvious)
+    metaText.textContent = "Loading default top genes…";
+    await fetchData({auto:true});
   });
 
   modeRadios.forEach(r => r.addEventListener("change", renderHeatmap));
 
-  // Initial load
-  fetchData();
+  // Reset filters button
+  resetBtn.addEventListener("click", async () => {
+    // reset radios
+    const rawRadio = Array.from(modeRadios).find(r => r.value === "raw");
+    if (rawRadio) rawRadio.checked = true;
+
+    // clear impacts
+    Array.from(impactSelect.options).forEach(o => o.selected = false);
+
+    // reset gene touched so backend computes top10
+    genePickerTouched = false;
+
+    metaText.textContent = "Filters reset — loading default top genes…";
+    await fetchData({auto:true});
+  });
+
+  // Initial load (default top10, no genes=)
+  fetchData({auto:true});
 
 })();
 </script>
