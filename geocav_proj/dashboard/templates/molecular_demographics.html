@@ -108,18 +108,6 @@
       </div>
     </div>
 
-    <div>
-      <label style="display:block;font-weight:600;margin-bottom:4px;">
-        Hotspot
-      </label>
-      <select id="hotspotSelect">
-        <option value="__all__">All</option>
-        <option value="Yes">Hotspot only</option>
-        <option value="No">Non-hotspot only</option>
-        <option value="Unknown">Unknown</option>
-      </select>
-    </div>
-
     <label style="margin-left:10px; display:flex; align-items:center; gap:6px;">
     <input type="checkbox" id="showOutliersToggle" checked>
     <strong>Show outliers</strong>
@@ -174,12 +162,12 @@
   const applyBtn        = document.getElementById("applyBtn");
   const metaText        = document.getElementById("metaText");
   const impactSelect    = document.getElementById("impactSelect");
-  const hotspotSelect   = document.getElementById("hotspotSelect");
   const resetBtn        = document.getElementById("resetBtn");
 
   let lastPayload = null;
 
   function selectedGenes(){
+    if (!userPickedGenes) return [];
     return Array.from(geneSelect.selectedOptions).map(o => o.value).slice(0, 20);
   }
 
@@ -227,7 +215,6 @@
     const genes = selectedGenes();
     const varClasses = selectedVarClasses();
     const impacts = Array.from(impactSelect.selectedOptions).map(o => o.value);
-    const hotspot = hotspotSelect.value || "__all__";
 
     let url = "{% url 'molecular_demographics_json' cancer_name='__C__' %}";
     url = url.replace("__C__", encodeURIComponent(cancer));
@@ -243,9 +230,6 @@
     }
     if (impacts.length){
       params.push("impacts=" + encodeURIComponent(impacts.join(",")));
-    }
-    if (hotspot && hotspot !== "__all__"){
-      params.push("hotspot=" + encodeURIComponent(hotspot));
     }
 
     if (params.length > 0){
@@ -272,7 +256,6 @@
     populateGenes(data.available_genes, data.genes_used);
     populateVariantClasses(data.available_variant_classes, data.variant_classes_used);
     populateImpacts(data.available_impacts, data.impacts_used);
-    hotspotSelect.value = data.hotspot_used || "__all__";
 
     window.lastAgeMutData = data.age_vs_mut;
     renderAgeMut(window.lastAgeMutData);
@@ -591,6 +574,36 @@
     Plotly.newPlot(divId, [trace], layout, {responsive:true});
   }
 
+  let userPickedGenes = false;
+  geneSelect.addEventListener("change", () => {
+    userPickedGenes = true;
+  });
+
+  function clearGeneSelection(){
+    Array.from(geneSelect.options).forEach(o => o.selected = false);
+  }
+
+  function clearMultiSelect(sel){
+    Array.from(sel.options).forEach(o => { o.selected = false; });
+  }
+
+  function resetGenesToAutoTop(){
+    userPickedGenes = false;
+    clearMultiSelect(geneSelect);
+  }
+
+  impactSelect.addEventListener("change", () => {
+    userPickedGenes = false;   // force backend top=10 for this impact
+    clearGeneSelection();
+    fetchDemographics();
+  });
+
+  varClassSelect.addEventListener("change", () => {
+    userPickedGenes = false;
+    clearGeneSelection();
+    fetchDemographics();
+  });
+
   applyBtn.addEventListener("click", fetchDemographics);
   cancerSelect.addEventListener("change", () => {
     metaText.textContent = "Adjust filters and click Apply.";
@@ -618,9 +631,6 @@
     clearMultiSelect(geneSelect);
     clearMultiSelect(varClassSelect);
     clearMultiSelect(impactSelect);
-
-    // Reset hotspot dropdown
-    if (hotspotSelect) hotspotSelect.value = "__all__";
 
     // (Optional) turn outliers back on
     const showOutliersToggle = document.getElementById("showOutliersToggle");
