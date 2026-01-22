@@ -1,42 +1,64 @@
-/* CSS Variables */
+/* ============================================================================
+   DESIGN SYSTEM & CSS VARIABLES
+   ============================================================================ */
+
 :root {
-    /* Filter Box */
-    --filter-box-height: 700px;
+    /* --- Colors --- */
+    --color-background-light: #f8f9fa;
+    --color-background-gray: #f0f0f0;
+    --color-background-white: #ffffff;
+    --color-background-dark: #343a40;
+    --color-border: #ddd;
+    --color-border-light: #ccc;
+    --color-text-dark: #333;
+    --color-text-muted: #555;
+    --color-shadow: rgba(0, 0, 0, 0.1);
+    --color-shadow-strong: rgba(0, 0, 0, 0.2);
+
+    /* --- Spacing & Sizing --- */
+    --spacing-xs: 5px;
+    --spacing-sm: 10px;
+    --spacing-md: 15px;
+    --spacing-lg: 20px;
+    --spacing-xl: 30px;
+
+    --border-radius: 4px;
+    --box-shadow: 0 2px 5px var(--color-shadow);
+    --box-shadow-strong: 0 2px 10px var(--color-shadow-strong);
+    --opacity-overlay: 0.9;
+    --opacity-tooltip: 0.95;
+
+    /* --- Layout Dimensions --- */
+    --sidebar-width: 250px;
+    --header-height: 80px;
+
+    /* --- Component Dimensions --- */
     --filter-box-width: 300px;
-    --filter-box-background: #f8f9fa;
-    
-    /* Regression Box */
-    --regression-box-height: 350px;
+    --filter-box-height: 700px;
+    --filter-box-background: var(--color-background-light);
+
     --regression-box-width: 400px;
-    --regression-box-background: #ffffff;
+    --regression-box-height: 350px;
+    --regression-box-background: var(--color-background-white);
 
-    /* Legend Box */
-    --legend-box-height: 350px;
     --legend-box-width: 400px;
-    --legend-box-background: #ffffff;
+    --legend-box-height: 350px;
+    --legend-box-background: var(--color-background-white);
 
-    /* Navigation Box */
-    --navigation-box-height: 80px;
-    --navigation-box-width: 50vw;
-    --navigation-box-background: #343a40;
-
-    /* Title */
-    --title-box-height: 80px;
-    --title-box-width: 100vw;
-    --title-box-background: #343a40;
-
-    /* Center Div */
-    --center-div-background: #f0f0f0;
-    --center-div-width: 100vw;
-    --center-div-height: calc(100vh - 200px);
-
-    /* Timeline Box */
-    --timeline-box-height: 200px;
     --timeline-box-width: 400px;
-    --timeline-box-background: #ffffff;
+    --timeline-box-height: 200px;
+    --timeline-box-background: var(--color-background-white);
+
+    --navigation-box-height: 80px;
+    --title-box-height: 80px;
+
+    --center-div-background: var(--color-background-gray);
 }
 
-/* Map Styles */
+/* ============================================================================
+   MAP CONTAINER
+   ============================================================================ */
+
 #map {
     width: 100%;
     height: 100%;
@@ -46,139 +68,190 @@
     z-index: 1;
 }
 
-/* Layout Components */
+
+/* ============================================================================
+   MAIN LAYOUT COMPONENTS
+   ============================================================================ */
+/* --- Navigation Bar --- */
 .navigation {
     position: absolute;
     top: 0;
-    left: 250px;
-    width: calc(100% - 250px);
+    left: var(--sidebar-width);
+    width: calc(100% - var(--sidebar-width));
     height: var(--navigation-box-height);
     color: black;
-    padding: 20px 20px;
+    padding: var(--spacing-lg);
     align-items: center;
 }
 
+/* --- Page Title --- */
 .title {
     position: absolute;
     top: 0;
     right: 0;
-    left: 250px;
-    width: calc(100% - 250px);
+    left: var(--sidebar-width);
+    width: calc(100% - var(--sidebar-width));
     height: var(--title-box-height);
-    background-color: #ffffff;
+    background-color: var(--color-background-white);
     color: black;
-    padding: 0 20px;
+    padding: 0 var(--spacing-lg);
     align-items: center;
     display: flex;
     justify-content: center;
 }
 
+/* --- Main Content Area --- */
 .center-div {
     position: fixed;
     top: var(--navigation-box-height);
-    left: 250px;
-    width: calc(100vw - 250px);
+    left: var(--sidebar-width);
+    width: calc(100vw - var(--sidebar-width));
     height: calc(100vh - var(--navigation-box-height));
-    background-color: #f0f0f0;
+    background-color: var(--center-div-background);
     display: flex;
 }
 
+/* ============================================================================
+   FLOATING PANELS (Filter, Regression, Legend, Timeline)
+   ============================================================================ */
+
+/* Shared panel styling for consistent appearance and behavior */
+.filter-box,
+.regression-box,
+.legend-box,
+.timeline-box {
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    padding: var(--spacing-sm);
+    opacity: var(--opacity-overlay);
+    z-index: 1000;
+}
+
+/* --- Filter Panel (Left, Top) --- */
 .filter-box {
     position: absolute;
-    top: 20px;
-    left: 20px;
+    top: var(--spacing-lg);
+    left: var(--spacing-lg);
     width: var(--filter-box-width);
     height: auto;
     max-height: var(--filter-box-height);
     background-color: var(--filter-box-background);
-    z-index: 1000;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    padding: 10px;
-    opacity: 0.9;
     overflow-y: auto;
 }
 
+/* --- Regression Plot Panel (Right, Bottom) --- */
 .regression-box {
     position: absolute;
     width: var(--regression-box-width);
     height: auto;
     max-height: 80vh;
-    right: 20px;
-    bottom: 20px;
+    right: var(--spacing-lg);
+    bottom: var(--spacing-lg);
     background-color: var(--regression-box-background);
-    z-index: 1000;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    padding: 10px;
-    opacity: 0.9;
     overflow-y: auto;
 }
 
+/* --- Legend Panel (Right, Top) --- */
+.legend-box {
+    position: absolute;
+    width: var(--legend-box-width);
+    height: fit-content;
+    max-height: var(--legend-box-height);
+    right: var(--spacing-lg);
+    top: var(--spacing-lg);
+    background-color: var(--legend-box-background);
+}
+
+/* --- Timeline / Year Selection Panel (Left, Bottom) --- */
 .timeline-box {
     position: absolute;
     width: fit-content;
     max-width: var(--timeline-box-width);
     height: fit-content;
     max-height: var(--timeline-box-height);
-    left: 20px;
-    bottom: 20px;
+    left: var(--spacing-lg);
+    bottom: var(--spacing-lg);
     background-color: var(--timeline-box-background);
-    z-index: 1000;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    padding: 10px;
-    opacity: 0.9;
 }
 
-.legend-box {
-    position: absolute;
-    width: var(--legend-box-width);
-    height: fit-content;
-    max-height: var(--legend-box-height);
-    right: 20px;
-    top: 20px;
-    background-color: var(--legend-box-background);
-    z-index: 1000;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    padding: 10px;
-    opacity: 0.9;
-}
+/* ============================================================================
+   FORM CONTROLS & FILTERS
+   ============================================================================ */
 
-/* Filter Styles */
+/* --- Filter Group Container --- */
 .filter-group {
-    margin-bottom: 15px;
+    margin-bottom: var(--spacing-md);
 }
 
+/* --- Filter Labels --- */
 .filter-group label {
     display: block;
-    margin-bottom: 5px;
+    margin-bottom: var(--spacing-xs);
     font-weight: bold;
+    color: var(--color-text-dark);
 }
 
+/* --- Filter Dropdowns & Select Elements --- */
 .filter-group select {
     width: 100%;
     padding: 6px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    color: var(--color-text-dark);
 }
 
+/* --- Factor Multi-select (Extended height) --- */
 #factor-select {
     height: 300px;
 }
 
-/* Tooltip Styles */
+/* --- Filter Group Disabled State --- */
+.filter-group.disabled select {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* --- Hidden Filter Group (PCA Selection) --- */
+#pc-selection-group {
+    display: none;
+}
+
+#pc-selection-group.visible {
+    display: block;
+}
+
+#pc-select {
+    min-height: 100px;
+}
+
+#biplot-selection-group {
+    display: none;
+}
+
+#biplot-selection-group.visible {
+    display: block;
+}
+
+.biplot-selects {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-sm);
+}
+
+/* ============================================================================
+   TOOLTIPS & POPUPS
+   ============================================================================ */
+
+/* --- Map Tooltip (for feature information) --- */
 .map-tooltip {
-    background-color: rgba(255, 255, 255, 0.95);
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    padding: 10px;
+    background-color: rgba(255, 255, 255, var(--opacity-tooltip));
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow-strong);
+    padding: var(--spacing-sm);
     font-family: Arial, sans-serif;
     max-width: 350px;
     min-width: 200px;
@@ -190,33 +263,304 @@
 .map-tooltip h4 {
     margin: 0 0 8px 0;
     font-size: 16px;
-    color: #333;
+    color: var(--color-text-dark);
 }
 
 .map-tooltip p {
     margin: 0;
     font-size: 14px;
-    color: #555;
+    color: var(--color-text-muted);
 }
 
+/* --- Generic Tooltip (for hover information) --- */
 .tooltip {
     position: absolute;
-    background-color: rgba(255, 255, 255, 0.95);
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    background-color: rgba(255, 255, 255, var(--opacity-tooltip));
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow-strong);
     padding: 8px;
     font-family: Arial, sans-serif;
     pointer-events: none;
     z-index: 1500;
 }
 
-/* Interactive Elements */
+/* ============================================================================
+   INTERACTIVE ELEMENTS
+   ============================================================================ */
+
+/* --- Map Feature Hover --- */
 .leaflet-interactive:hover {
     cursor: pointer;
 }
 
-/* Plot Styles */
+
+/* ============================================================================
+   PLOT CONTAINERS
+   ============================================================================ */
+
+/* --- Regression Plot Area --- */
 #regression-plot {
-    margin-top: 10px;
+    margin-top: var(--spacing-sm);
+}
+
+/* --- Map Wrapper Container --- */
+.map-wrapper {
+    position: relative;
+    height: 100%;
+    width: 100%;
+}
+
+/* --- Bottom Dashboard Section (Table & Heatmap) --- */
+.dashboard-bottom {
+    display: flex;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+/* --- Table Container --- */
+#table-container {
+    background-color: var(--color-background-white);
+    padding: var(--spacing-lg);
+    position: relative;
+    z-index: 10;
+    min-height: 400px;
+    flex: 1 1 30%;
+    min-width: 320px;
+}
+
+/* --- PCA/BiPlot Container Wrapper --- */
+#PCA-container-wrapper {
+    background-color: var(--color-background-white);
+    min-height: 400px;
+    flex: 1 1 35%;
+    min-width: 420px;
+    max-width: 48%;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+/* --- PCA View Toggle Buttons --- */
+.pca-view-toggle {
+    display: flex;
+    border-bottom: 1px solid var(--color-border);
+    background-color: #f5f5f5;
+}
+
+.view-btn {
+    flex: 1;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    transition: all 0.2s ease;
+}
+
+.view-btn:hover {
+    background-color: #efefef;
+    color: var(--color-text-dark);
+}
+
+.view-btn.active {
+    color: #2196F3;
+    border-bottom-color: #2196F3;
+    background-color: var(--color-background-white);
+}
+
+/* --- Heatmap & BiPlot Views --- */
+.pca-view {
+    flex: 1;
+    padding: var(--spacing-lg);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    overflow-y: auto;
+}
+
+.pca-view.active {
+    display: flex;
+}
+
+#PCA-container,
+#biplot-container {
+    min-height: 300px;
+}
+
+/* --- Loading State Messages --- */
+.loading-message,
+.error-message,
+.empty-state-message {
+    text-align: center;
+    padding: var(--spacing-lg);
+}
+
+.loading-message {
+    color: var(--color-text-muted);
+}
+
+.error-message {
+    color: #d32f2f;
+}
+
+.empty-state-message {
+    color: var(--color-text-muted);
+}
+
+/* --- Center Div Content Area --- */
+.center-div {
+    display: block;
+    overflow-y: auto;
+}
+
+
+/* ============================================================================
+   DATA TABLE STYLES
+   ============================================================================ */
+
+/* --- Table Card Container --- */
+.table-card {
+    width: 100%;
+    border: 1px solid var(--color-border);
+    background: var(--color-background-white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    margin: var(--spacing-md) 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- Table Header --- */
+.table-header {
+    background: var(--color-background-light);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid var(--color-border);
+    font-weight: bold;
+    color: var(--color-text-dark);
+}
+
+.table-header strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.table-header-info {
+    font-weight: normal;
+    margin-left: var(--spacing-sm);
+    color: var(--color-text-muted);
+    font-size: 13px;
+}
+
+/* --- Table Body Scrolling --- */
+.table-body {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+/* --- Data Table Base Styles --- */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: sans-serif;
+    font-size: 14px;
+}
+
+/* --- Table Cells --- */
+.data-table th,
+.data-table td {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid #eee;
+    text-align: left;
+    color: var(--color-text-dark);
+}
+
+/* --- Table Headers (Sticky) --- */
+.data-table th {
+    background: var(--color-background-white);
+    position: sticky;
+    top: 0;
+    border-bottom: 2px solid var(--color-border);
+    font-weight: 600;
+    z-index: 1;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s ease;
+}
+
+.data-table th:hover {
+    background-color: #f0f0f0;
+}
+
+/* --- Table Rows (Alternating Background) --- */
+.data-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.data-table tr:hover {
+    background-color: #f0f0f0;
+}
+
+/* --- Sort Icon --- */
+.sort-icon {
+    margin-left: var(--spacing-xs);
+    font-size: 0.8em;
+    color: #888;
+}
+
+
+/* ============================================================================
+   BUTTONS & ACTION CONTROLS
+   ============================================================================ */
+
+/* --- Button Base Styles --- */
+button {
+    padding: 6px 10px;
+    cursor: pointer;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.3s ease, opacity 0.3s ease;
+}
+
+/* --- Primary Action Button (Visualize) --- */
+#visualize-btn {
+    background-color: #4CAF50;
+    color: white;
+    margin-right: var(--spacing-sm);
+}
+
+#visualize-btn:hover {
+    background-color: #45a049;
+}
+
+/* --- Secondary Action Button (Run PCA) --- */
+#run-pca-btn {
+    background-color: #2196F3;
+    color: white;
+}
+
+#run-pca-btn:hover {
+    background-color: #0b7dda;
+}
+
+/* --- Button Disabled State --- */
+#run-pca-btn.disabled {
+    background-color: #f44336;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* --- Button Alignment Group --- */
+.button-group {
+    text-align: right;
 }

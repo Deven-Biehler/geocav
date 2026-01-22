@@ -7,9 +7,10 @@ export class PieMap {
     }
 
     async renderMap(map, data) {
+        console.log('[PieMap] Rendering pie map');
         this.statesLayer = data;
         this.createTitle();
-        this.updateMap(map);
+        this.updateMap(map, this.selectedFilters.level);
     }
 
     createTitle() {
@@ -27,11 +28,13 @@ export class PieMap {
     }
 
     async updateMap(map, level) {
+        console.log('[PieMap] Updating map with level:', level);
         if (level) {
             this.selectedFilters.level = level;
         }
         
         // Remove existing markers
+        console.log('[PieMap] Removing', this.markers.length, 'existing markers');
         this.markers.forEach(marker => map.removeLayer(marker));
         this.markers = [];
         
@@ -39,8 +42,12 @@ export class PieMap {
         
         // Calculate max total for scaling
         let maxTotal = 0;
-        this.statesLayer.features.forEach(feature => {
+        console.log('[PieMap] Processing', this.statesLayer.features.length, 'features');
+        this.statesLayer.features.forEach((feature, idx) => {
             const rates = this.getCancerRates(feature);
+            if (!rates) {
+                if (idx < 5) console.warn('[PieMap] Missing rates for feature index', idx, feature);
+            }
             const selectedTypes = this.selectedFilters.selectedCancerTypes && this.selectedFilters.selectedCancerTypes.length > 0
                 ? this.selectedFilters.selectedCancerTypes
                 : ['Kidney'];
@@ -59,17 +66,38 @@ export class PieMap {
                              Object.values(rateObj).forEach(v => { if(typeof v === 'number') total += v; });
                         }
                     }
+                } else {
+                    if (idx < 2) console.log(`[PieMap] Rate not found for type ${type} in feature ${feature.properties?.NAME || idx}`);
                 }
             }
             if (total > maxTotal) maxTotal = total;
         });
 
-        this.statesLayer.features.forEach(feature => {
+        console.log('[PieMap] Calculated maxTotal:', maxTotal);
+
+        this.statesLayer.features.forEach((feature, idx) => {
             const pieData = this.generatePieChart(feature);
-            const centroid = L.geoJSON(feature).getBounds().getCenter();
+            
+            let centroid;
+            try {
+                const layer = L.geoJSON(feature);
+                const bounds = layer.getBounds();
+                if (!bounds.isValid()) {
+                    console.error('[PieMap] Invalid bounds for feature', feature);
+                    return;
+                }
+                centroid = bounds.getCenter();
+            } catch (err) {
+                 console.error('[PieMap] Error creating centroid for feature', feature, err);
+                 return;
+            }
 
             // Calculate total for this feature
             const total = pieData.reduce((sum, d) => sum + d.value, 0);
+            
+            if (idx < 3) {
+                console.log(`[PieMap] Feature ${idx} (${feature.properties?.NAME}): total=${total}, radius calculation (pre-scale)...`);
+            }
             
             // Calculate radius
             const maxRadius = 40; 
@@ -161,6 +189,9 @@ export class PieMap {
     generatePieChart(values) {
         // values may be a feature object: prefer feature.cancer_rate but fall back to feature.properties
         const rates = this.getCancerRates(values);
+        if (!rates) {
+             console.warn('[PieMap] generatePieChart: No rates found for values', values);
+        }
 
         const selectedTypes = this.selectedFilters.selectedCancerTypes && this.selectedFilters.selectedCancerTypes.length > 0
             ? this.selectedFilters.selectedCancerTypes
@@ -182,6 +213,8 @@ export class PieMap {
                          });
                     }
                 }
+            } else {
+                 // console.debug('[PieMap] generatePieChart: Rate object missing for type', type);
             }
         });
 
@@ -224,10 +257,14 @@ export class PieMap {
 
     // Returns the cancer rates object for a feature; the new data stores rates in feature.cancer_rate
     getCancerRates(feature) {
-        if (!feature) return {};
+        if (!feature) {
+             console.error('[PieMap] getCancerRates: Feature is undefined/null');
+             return {};
+        }
         if (feature.cancer_rate && typeof feature.cancer_rate === 'object') return feature.cancer_rate;
         if (feature.properties && feature.properties.cancer_rate && typeof feature.properties.cancer_rate === 'object') return feature.properties.cancer_rate;
         // fallback: maybe rates are at top-level of properties
+        // console.debug('[PieMap] getCancerRates: using feature.properties fallback', feature);
         return feature.properties || {};
     }
 

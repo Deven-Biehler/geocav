@@ -106,6 +106,8 @@ export function calculateLinearRegression(data, xKey, yKey) {
 
     const rSquared = 1 - (residualSumSquares / totalSumSquares);
 
-    return { slope, intercept, rSquared };
+    const correlation = Math.sign(slope) * Math.sqrt(rSquared);
+
+    return { slope, intercept, rSquared, correlation };
 }
 

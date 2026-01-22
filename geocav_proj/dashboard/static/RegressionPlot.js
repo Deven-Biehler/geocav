@@ -196,7 +196,7 @@ export class RegressionPlot {
         addDataPoints(svg, data, x, y, factor, "cancer_rate", this.colorScale);
 
         // Add R-squared label
-        addRSquaredLabel(svg, regressionLine.rSquared);
+        addRSquaredLabel(svg, regressionLine.rSquared, this.width, regressionLine.correlation);
 
         this.addTooltip(svg, factor);
     }

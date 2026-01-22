@@ -70,10 +70,16 @@ def get_data(request):
         if gender_name.lower() != 'all':
             gender = get_model_instance(Gender, 'name', gender_name)
             cancer_queryset = cancer_queryset.filter(gender=gender)
+        else:
+            # Filter for aggregated data when 'All' genders are selected
+            cancer_queryset = cancer_queryset.filter(gender__name='ALL')
         
         if race_name.lower() != 'all':
             race = get_model_instance(Race, 'name', race_name)
             cancer_queryset = cancer_queryset.filter(race=race)
+        else:
+            # Filter for aggregated data when 'ALL' races are selected
+            cancer_queryset = cancer_queryset.filter(race__name='ALL')
         
         cancer_queryset = apply_geographic_filter(cancer_queryset, level)
         cancer_queryset = apply_year_filter(cancer_queryset, cancer_year)

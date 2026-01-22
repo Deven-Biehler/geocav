@@ -94,7 +94,7 @@ export class ChoroplethMap {
             const slope = globalCorrelation * (stdCancer / stdFactor);
             const intercept = meanCancer - (slope * meanFactor);
             
-            this.stats = { meanCancer, meanFactor, stdCancer, stdFactor, slope, intercept, isMultiple: false, rSquared };
+            this.stats = { meanCancer, meanFactor, stdCancer, stdFactor, slope, intercept, isMultiple: false, rSquared, correlation: globalCorrelation };
             
             // Set range to 2 standard deviations of the original data
             this.maxAbsResidual = (this.dataStd * 2) || 1;
@@ -152,8 +152,12 @@ export class ChoroplethMap {
             const r2 = this.stats && this.stats.adjustedRSquared !== undefined 
                 ? this.stats.adjustedRSquared.toFixed(3) 
                 : (this.stats?.rSquared?.toFixed(3) || 'N/A');
+
+            const correlation = this.stats && this.stats.correlation !== undefined 
+                ? this.stats.correlation.toFixed(3) 
+                : null;
             
-            content = getDeviationLegendContent(legendTitle, r2, rangeVal);
+            content = getDeviationLegendContent(legendTitle, r2, rangeVal, correlation);
         }
     
         legend.innerHTML = content;

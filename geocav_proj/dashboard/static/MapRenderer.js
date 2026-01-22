@@ -29,7 +29,7 @@ export class MapRenderer {
 
     
     async renderMap(selectedFilters, pcData = null) {
-        console.log('[MapRenderer] Rendering map with cancer type:', selectedFilters.cancer_type, 'and level:', selectedFilters.level);
+        console.log('[MapRenderer] Rendering map with filters:', selectedFilters);
         
         // Check if PCA visualization is requested
         if (pcData && pcData.isPCA) {
@@ -50,18 +50,23 @@ export class MapRenderer {
 
         // promise to clear map
         const layers = this.getMapLayers();
-        await this.dataManager.fetchData(selectedFilters);
-        let statesLayer = null;
-        if (this.map_type instanceof PieMap) {
-            // For pie map, handle multi-select
-            statesLayer = await this.dataManager.getPieData(selectedFilters);
-        }
-        else {
-            statesLayer = await this.dataManager.fetchStatesLayer(selectedFilters);
-        }   
         
-        // Render the choropleth map
-        this.map_type.renderMap(this.map, statesLayer);
+        try {
+            await this.dataManager.fetchData(selectedFilters);
+            let statesLayer = null;
+            if (this.map_type instanceof PieMap) {
+                // For pie map, handle multi-select
+                statesLayer = await this.dataManager.getPieData(selectedFilters);
+            }
+            else {
+                statesLayer = await this.dataManager.fetchStatesLayer(selectedFilters);
+            }   
+            
+            // Render the choropleth map
+            this.map_type.renderMap(this.map, statesLayer);
+        } catch (error) {
+            console.error('[MapRenderer] Error rendering map:', error);
+        }
 
         // Clear previous layers
         this.clearMap(layers);

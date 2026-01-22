@@ -73,7 +73,8 @@ export const FACTORS = [
     "Short_Sleep",
     "Smoking",
     "Smoking",
-    "SVI_Score"
+    "SVI_Score",
+    'Opioid_Dispensing_Rate'
 ];
 
 export const FACTORS_UNITS = {
@@ -97,7 +98,8 @@ export const FACTORS_UNITS = {
     "Obesity": "Percentage (%)",
     "Short_Sleep": "Percentage (%)",
     "Smoking": "Percentage (%)",
-    "SVI_Score": "Score (0-1)"
+    "SVI_Score": "Score (0-1)",
+    'Opioid_Dispensing_Rate': "Prescriptions per 100 people"
 };
 
 export const STATE_FACTOR_FILTERS = [
@@ -118,6 +120,8 @@ export const STATE_FACTOR_FILTERS = [
     'Obesity',
     'Short_Sleep',
     'Smoking',
+    'SVI_Score',
+    'Opioid_Dispensing_Rate',
     'None'
 ];
 
@@ -141,6 +145,7 @@ export const COUNTY_FACTOR_FILTERS = [
     'Short_Sleep',
     'Smoking',
     'SVI_Score',
+    'Opioid_Dispensing_Rate',
     'None'
 ];
 
@@ -194,6 +199,10 @@ export const STATE_FACTORS_AVAILABLE_YEARS = {
     "Obesity": [2016],
     "Short_Sleep": [2016],
     "Smoking": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021],
+    
+    // Other
+    'Opioid_Dispensing_Rate': [2019, 2020, 2021, 2022, 2023],
+    "SVI_Score": [2014, 2016, 2018, 2020, 2022],
 
     "None": []
 };
@@ -224,6 +233,7 @@ export const COUNTY_FACTORS_AVAILABLE_YEARS = {
     "Smoking": [2016],
 
     "SVI_Score": [2014, 2016, 2018, 2020, 2022],
+    'Opioid_Dispensing_Rate': [2016, 2017, 2018, 2019, 2020],
 
     "None": []
 };

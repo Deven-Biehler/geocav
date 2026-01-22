@@ -13,7 +13,11 @@ export class TableRenderer {
         const container = document.getElementById(this.containerId);
         if (!container) return;
         
-        container.innerHTML = '<div style="text-align: center; padding: 20px;">Loading table data...</div>';
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading-message';
+        loadingDiv.textContent = 'Loading table data...';
+        container.innerHTML = '';
+        container.appendChild(loadingDiv);
 
         try {
             // Re-use fetchRegressionData as it prepares the merged data structure we need
@@ -46,7 +50,11 @@ export class TableRenderer {
             this.render();
         } catch (error) {
             console.error("TableRenderer Error:", error);
-            container.innerHTML = `<div style="color: red; padding: 20px;">Error loading table data: ${error.message}</div>`;
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = `Error loading table data: ${error.message}`;
+            container.innerHTML = '';
+            container.appendChild(errorDiv);
         }
     }
 
@@ -55,7 +63,11 @@ export class TableRenderer {
         if (!container) return;
 
         if (this.data.length === 0) {
-            container.innerHTML = '<div style="text-align: center; padding: 20px;">No data available for the current selection.</div>';
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'empty-state-message';
+            emptyDiv.textContent = 'No data available for the current selection.';
+            container.innerHTML = '';
+            container.appendChild(emptyDiv);
             return;
         }
 
@@ -80,110 +92,13 @@ export class TableRenderer {
             });
         }
 
-        // Generate rows
-        const rows = displayData.map((row) => {
-            const cells = this.columns.map(col => {
-                let val = row[col.key];
-                // Basic formatting for numbers
-                if (typeof val === 'number') {
-                     // Decide on precision based on magnitude? or just fixed 2
-                     val = val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                }
-                return `<td>${val !== undefined && val !== null ? val : 'N/A'}</td>`;
-            }).join('');
-            return `<tr>${cells}</tr>`;
-        }).join('');
-
-        // Inject table HTML with styles
-        container.innerHTML = `
-            <style>
-                .table-card {
-                    width: 40%;
-                    border: 1px solid #ccc;
-                    background: #fff;
-                    border-radius: 4px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    margin: 20px 0;
-                    display: flex;
-                    flex-direction: column;
-                }
-                .table-header {
-                    background: #f8f9fa;
-                    padding: 10px 15px;
-                    border-bottom: 1px solid #ddd;
-                    font-weight: bold;
-                    color: #333;
-                }
-                .table-body {
-                    max-height: 500px;
-                    overflow-y: auto;
-                }
-                .data-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    font-family: sans-serif;
-                    font-size: 14px;
-                }
-                .data-table th, .data-table td {
-                    padding: 10px 15px;
-                    border-bottom: 1px solid #eee;
-                    text-align: left;
-                    color: #333;
-                }
-                .data-table th {
-                    background: #fff;
-                    position: sticky;
-                    top: 0;
-                    border-bottom: 2px solid #ddd;
-                    font-weight: 600;
-                    z-index: 1;
-                    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
-                    cursor: pointer;
-                    user-select: none;
-                }
-                .data-table th:hover {
-                    background-color: #f0f0f0;
-                }
-                .data-table tr:nth-child(even) {
-                    background-color: #f9f9f9;
-                }
-                .data-table tr:hover {
-                    background-color: #f0f0f0;
-                }
-                .sort-icon {
-                    margin-left: 5px;
-                    font-size: 0.8em;
-                    color: #888;
-                }
-            </style>
-            <div class="table-card">
-                <div class="table-header">
-                    <strong>Data Table - ${this.filters && this.filters.level ? this.filters.level.charAt(0).toUpperCase() + this.filters.level.slice(1) : ''} Level</strong>
-                    <span style="font-weight:normal; margin-left:10px;">(Showing ${displayData.length} records)</span>
-                </div>
-                <div class="table-body">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                ${this.columns.map(col => {
-                                    let sortIcon = '↕';
-                                    if (this.sortState.key === col.key) {
-                                        sortIcon = this.sortState.direction === 'asc' ? '↑' : '↓';
-                                    }
-                                    return `<th data-key="${col.key}">${col.header} <span class="sort-icon">${sortIcon}</span></th>`;
-                                }).join('')}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rows}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        `;
+        // Build table using DOM methods
+        container.innerHTML = '';
+        const card = this.createTableCard(displayData);
+        container.appendChild(card);
 
         // Attach event listeners for sorting
-        const headers = container.querySelectorAll('.data-table th');
+        const headers = card.querySelectorAll('.data-table th');
         headers.forEach(th => {
             th.addEventListener('click', () => {
                 const key = th.getAttribute('data-key');
@@ -192,6 +107,107 @@ export class TableRenderer {
                 }
             });
         });
+    }
+
+    createTableCard(displayData) {
+        // Create card container
+        const card = document.createElement('div');
+        card.className = 'table-card';
+
+        // Create header
+        const header = this.createTableHeader(displayData.length);
+        card.appendChild(header);
+
+        // Create scrollable body with table
+        const body = document.createElement('div');
+        body.className = 'table-body';
+
+        const table = this.createDataTable(displayData);
+        body.appendChild(table);
+
+        card.appendChild(body);
+        return card;
+    }
+
+    createTableHeader(recordCount) {
+        const header = document.createElement('div');
+        header.className = 'table-header';
+
+        const title = document.createElement('strong');
+        const levelText = this.filters && this.filters.level
+            ? this.filters.level.charAt(0).toUpperCase() + this.filters.level.slice(1)
+            : '';
+        title.textContent = `Data Table - ${levelText} Level`;
+        header.appendChild(title);
+
+        const info = document.createElement('span');
+        info.className = 'table-header-info';
+        info.textContent = `(Showing ${recordCount} records)`;
+        header.appendChild(info);
+
+        return header;
+    }
+
+    createDataTable(displayData) {
+        const table = document.createElement('table');
+        table.className = 'data-table';
+
+        // Create header row
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+
+        this.columns.forEach(col => {
+            const th = document.createElement('th');
+            th.setAttribute('data-key', col.key);
+            th.style.cursor = 'pointer';
+
+            // Create header text
+            const headerSpan = document.createElement('span');
+            headerSpan.textContent = col.header;
+            th.appendChild(headerSpan);
+
+            // Add sort icon
+            const sortIcon = document.createElement('span');
+            sortIcon.className = 'sort-icon';
+            if (this.sortState.key === col.key) {
+                sortIcon.textContent = this.sortState.direction === 'asc' ? '↑' : '↓';
+            } else {
+                sortIcon.textContent = '↕';
+            }
+            th.appendChild(sortIcon);
+
+            headerRow.appendChild(th);
+        });
+
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        // Create body rows
+        const tbody = document.createElement('tbody');
+        displayData.forEach(row => {
+            const tr = document.createElement('tr');
+
+            this.columns.forEach(col => {
+                const td = document.createElement('td');
+                let val = row[col.key];
+
+                // Format numbers
+                if (typeof val === 'number') {
+                    val = val.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
+                }
+
+                td.textContent = val !== undefined && val !== null ? val : 'N/A';
+                tr.appendChild(td);
+            });
+
+            tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        return table;
     }
 
     handleSort(key) {

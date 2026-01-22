@@ -7,9 +7,9 @@ This document details the technical implementation of the geospatial dashboard, 
 The dashboard relies on a decoupled architecture where the frontend `DataManager` orchestrates data retrieval and preparation for the visualization components.
 
 ### 1.1 Data Retrieval (`DataManager.js`)
-Data is fetched from the backend via two primary endpoints:
-1.  `/get_geojson`: Returns the geographic boundaries (State or County polygons).
-2.  `/get_data`: Returns statistical data. Accepts multiple `factor` parameters to retrieve multiple environmental datasets simultaneously.
+Data is fetched from the backend via two primary endpoints (defined in `views.py` and `urls.py`):
+1.  `/get_geojson`: Returns the geographic boundaries (State or County polygons) from static files stores in `static/data`
+2.  `/get_data`: Returns statistical data on cancer incidence and other geographic factors. Accepts multiple `factor` parameters to retrieve multiple environmental datasets simultaneously.
 
 ### 1.2 Data Merging Strategy
 To ensure efficient rendering, statistical data is merged directly into the GeoJSON structure before being passed to the map renderers.
@@ -40,16 +40,12 @@ Before rendering, the class calculates global statistics for the current dataset
 The coloring strategy changes based on the user's selection:
 
 *   **Univariate (Single Variable)**:
-    *   Uses a linear scale from **White** to **Red**.
     *   Opacity is fixed at 0.8.
     *   Formula: $Intensity = \frac{Value - Min}{Max - Min}$
 
 *   **Bivariate (Correlation Mode)**:
     *   Uses a **Diverging Color Scale** based on the calculated *Residuals*.
-    *   **Red**: Region has a *higher* cancer rate than predicted by the factor (Positive Residual).
-    *   **Blue**: Region has a *lower* cancer rate than predicted by the factor (Negative Residual).
-    *   **White**: Region follows the expected trend (Near-zero Residual).
-    *   Normalization: The residual is normalized against the maximum absolute residual in the dataset to ensure the color scale is symmetric around zero.
+    *   Normalization: The residual is normalized based on the standard deviation of the selected cancer rate.
 
 ### 2.2 Regression Plot (`RegressionPlot.js`)
 
@@ -84,6 +80,11 @@ Where:
 *   $Y$: Vector of observed cancer rates ($n \times 1$).
 *   $X$: Design matrix ($n \times (k+1)$), where $k$ is the number of factors. The first column is all 1s (intercept term).
 *   $\beta$: Vector of coefficients ($\beta_0, \beta_1, ..., \beta_k$).
+
+**Goodness of Fit**:
+To provide a more accurate metric of model performance when using multiple inputs, the $R^2$ value is adjusted based on the number of factors included (k) and the number of samples collected (n). This penalizes the model for adding non-predictive variables:
+
+$$R^2_{adj} = 1 - (1-R^2)\frac{n - 1}{n - k - 1}$$
 
 **Matrix Operations**:
 Since standard JavaScript lacks a linear algebra library, custom matrix operations were implemented in `RegressionPlot.js`:
@@ -162,7 +163,7 @@ This function transforms the raw database querysets into a dictionary keyed by F
         }
     }
     ```
-*   **Purpose**: This dictionary structure allows the frontend `DataManager` to merge data into GeoJSON features in O(1) time per feature, avoiding nested loops which would degrade performance with 3000+ counties.
+*   **Purpose**: This dictionary structure allows the frontend `DataManager` to merge data into GeoJSON features in O(1) time per feature.
 
 ## 3. Configuration & Dataset Updates
 
@@ -185,7 +186,7 @@ To add a new cancer type (e.g., "Thyroid"):
     *   Add a "Thyroid" key to `STATE_CANCER_AVAILABLE_YEARS` with the list of available years (e.g., `[2011, 2012, ...]`).
     *   Add a "Thyroid" key to `COUNTY_CANCER_AVAILABLE_YEARS` with the list of available years.
 
-#### 3.1.2 Adding a New Environmental/Health Factor
+#### 3.1.2 Adding a New Factor
 To add a new factor (e.g., "Water Quality"):
 
 1.  **Update `FACTORS`**:
@@ -207,8 +208,11 @@ To update the years for an existing dataset:
 
 ### 3.2 Backend Considerations
 While the frontend configuration controls the UI, the backend (`dashboard/views.py`) is dynamic and will query the database for whatever parameters are sent. Therefore, **no backend code changes are required** when adding new data types, provided:
-1.  The new data has been correctly loaded into the database (`CancerIncidence` or `FactorMeasurement` models).
+1.  The new data has been correctly preprocessed and loaded into the database (`CancerIncidence` or `FactorMeasurement` models).
 2.  The `CancerType` or `Factor` names in the database match the strings used in `config.js` (case-insensitive matching is handled, but exact spelling is required).
+
+### 3.3 Preprocessing tips
+`preprocess_data.py` provides an example of how different data sources were first modified to be loaded into a csv file with matching format. Follow the structure provided in the ouput csv when preprocessing the data, then by running `load_data.py` entries will be sorted into a 2-table system for efficient relational queries at runtime.
 
 ## 4. Django Schematic View
 
@@ -240,13 +244,11 @@ The application follows the standard Django MVT pattern:
 #### 4.3.1 Models
 *   **`CancerIncidence`**: Stores cancer rate data linked to a `CancerType`, `Gender`, `Race`, and location (`State`/`County`).
 *   **`FactorMeasurement`**: Stores environmental/health factor data linked to a `Factor` and location.
-*   **`TotalRecordAgg`**: Stores aggregated molecular data for specific cancer types.
 
 #### 4.3.2 Views
 *   **`dashboard_view`**: Renders the main dashboard template (`geospatial_dashboard.html`).
 *   **`get_data`**: API endpoint that returns cancer and factor data for the map.
 *   **`get_geojson`**: API endpoint that returns the geographic boundaries (GeoJSON).
-*   **`molecular_*`**: Views for the molecular analysis pages.
 
 #### 4.3.3 Templates
 *   **`base.html`**: The base template containing common elements (navbar, footer, scripts).

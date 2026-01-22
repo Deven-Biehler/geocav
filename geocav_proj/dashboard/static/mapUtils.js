@@ -127,10 +127,13 @@ export function createBivariatePopupContent(feature, selectedFilters, stats, max
     return popupContent;
 }
 
-export function getDeviationLegendContent(legendTitle, r2, rangeVal) {
+export function getDeviationLegendContent(legendTitle, r2, rangeVal, correlation = null) {
+    const correlationHtml = correlation ? `<strong>Correlation (r):</strong> ${correlation}<br>` : '';
+
     return `
     <h4>${legendTitle}</h4>
     <div style="${LEGEND_STYLES.container}">
+        ${correlationHtml}
         <strong>Model Fit (Adjusted R²):</strong> ${r2}<br>
         <strong>Deviation Limit:</strong> +/- ${rangeVal} per 100k<br>
         <span style="${LEGEND_STYLES.subText}">(Calculated as 2 Standard Deviations)</span><br>

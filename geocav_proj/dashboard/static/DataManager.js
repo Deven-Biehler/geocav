@@ -69,14 +69,19 @@ export class DataManager {
         
         params.append('cancer_year', parseInt(filters.cancer_year));
         params.append('factor_year', parseInt(filters.factor_year));
-        params.append('gender', filters.gender || 'all');
-        params.append('race', filters.race || 'all');
+        
+        const gender = filters.gender || 'all';
+        params.append('gender', gender.toUpperCase());
+
+        const race = filters.race || 'all';
+        params.append('race', race.toUpperCase());
+        console.log(`Fetching data with URL: /get_data?${params.toString()}`);
         const response = await fetch(`/get_data?${params.toString()}`);
         const result = await response.json();
         if (result.error) {
             throw new Error(result.error + (result.debug ? ' | Debug info: ' + JSON.stringify(result.debug) : ''));
         }
-        console.log('[DataManager] Data fetched with filters:', filters, 'Data:', result.data);
+        console.log('[DataManager] Data fetched with filters:', filters);
         this.cancer_data = result.cancer_data;
         this.factor_data = result.factor_data;
         return result;
@@ -97,8 +102,8 @@ export class DataManager {
         
         params.append('cancer_year', parseInt(filters.cancer_year));
         params.append('factor_year', parseInt(filters.factor_year));
-        params.append('gender', filters.gender || 'all');
-        params.append('race', filters.race || 'all');
+        params.append('gender', filters.gender.toUpperCase() || 'ALL');
+        params.append('race', filters.race.toUpperCase() || 'ALL');
         
         const response = await fetch(`/get_pca?${params.toString()}`);
         if (!response.ok) {
@@ -170,13 +175,18 @@ export class DataManager {
             throw new Error(result.error + (result.debug ? ' | Debug info: ' + JSON.stringify(result.debug) : ''));
         }
 
-        console.log('[DataManager] Pie data fetched with filters:', filters, 'Data:', result.data);
+        console.log('[DataManager] Pie data fetched with filters:', filters);
         this.cancer_data = result.cancer_data;
 
         // Add geojson properties
-        const geojsonResponse = await fetch(`/get_geojson?level=${filters.level}`);
-        const geojson = await geojsonResponse.json();
-        const statesLayer = this.addGeoJSONProperties(geojson, filters.level, this.cancer_data, {});
-        return statesLayer;
+        try {
+            const geojsonResponse = await fetch(`/get_geojson?level=${filters.level}`);
+            const geojson = await geojsonResponse.json();
+            const statesLayer = this.addGeoJSONProperties(geojson, filters.level, this.cancer_data, {}, filters);
+            return statesLayer;
+        } catch (error) {
+            console.error('[DataManager] Error processing pie data:', error);
+            throw error;
+        }
     }
 }

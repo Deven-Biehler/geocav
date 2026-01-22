@@ -66,12 +66,20 @@ export function addDataPoints(svg, data, x, y, xKey, yKey, colorScale) {
             .style('fill', (d) => colorScale(d.state));
 }
 
-export function addRSquaredLabel(svg, rSquared) {
+export function addRSquaredLabel(svg, rSquared, width, correlation = null) {
     svg.append("text")
         .attr("x", 10)
         .attr("y", 20)
         .style("font-size", "12px")
         .text(`Adjusted R² = ${rSquared.toFixed(5)}`);
+
+    if (correlation !== null && correlation !== undefined) {
+         svg.append("text")
+        .attr("x", 10)
+        .attr("y", 35)
+        .style("font-size", "12px")
+        .text(`Correlation (r) = ${correlation.toFixed(5)}`);
+    }
 }
 
 export const LEGEND_STYLES = {

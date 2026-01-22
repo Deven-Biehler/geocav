@@ -1,0 +1,256 @@
+﻿YEAR,STATE_NAME,STATE_ABBREV,STATE_FIPS,opioid_dispensing_rate,Opioid Dispensing Rate (per 100 persons)
+2019,Alabama,AL,01,86,>51.7
+2019,Alaska,AK,02,39.3,34.9 - 42.0
+2019,Arizona,AZ,04,44.2,42.1 - 51.7
+2019,Arkansas,AR,05,81.1,>51.7
+2019,California,CA,06,31,<34.9
+2019,Colorado,CO,08,40.1,34.9 - 42.0
+2019,Connecticut,CT,09,40.6,34.9 - 42.0
+2019,Delaware,DE,10,51.7,42.1 - 51.7
+2019,District of Columbia,DC,11,40,34.9 - 42.0
+2019,Florida,FL,12,45.5,42.1 - 51.7
+2019,Georgia,GA,13,58.1,>51.7
+2019,Hawaii,HI,15,30.4,<34.9
+2019,Idaho,ID,16,53.7,>51.7
+2019,Illinois,IL,17,43.1,42.1 - 51.7
+2019,Indiana,IN,18,60.5,>51.7
+2019,Iowa,IA,19,43.1,42.1 - 51.7
+2019,Kansas,KS,20,63.8,>51.7
+2019,Kentucky,KY,21,72.4,>51.7
+2019,Louisiana,LA,22,74.7,>51.7
+2019,Maine,ME,23,44.3,42.1 - 51.7
+2019,Maryland,MD,24,42.4,42.1 - 51.7
+2019,Massachusetts,MA,25,35.5,34.9 - 42.0
+2019,Michigan,MI,26,58.1,>51.7
+2019,Minnesota,MN,27,32.2,<34.9
+2019,Mississippi,MS,28,67.1,>51.7
+2019,Missouri,MO,29,58.4,>51.7
+2019,Montana,MT,30,48.3,42.1 - 51.7
+2019,Nebraska,NE,31,50.4,42.1 - 51.7
+2019,Nevada,NV,32,49.5,42.1 - 51.7
+2019,New Hampshire,NH,33,38.2,34.9 - 42.0
+2019,New Jersey,NJ,34,34.9,34.9 - 42.0
+2019,New Mexico,NM,35,43.5,42.1 - 51.7
+2019,New York,NY,36,34.9,34.9 - 42.0
+2019,North Carolina,NC,37,56.9,>51.7
+2019,North Dakota,ND,38,38.8,34.9 - 42.0
+2019,Ohio,OH,39,51,42.1 - 51.7
+2019,Oklahoma,OK,40,66.4,>51.7
+2019,Oregon,OR,41,49.2,42.1 - 51.7
+2019,Pennsylvania,PA,42,47.1,42.1 - 51.7
+2019,Rhode Island,RI,44,40.4,34.9 - 42.0
+2019,South Carolina,SC,45,60.6,>51.7
+2019,South Dakota,SD,46,44,42.1 - 51.7
+2019,Tennessee,TN,47,74.7,>51.7
+2019,Texas,TX,48,42.3,42.1 - 51.7
+2019,Utah,UT,49,51.7,42.1 - 51.7
+2019,Vermont,VT,50,36.9,34.9 - 42.0
+2019,Virginia,VA,51,40.9,34.9 - 42.0
+2019,Washington,WA,53,42.8,42.1 - 51.7
+2019,West Virginia,WV,54,59.6,>51.7
+2019,Wisconsin,WI,55,42.6,42.1 - 51.7
+2019,Wyoming,WY,56,49.9,42.1 - 51.7
+2020,Alabama,AL,01,78.9,>51.7
+2020,Alaska,AK,02,36.1,34.9 - 42.0
+2020,Arizona,AZ,04,42,34.9 - 42.0
+2020,Arkansas,AR,05,76.4,>51.7
+2020,California,CA,06,28.5,<34.9
+2020,Colorado,CO,08,37.8,34.9 - 42.0
+2020,Connecticut,CT,09,37,34.9 - 42.0
+2020,Delaware,DE,10,45.2,42.1 - 51.7
+2020,District of Columbia,DC,11,34.7,<34.9
+2020,Florida,FL,12,43.8,42.1 - 51.7
+2020,Georgia,GA,13,54,>51.7
+2020,Hawaii,HI,15,26.5,<34.9
+2020,Idaho,ID,16,49.6,42.1 - 51.7
+2020,Illinois,IL,17,39.6,34.9 - 42.0
+2020,Indiana,IN,18,56.7,>51.7
+2020,Iowa,IA,19,39.9,34.9 - 42.0
+2020,Kansas,KS,20,59.4,>51.7
+2020,Kentucky,KY,21,67.8,>51.7
+2020,Louisiana,LA,22,68.3,>51.7
+2020,Maine,ME,23,40,34.9 - 42.0
+2020,Maryland,MD,24,38.8,34.9 - 42.0
+2020,Massachusetts,MA,25,32.9,<34.9
+2020,Michigan,MI,26,54,>51.7
+2020,Minnesota,MN,27,30,<34.9
+2020,Mississippi,MS,28,64.5,>51.7
+2020,Missouri,MO,29,54.4,>51.7
+2020,Montana,MT,30,45.9,42.1 - 51.7
+2020,Nebraska,NE,31,47.6,42.1 - 51.7
+2020,Nevada,NV,32,47.8,42.1 - 51.7
+2020,New Hampshire,NH,33,35.1,34.9 - 42.0
+2020,New Jersey,NJ,34,30.5,<34.9
+2020,New Mexico,NM,35,40.3,34.9 - 42.0
+2020,New York,NY,36,30.8,<34.9
+2020,North Carolina,NC,37,53.8,>51.7
+2020,North Dakota,ND,38,36.1,34.9 - 42.0
+2020,Ohio,OH,39,47.1,42.1 - 51.7
+2020,Oklahoma,OK,40,59.8,>51.7
+2020,Oregon,OR,41,45.7,42.1 - 51.7
+2020,Pennsylvania,PA,42,42.5,42.1 - 51.7
+2020,Rhode Island,RI,44,35.3,34.9 - 42.0
+2020,South Carolina,SC,45,57.7,>51.7
+2020,South Dakota,SD,46,40.2,34.9 - 42.0
+2020,Tennessee,TN,47,68.2,>51.7
+2020,Texas,TX,48,38.2,34.9 - 42.0
+2020,Utah,UT,49,48.1,42.1 - 51.7
+2020,Vermont,VT,50,33.8,<34.9
+2020,Virginia,VA,51,37.6,34.9 - 42.0
+2020,Washington,WA,53,39.5,34.9 - 42.0
+2020,West Virginia,WV,54,53.7,>51.7
+2020,Wisconsin,WI,55,39.3,34.9 - 42.0
+2020,Wyoming,WY,56,47.2,42.1 - 51.7
+2021,Alabama,AL,01,77.2,>51.7
+2021,Alaska,AK,02,34.7,<34.9
+2021,Arizona,AZ,04,40.3,34.9 - 42.0
+2021,Arkansas,AR,05,75.3,>51.7
+2021,California,CA,06,27.6,<34.9
+2021,Colorado,CO,08,36.7,34.9 - 42.0
+2021,Connecticut,CT,09,35.9,34.9 - 42.0
+2021,Delaware,DE,10,45.1,42.1 - 51.7
+2021,District of Columbia,DC,11,32.8,<34.9
+2021,Florida,FL,12,42.7,42.1 - 51.7
+2021,Georgia,GA,13,52.8,>51.7
+2021,Hawaii,HI,15,25.2,<34.9
+2021,Idaho,ID,16,48,42.1 - 51.7
+2021,Illinois,IL,17,39.3,34.9 - 42.0
+2021,Indiana,IN,18,55.1,>51.7
+2021,Iowa,IA,19,38.7,34.9 - 42.0
+2021,Kansas,KS,20,58.6,>51.7
+2021,Kentucky,KY,21,65.7,>51.7
+2021,Louisiana,LA,22,68.3,>51.7
+2021,Maine,ME,23,38.1,34.9 - 42.0
+2021,Maryland,MD,24,37.9,34.9 - 42.0
+2021,Massachusetts,MA,25,32.6,<34.9
+2021,Michigan,MI,26,53.3,>51.7
+2021,Minnesota,MN,27,29.6,<34.9
+2021,Mississippi,MS,28,65.1,>51.7
+2021,Missouri,MO,29,52.9,>51.7
+2021,Montana,MT,30,44.3,42.1 - 51.7
+2021,Nebraska,NE,31,46.7,42.1 - 51.7
+2021,Nevada,NV,32,45.2,42.1 - 51.7
+2021,New Hampshire,NH,33,33.7,<34.9
+2021,New Jersey,NJ,34,29.6,<34.9
+2021,New Mexico,NM,35,38.6,34.9 - 42.0
+2021,New York,NY,36,30.1,<34.9
+2021,North Carolina,NC,37,52.1,>51.7
+2021,North Dakota,ND,38,36.7,34.9 - 42.0
+2021,Ohio,OH,39,45.8,42.1 - 51.7
+2021,Oklahoma,OK,40,58.3,>51.7
+2021,Oregon,OR,41,44.6,42.1 - 51.7
+2021,Pennsylvania,PA,42,40.9,34.9 - 42.0
+2021,Rhode Island,RI,44,33.5,<34.9
+2021,South Carolina,SC,45,55.2,>51.7
+2021,South Dakota,SD,46,39.1,34.9 - 42.0
+2021,Tennessee,TN,47,66,>51.7
+2021,Texas,TX,48,36,34.9 - 42.0
+2021,Utah,UT,49,48,42.1 - 51.7
+2021,Vermont,VT,50,32.5,<34.9
+2021,Virginia,VA,51,36.3,34.9 - 42.0
+2021,Washington,WA,53,38.5,34.9 - 42.0
+2021,West Virginia,WV,54,52.3,>51.7
+2021,Wisconsin,WI,55,38.3,34.9 - 42.0
+2021,Wyoming,WY,56,45.7,42.1 - 51.7
+2022,Alabama,AL,01,74.5,>51.7
+2022,Alaska,AK,02,32.2,<34.9
+2022,Arizona,AZ,04,37.1,34.9 - 42.0
+2022,Arkansas,AR,05,72.1,>51.7
+2022,California,CA,06,25.6,<34.9
+2022,Colorado,CO,08,34.1,<34.9
+2022,Connecticut,CT,09,34,<34.9
+2022,Delaware,DE,10,40.7,34.9 - 42.0
+2022,District of Columbia,DC,11,32.2,<34.9
+2022,Florida,FL,12,40,34.9 - 42.0
+2022,Georgia,GA,13,49.8,42.1 - 51.7
+2022,Hawaii,HI,15,24.3,<34.9
+2022,Idaho,ID,16,45.4,42.1 - 51.7
+2022,Illinois,IL,17,37.1,34.9 - 42.0
+2022,Indiana,IN,18,52.5,>51.7
+2022,Iowa,IA,19,37.1,34.9 - 42.0
+2022,Kansas,KS,20,55.3,>51.7
+2022,Kentucky,KY,21,61.6,>51.7
+2022,Louisiana,LA,22,65.7,>51.7
+2022,Maine,ME,23,35.1,34.9 - 42.0
+2022,Maryland,MD,24,34.8,<34.9
+2022,Massachusetts,MA,25,30.8,<34.9
+2022,Michigan,MI,26,50.3,42.1 - 51.7
+2022,Minnesota,MN,27,27.8,<34.9
+2022,Mississippi,MS,28,64,>51.7
+2022,Missouri,MO,29,49.4,42.1 - 51.7
+2022,Montana,MT,30,41.9,34.9 - 42.0
+2022,Nebraska,NE,31,44.5,42.1 - 51.7
+2022,Nevada,NV,32,41.5,34.9 - 42.0
+2022,New Hampshire,NH,33,31.9,<34.9
+2022,New Jersey,NJ,34,28,<34.9
+2022,New Mexico,NM,35,35.6,34.9 - 42.0
+2022,New York,NY,36,28.1,<34.9
+2022,North Carolina,NC,37,49,42.1 - 51.7
+2022,North Dakota,ND,38,34,<34.9
+2022,Ohio,OH,39,42.9,42.1 - 51.7
+2022,Oklahoma,OK,40,55.5,>51.7
+2022,Oregon,OR,41,42.1,42.1 - 51.7
+2022,Pennsylvania,PA,42,38.5,34.9 - 42.0
+2022,Rhode Island,RI,44,31.5,<34.9
+2022,South Carolina,SC,45,51.5,42.1 - 51.7
+2022,South Dakota,SD,46,37.5,34.9 - 42.0
+2022,Tennessee,TN,47,61.5,>51.7
+2022,Texas,TX,48,33.9,<34.9
+2022,Utah,UT,49,46.3,42.1 - 51.7
+2022,Vermont,VT,50,30.1,<34.9
+2022,Virginia,VA,51,34.1,<34.9
+2022,Washington,WA,53,36.2,34.9 - 42.0
+2022,West Virginia,WV,54,48.1,42.1 - 51.7
+2022,Wisconsin,WI,55,35.2,34.9 - 42.0
+2022,Wyoming,WY,56,44,42.1 - 51.7
+2023,Alabama,AL,01,71.4,>51.7
+2023,Alaska,AK,02,30.4,<34.9
+2023,Arizona,AZ,04,34.7,<34.9
+2023,Arkansas,AR,05,71.5,>51.7
+2023,California,CA,06,23.8,<34.9
+2023,Colorado,CO,08,32.4,<34.9
+2023,Connecticut,CT,09,32.4,<34.9
+2023,Delaware,DE,10,39.5,34.9 - 42.0
+2023,District of Columbia,DC,11,30.3,<34.9
+2023,Florida,FL,12,37.4,34.9 - 42.0
+2023,Georgia,GA,13,47.3,42.1 - 51.7
+2023,Hawaii,HI,15,22.6,<34.9
+2023,Idaho,ID,16,44.2,42.1 - 51.7
+2023,Illinois,IL,17,35.2,34.9 - 42.0
+2023,Indiana,IN,18,49.4,42.1 - 51.7
+2023,Iowa,IA,19,34.6,<34.9
+2023,Kansas,KS,20,52.8,>51.7
+2023,Kentucky,KY,21,58.3,>51.7
+2023,Louisiana,LA,22,62.7,>51.7
+2023,Maine,ME,23,33.8,<34.9
+2023,Maryland,MD,24,32.9,<34.9
+2023,Massachusetts,MA,25,28.6,<34.9
+2023,Michigan,MI,26,47.9,42.1 - 51.7
+2023,Minnesota,MN,27,26.5,<34.9
+2023,Mississippi,MS,28,63.1,>51.7
+2023,Missouri,MO,29,47,42.1 - 51.7
+2023,Montana,MT,30,40.4,34.9 - 42.0
+2023,Nebraska,NE,31,42.7,42.1 - 51.7
+2023,Nevada,NV,32,40.1,34.9 - 42.0
+2023,New Hampshire,NH,33,30.9,<34.9
+2023,New Jersey,NJ,34,26.3,<34.9
+2023,New Mexico,NM,35,33.7,<34.9
+2023,New York,NY,36,26.3,<34.9
+2023,North Carolina,NC,37,46.7,42.1 - 51.7
+2023,North Dakota,ND,38,32.4,<34.9
+2023,Ohio,OH,39,40.7,34.9 - 42.0
+2023,Oklahoma,OK,40,52.9,>51.7
+2023,Oregon,OR,41,40,34.9 - 42.0
+2023,Pennsylvania,PA,42,36.4,34.9 - 42.0
+2023,Rhode Island,RI,44,30.5,<34.9
+2023,South Carolina,SC,45,48.4,42.1 - 51.7
+2023,South Dakota,SD,46,35.8,34.9 - 42.0
+2023,Tennessee,TN,47,58.6,>51.7
+2023,Texas,TX,48,32.2,<34.9
+2023,Utah,UT,49,43.8,42.1 - 51.7
+2023,Vermont,VT,50,27.9,<34.9
+2023,Virginia,VA,51,32.5,<34.9
+2023,Washington,WA,53,34.5,<34.9
+2023,West Virginia,WV,54,46.4,42.1 - 51.7
+2023,Wisconsin,WI,55,32.8,<34.9
+2023,Wyoming,WY,56,43,42.1 - 51.7

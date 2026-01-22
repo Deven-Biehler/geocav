@@ -28,8 +28,8 @@
     <h1>Geospatial Dashboard</h1>
 </div>
     
-    <div class="center-div" style="display: block; overflow-y: auto;">
-        <div class="map-wrapper" style="position: relative; height: 100%; width: 100%;">
+    <div class="center-div">
+        <div class="map-wrapper">
             <div id="map"></div>
         <div class="filter-box">
             <h3>Filters</h3>
@@ -52,40 +52,36 @@
                 <div class="filter-group">
                     <label for="cancer-select">Cancer Type:</label>
                     <select id="cancer-select" name="cancer-type">
-                        <option value="Pancreatic">Pancreatic Cancer</option>
-                        <option value="Skin">Skin Cancer</option>
-                        <option value="Lung">Lung Cancer</option>
-                        <option value="Liver">Liver Cancer</option>
-                        <option value="Breast">Breast Cancer</option>
-                        <option value="Kidney">Kidney Cancer</option>
-                        <option value="Prostate">Prostate Cancer</option>
-                        <option value="Esophageal">Esophageal Cancer</option>
-                        <option value="None">None</option>
                     </select>
                 </div>
                 <div class="filter-group">
                     <label for="factor-select">Factor:</label>
                     <select id="factor-select" name="factor" multiple>
-                        <option value="Annual Sunlight Exposure">Annual Sunlight Exposure</option>
-                        <option value="Annual_UV_DailyDose">Annual UV DailyDose</option>
-                        <option value="CO_Poisoning_Hospitalization">CO Poisoning Hospitalization</option>
-                        <option value="Pesticide_Exposure">Pesticide Exposure</option>
-                        <option value="Heart_Stroke">Heart Stroke</option>
-                        <option value="High_Cholesterol">High Cholesterol</option>
-                        <option value="Hospitalization_Gender">Hospitalization Gender</option>
-                        <option value="Hospitalization">Hospitalization</option>
-                        <option value="No_Health_Insurance">No Health Insurance</option>
-                        <option value="Smoking">Smoking</option>
                     </select>
                 </div>
-                <div class="filter-group" id="pc-selection-group" style="display: none;">
+                <div class="filter-group" id="pc-selection-group">
                     <label for="pc-select">Principal Components:</label>
-                    <select id="pc-select" name="pc" multiple style="min-height: 100px;">
+                    <select id="pc-select" name="pc" multiple>
                     </select>
                 </div>
-                <div class="filter-group" style="text-align: right;">
-                    <button id="visualize-btn" style="padding: 5px 10px; cursor: pointer; margin-right: 5px; background-color: #4CAF50; color: white; border: none; border-radius: 4px;">Visualize</button>
-                    <button id="run-pca-btn" style="padding: 5px 10px; cursor: pointer; border: none; border-radius: 4px; background-color: #2196F3; color: white;">Run PCA</button>
+                <div class="filter-group" id="biplot-selection-group">
+                    <label>BiPlot Axes:</label>
+                    <div class="biplot-selects">
+                        <div class="biplot-select">
+                            <label for="biplot-x-select">X Axis</label>
+                            <select id="biplot-x-select" name="biplot-x">
+                            </select>
+                        </div>
+                        <div class="biplot-select">
+                            <label for="biplot-y-select">Y Axis</label>
+                            <select id="biplot-y-select" name="biplot-y">
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="filter-group button-group">
+                    <button id="visualize-btn">Visualize</button>
+                    <button id="run-pca-btn">Run PCA</button>
                 </div>
                 <div class="filter-group">
                     <label for="gender-select">Gender:</label>
@@ -117,36 +113,23 @@
         <div class="timeline-box">
             <h3>Cancer Year Selection</h3>
             <select id="cancer-year-selector" name="cancer-year">
-                <option value="2011">2011</option>
-                <option value="2012">2012</option>
-                <option value="2013">2013</option>
-                <option value="2014">2014</option>
-                <option value="2015">2015</option>
-                <option value="2016">2016</option>
-                <option value="2017">2017</option>
-                <option value="2018">2018</option>
-                <option value="2019">2019</option>
-                <option value="2020" selected>2020</option>
             </select>
             <h3>Factor Year Selection</h3>
             <select id="factor-year-selector" name="factor-year">
-                <option value="2011">2011</option>
-                <option value="2012">2012</option>
-                <option value="2013">2013</option>
-                <option value="2014">2014</option>
-                <option value="2015">2015</option>
-                <option value="2016">2016</option>
-                <option value="2017">2017</option>
-                <option value="2018">2018</option>
-                <option value="2019">2019</option>
-                <option value="2020" selected>2020</option>
             </select>
 
         </div>
     </div>
-    <div style="display: flex; gap: 20px; padding: 20px;">
-        <div id="table-container" class="container-fluid" style="background-color: white; padding: 20px; position: relative; z-index: 10; min-height: 400px; flex: 1;"></div>
-        <div id="heatmap-container" style="background-color: white; padding: 20px; min-height: 400px; width: 500px; display: flex; flex-direction: column; align-items: center;"></div>
+    <div class="dashboard-bottom">
+        <div id="table-container" class="container-fluid"></div>
+        <div id="PCA-container-wrapper">
+            <div class="pca-view-toggle">
+                <button id="toggle-heatmap-btn" class="view-btn active">Loadings Heatmap</button>
+                <button id="toggle-biplot-btn" class="view-btn">BiPlot</button>
+            </div>
+            <div id="PCA-container" class="pca-view active"></div>
+            <div id="biplot-container" class="pca-view"></div>
+        </div>
     </div>
 </div>
 

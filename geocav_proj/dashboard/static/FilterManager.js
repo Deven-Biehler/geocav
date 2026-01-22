@@ -7,13 +7,13 @@ import {DEFAULT_LEAFLET_CONFIG, DEFAULT_FILTERS, COUNTY_FACTOR_FILTERS, STATE_FA
 import {PieMap} from './maps/PieMap.js';
 
 export class FilterManager {
-    constructor(mapRenderer, regressionPlot, tableRenderer, heatmapPlot) {
+    constructor(mapRenderer, regressionPlot, tableRenderer, pcaPlot) {
         console.log('[FilterManager] Initializing FilterManager');
         this.selectedFilters = DEFAULT_FILTERS;
         this.mapRenderer = mapRenderer;
         this.regressionPlot = regressionPlot;
         this.tableRenderer = tableRenderer;
-        this.heatmapPlot = heatmapPlot;
+        this.pcaPlot = pcaPlot;
         this.isPCAActive = false; // Track if PCA is currently active
 
         this.initializeFilters();
@@ -22,7 +22,7 @@ export class FilterManager {
         this.mapRenderer.renderMap(this.selectedFilters);
         this.regressionPlot.renderPlot(this.selectedFilters);
         this.tableRenderer.renderTable(this.selectedFilters);
-        if(this.heatmapPlot) this.heatmapPlot.renderPlot(this.selectedFilters);
+        if(this.pcaPlot) this.pcaPlot.renderPlot(this.selectedFilters);
     }
 
     initializeFilters() {
@@ -38,11 +38,20 @@ export class FilterManager {
         this.runPcaBtn = document.getElementById('run-pca-btn');
         this.visualizeBtn = document.getElementById('visualize-btn');
         this.analysisModeToggle = document.getElementById('analysis-mode-toggle');
+        this.mapSelect = document.getElementById('map-select');
+        
+        // PCA related elements
         this.pcSelect = document.getElementById('pc-select');
         this.pcSelectionGroup = document.getElementById('pc-selection-group');
+        this.biplotXSelect = document.getElementById('biplot-x-select');
+        this.biplotYSelect = document.getElementById('biplot-y-select');
+        this.biplotSelectionGroup = document.getElementById('biplot-selection-group');
+        this.toggleHeatmapBtn = document.getElementById('toggle-heatmap-btn');
+        this.toggleBiplotBtn = document.getElementById('toggle-biplot-btn');
 
 
         // Set default selections
+        this.mapSelect.value = this.selectedFilters.mapType;
         this.cancerSelect.value = this.selectedFilters.cancer_type;
         
         // Handle initial factor selection
@@ -66,6 +75,7 @@ export class FilterManager {
     addEventListeners() {
         if (this.visualizeBtn) {
             this.visualizeBtn.addEventListener('click', () => {
+                this.updateSelectedFilters();
                 this.updateVisualization();
             });
         }
@@ -82,50 +92,65 @@ export class FilterManager {
             });
         }
 
-        const selectElements = [
-            { element: 'map-select', key: 'mapType' },
-            { element: this.cancerSelect, key: 'cancer_type' },
-            { element: this.levelSelect, key: 'level' },
-            { element: this.factorSelect, key: 'factor' },
-            { element: this.genderSelect, key: 'gender' },
-            { element: this.raceSelect, key: 'race' },
-            { element: this.cancerSlider, key: 'cancer_year' },
-            { element: this.factorSlider, key: 'factor_year' }
-        ];
-
-        selectElements.forEach(({ element, key }) => {
-            const select = typeof element === 'string' ? document.getElementById(element) : element;
-            select.addEventListener('change', (e) => {
-                if (key === 'cancer_type') {
-                    if (this.cancerSelect.hasAttribute('multiple')) {
-                        this.selectedFilters.selectedCancerTypes = Array.from(this.cancerSelect.selectedOptions).map(opt => opt.value);
-                    } else {
-                        this.selectedFilters[key] = e.target.value;
-                        this.selectedFilters.selectedCancerTypes = [e.target.value];
-                    }
-                } else if (key === 'factor') {
-                    this.selectedFilters[key] = Array.from(this.factorSelect.selectedOptions).map(opt => opt.value);
-                    // If nothing selected, maybe default to 'None' or empty array?
-                    if (this.selectedFilters[key].length === 0) {
-                        this.selectedFilters[key] = ['None'];
-                    }
-                } else {
-                    this.selectedFilters[key] = (key === 'cancer_year' || key === 'factor_year') 
-                        ? parseInt(e.target.value) 
-                        : e.target.value;
-                }
-                this.filterChanged();
-            });
-        });
-
         // PC select listener
         if (this.pcSelect) {
             this.pcSelect.addEventListener('change', (e) => {
                 const selectedPCs = Array.from(this.pcSelect.selectedOptions).map(opt => parseInt(opt.value));
-                this.heatmapPlot.setSelectedPCs(selectedPCs);
+                this.pcaPlot.setSelectedPCs(selectedPCs);
                 console.log('[FilterManager] Selected PCs:', selectedPCs);
             });
         }
+
+        // BiPlot axis selectors
+        const onBiplotAxisChange = () => {
+            const x = parseInt(this.biplotXSelect.value);
+            const y = parseInt(this.biplotYSelect.value);
+            this.pcaPlot.setBiplotAxes(x, y);
+            console.log('[FilterManager] BiPlot axes set to:', x, y);
+        };
+
+        this.biplotXSelect.addEventListener('change', onBiplotAxisChange);
+        this.biplotYSelect.addEventListener('change', onBiplotAxisChange);
+        this.toggleHeatmapBtn.addEventListener('click', () => {
+            this.showHeatmap(); // If heatmap button clicked, show heatmap
+        });
+        this.toggleBiplotBtn.addEventListener('click', () => {
+            this.showBiplot(); // If biplot button clicked, show biplot
+        });
+
+        // Add listeners for dependent filters
+        this.mapSelect.addEventListener('change', () => {
+             this.updateSelectedFilters();
+             this.filterChanged();
+        });
+        this.levelSelect.addEventListener('change', () => {
+             this.updateSelectedFilters();
+             this.filterChanged();
+        });
+         this.genderSelect.addEventListener('change', () => {
+             this.updateSelectedFilters();
+             this.filterChanged();
+        });
+        this.raceSelect.addEventListener('change', () => {
+             this.updateSelectedFilters();
+             this.filterChanged();
+        });
+    }
+
+    updateSelectedFilters() {
+        console.log('[FilterManager] Updating selected filters from UI. Level value:', this.levelSelect.value);
+        this.selectedFilters.mapType = this.mapSelect.value;
+        this.selectedFilters.cancer_type = this.cancerSelect.value;
+        // Capture all selected cancer types (for pie map multi-select)
+        this.selectedFilters.selectedCancerTypes = Array.from(this.cancerSelect.selectedOptions).map(opt => opt.value);
+        
+        this.selectedFilters.factor = Array.from(this.factorSelect.selectedOptions).map(option => option.value);
+        this.selectedFilters.level = this.levelSelect.value;
+        this.selectedFilters.gender = this.genderSelect.value;
+        this.selectedFilters.race = this.raceSelect.value;
+        this.selectedFilters.cancer_year = this.cancerSlider.value;
+        this.selectedFilters.factor_year = this.factorSlider.value;
+        console.log('[FilterManager] Filters updated to:', JSON.parse(JSON.stringify(this.selectedFilters)));
     }
 
     filterChanged() {
@@ -138,35 +163,24 @@ export class FilterManager {
     }
 
     updateVisualization() {
-        console.log('[FilterManager] Visualize button clicked. Updating plots with:', this.selectedFilters);
-        
-        // If PCA is active, visualize selected PCs instead of regular factors
-        if (this.isPCAActive) {
-            const selectedPCs = this.heatmapPlot ? this.heatmapPlot.getSelectedPCs() : [];
-            if (selectedPCs.length === 0) {
-                alert("Please select at least one Principal Component to visualize.");
-                return;
-            }
-            console.log('[FilterManager] Visualizing selected PCs:', selectedPCs);
-            // Pass PC data to map renderer and regression plot
+        console.log('[FilterManager] Updating visualization with filters:', JSON.parse(JSON.stringify(this.selectedFilters)));
+        this.mapRenderer.renderMap(this.selectedFilters);
+
+        if (this.isPCAActive && this.pcaPlot.pcResults) {
             const pcData = {
                 isPCA: true,
-                selectedPCs: selectedPCs,
-                pcResults: this.heatmapPlot.pcResults,
-                originalFilters: this.selectedFilters
+                pcResults: this.pcaPlot.pcResults,
+                selectedPCs: this.pcaPlot.selectedPCs && this.pcaPlot.selectedPCs.length > 0 ? this.pcaPlot.selectedPCs : [0]
             };
-            this.mapRenderer.renderMap(this.selectedFilters, pcData);
             this.regressionPlot.renderPlot(this.selectedFilters, pcData);
-            this.tableRenderer.renderTable(this.selectedFilters);
         } else {
-            // Normal visualization with regular factors
-            this.mapRenderer.renderMap(this.selectedFilters);
             this.regressionPlot.renderPlot(this.selectedFilters);
-            this.tableRenderer.renderTable(this.selectedFilters);
-
-            // Update PCA placeholder or clear data if filters change?
-            this.heatmapPlot.renderPlot(this.selectedFilters);
         }
+
+        this.tableRenderer.renderTable(this.selectedFilters);
+
+        // Update PCA placeholder or clear data if filters change?
+        this.pcaPlot.renderPlot(this.selectedFilters);
     }
 
     updateCancerOptions() {
@@ -201,10 +215,17 @@ export class FilterManager {
         }
         
         if (this.selectedFilters.selectedCancerTypes) {
+            // Ensure selectedCancerTypes is an array to avoid string iteration issues
+            if (!Array.isArray(this.selectedFilters.selectedCancerTypes)) {
+                this.selectedFilters.selectedCancerTypes = [this.selectedFilters.selectedCancerTypes];
+            }
+            
             this.selectedFilters.selectedCancerTypes = this.selectedFilters.selectedCancerTypes.filter(c => availableCancers.includes(c));
             if (this.selectedFilters.selectedCancerTypes.length === 0) {
                 this.selectedFilters.selectedCancerTypes = [this.selectedFilters.cancer_type];
             }
+        } else {
+             this.selectedFilters.selectedCancerTypes = [this.selectedFilters.cancer_type];
         }
 
         this.cancerSelect.value = this.selectedFilters.cancer_type;
@@ -346,6 +367,7 @@ export class FilterManager {
     }
 
     async runPCA() {
+        this.updateSelectedFilters();
         const factors = this.selectedFilters.factor;
         if (!factors || factors.length < 2) {
             alert("Please select at least 2 factors to run PCA.");
@@ -357,25 +379,20 @@ export class FilterManager {
         
         // Lock factor filters
         this.factorSelect.disabled = true;
-        this.factorSelect.style.opacity = '0.6';
-        this.factorSelect.style.cursor = 'not-allowed';
+        this.factorSelect.parentElement.classList.add('disabled'); // Disable the entire select group for factors
         
         // Update button text and styling
         this.runPcaBtn.textContent = 'Remove PCs';
-        this.runPcaBtn.style.backgroundColor = '#f44336';
-        this.runPcaBtn.style.color = 'white';
+        this.runPcaBtn.classList.add('disabled'); // Disable the button while PCA is running
         
         // Show PC selection box
-        if (this.pcSelectionGroup) {
-            this.pcSelectionGroup.style.display = 'block';
-        }
+        this.pcSelectionGroup.classList.add('visible'); //  Make PC selection visible
+        this.biplotSelectionGroup.classList.add('visible'); // Make BiPlot selection visible
         
         // Run PCA and wait for it to complete
-        if (this.heatmapPlot) {
-            await this.heatmapPlot.runPCA(this.selectedFilters);
-            // Populate PC select after PCA runs
-            this.populatePCSelect();
-        }
+        await this.pcaPlot.runPCA(this.selectedFilters);
+        // Populate PC select after PCA runs
+        this.populatePCSelect();
         
         console.log('[FilterManager] PCA activated - factor filters locked');
     }
@@ -386,34 +403,30 @@ export class FilterManager {
         
         // Unlock factor filters
         this.factorSelect.disabled = false;
-        this.factorSelect.style.opacity = '1';
-        this.factorSelect.style.cursor = 'pointer';
+        this.factorSelect.parentElement.classList.remove('disabled'); // Enable the entire select group for factors
         
         // Update button text and styling
         this.runPcaBtn.textContent = 'Run PCA';
-        this.runPcaBtn.style.backgroundColor = '';
-        this.runPcaBtn.style.color = '';
+        this.runPcaBtn.classList.remove('disabled'); // Re-enable the button
         
         // Hide PC selection box
-        if (this.pcSelectionGroup) {
-            this.pcSelectionGroup.style.display = 'none';
-        }
+        this.pcSelectionGroup.classList.remove('visible');
+        this.biplotSelectionGroup.classList.remove('visible');
         
         // Clear PC select
-        if (this.pcSelect) {
-            this.pcSelect.innerHTML = '';
-        }
+        this.pcSelect.innerHTML = '';
+        this.biplotXSelect.innerHTML = '';  
+        this.biplotYSelect.innerHTML = '';
         
         // Clear PCA visualization
-        if (this.heatmapPlot) {
-            this.heatmapPlot.clearPCA();
-        }
+        this.pcaPlot.clearPCA();
+        this.updateVisualization();
         
         console.log('[FilterManager] PCA deactivated - factor filters unlocked');
     }
 
     populatePCSelect() {
-        const pcResults = this.heatmapPlot.pcResults;
+        const pcResults = this.pcaPlot.pcResults;
         const n_components = pcResults.loadings.length;
         const explainedVariance = pcResults.explained_variance_ratio || [];
 
@@ -422,13 +435,55 @@ export class FilterManager {
 
         // Add options for each PC
         for (let i = 0; i < n_components; i++) {
+            const variance = explainedVariance[i] ? `(${(explainedVariance[i] * 100).toFixed(1)}%)` : '';
+
             const option = document.createElement('option');
             option.value = i;
-            const variance = explainedVariance[i] ? `(${(explainedVariance[i] * 100).toFixed(1)}%)` : '';
             option.textContent = `PC${i + 1} ${variance}`;
             this.pcSelect.appendChild(option);
+
+            const optionX = document.createElement('option');
+            optionX.value = i;
+            optionX.textContent = `PC${i + 1} ${variance}`;
+            this.biplotXSelect.appendChild(optionX);
+
+            const optionY = document.createElement('option');
+            optionY.value = i;
+            optionY.textContent = `PC${i + 1} ${variance}`;
+            this.biplotYSelect.appendChild(optionY);
+        }
+
+        // Default BiPlot axes to PC1 vs PC2 (or PC1 if only one component)
+        if (this.biplotXSelect && this.biplotYSelect) {
+            const defaultX = 0;
+            const defaultY = n_components > 1 ? 1 : 0;
+            this.biplotXSelect.value = defaultX.toString();
+            this.biplotYSelect.value = defaultY.toString();
+            if (this.pcaPlot) {
+                this.pcaPlot.setBiplotAxes(defaultX, defaultY);
+            }
         }
 
         console.log('[FilterManager] PC select populated with', n_components, 'components');
+    }
+
+    showHeatmap() {
+        const heatmapView = document.getElementById('PCA-container');
+        const biplotView = document.getElementById('biplot-container');
+        
+        heatmapView.classList.add('active');
+        biplotView.classList.remove('active');
+        this.toggleHeatmapBtn.classList.add('active');
+        this.toggleBiplotBtn.classList.remove('active');
+    }
+
+    showBiplot() {
+        const heatmapView = document.getElementById('PCA-container');
+        const biplotView = document.getElementById('biplot-container');
+        
+        heatmapView.classList.remove('active');
+        biplotView.classList.add('active');
+        this.toggleHeatmapBtn.classList.remove('active');
+        this.toggleBiplotBtn.classList.add('active');
     }
 }
