@@ -85,6 +85,9 @@
       <option value="radiation_treatment">Radiation treatment</option>
     </select>
 
+    <label style="display:block;font-weight:600;margin-bottom:4px;">Impact:</label>
+    <select id="impactSelect" multiple style="width:220px;height:100px;"></select>
+
     <label style="margin-left:10px; display:flex; align-items:center; gap:6px;">
     <input type="checkbox" id="showOutliersToggle" checked>
     <strong>Show outliers</strong>
@@ -122,8 +125,27 @@
 (function(){
   const cancerSelect  = document.getElementById("cancerSelect");
   const groupBySelect = document.getElementById("groupBySelect");
+  const impactSelect  = document.getElementById("impactSelect");
   const showOutliersToggle = document.getElementById("showOutliersToggle");
   const metaText      = document.getElementById("metaText");
+
+  function selectedImpacts(){
+    if (!impactSelect) return [];
+    return Array.from(impactSelect.selectedOptions).map(o => o.value);
+  }
+
+  function populateImpacts(available, used){
+    if (!impactSelect) return;
+    const prevSelected = new Set(used || selectedImpacts() || []);
+    impactSelect.innerHTML = "";
+    (available || []).forEach(im => {
+      const opt = document.createElement("option");
+      opt.value = im;
+      opt.textContent = im;
+      if (prevSelected.has(im)) opt.selected = true;
+      impactSelect.appendChild(opt);
+    });
+  }
 
   async function fetchLandscape(){
     const cancer  = cancerSelect.value;
@@ -131,7 +153,19 @@
 
     let url = "{% url 'molecular_landscape_json' cancer_name='__C__' %}";
     url = url.replace("__C__", encodeURIComponent(cancer));
-    url += `?group_by=${encodeURIComponent(groupBy)}&t=${Date.now()}`;
+    const impacts = selectedImpacts();
+
+    const params = [];
+    params.push(`group_by=${encodeURIComponent(groupBy)}`);
+
+    if (impacts.length > 0){
+      params.push(`impacts=${encodeURIComponent(impacts.join(","))}`);
+    }
+
+    // cache-buster
+    params.push(`t=${Date.now()}`);
+
+    url += `?${params.join("&")}`;
 
     metaText.textContent = "Loading…";
 
@@ -154,6 +188,7 @@
     }
 
     const data = await resp.json();
+    populateImpacts(data.available_impacts || [], data.impacts_used || []);
 
     if (!data || !data.meta){
       metaText.textContent = "No data.";
@@ -161,7 +196,8 @@
     }
 
     const gb = (data.meta.group_by && data.meta.group_by !== "none") ? ` | Grouped by: ${data.meta.group_by}` : "";
-    metaText.textContent = `Cancer: ${data.meta.cancer} | Samples: ${data.meta.n_samples}${gb}`;
+    const imp = (data.impacts_used && data.impacts_used.length) ? ` | Impact: ${data.impacts_used.join(", ")}` : "";
+    metaText.textContent = `Cancer: ${data.meta.cancer} | Samples: ${data.meta.n_samples}${gb}${imp}`;
 
     renderVariant(data.variant_distribution || {labels: [], counts: []});
     renderTopGenes(data.top_genes || {genes: [], counts: []});
@@ -281,6 +317,7 @@
   // events
   cancerSelect.addEventListener("change", fetchLandscape);
   if (groupBySelect) groupBySelect.addEventListener("change", fetchLandscape);
+  if (impactSelect) impactSelect.addEventListener("change", fetchLandscape);
   if (showOutliersToggle) showOutliersToggle.addEventListener("change", fetchLandscape);
 
   // initial load

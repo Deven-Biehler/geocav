@@ -36,6 +36,18 @@
     <div id="netMeta" style="margin-top:8px; font-size:13px; color:#6c757d;"></div>
   </div>
 
+  <div style="display:flex; gap:8px; margin-top:10px;">
+    <button id="btnDefault"
+            style="flex:1; padding:8px; border:1px solid #ced4da; border-radius:6px; background:#fff;">
+      Default View
+    </button>
+
+    <button id="btnCluster"
+            style="flex:1; padding:8px; border:none; border-radius:6px; background:#0d6efd; color:#fff;">
+      Cluster Network
+    </button>
+  </div>
+
   <!-- Cytoscape canvas covers the entire viewport -->
   <div id="cy"
        style="
@@ -45,6 +57,23 @@
          border:none;
          overflow:hidden;
        ">
+  </div>
+
+  <div id="cy-tooltip"
+      style="
+        position:absolute;
+        display:none;
+        z-index:2000;
+        pointer-events:none;
+        background:rgba(20,20,20,0.92);
+        color:#fff;
+        padding:8px 10px;
+        border-radius:8px;
+        font-size:12px;
+        line-height:1.35;
+        max-width:320px;
+        box-shadow:0 8px 22px rgba(0,0,0,0.18);
+      ">
   </div>
 </div>
 
@@ -78,13 +107,21 @@
     requestAnimationFrame(() => { cy.resize(); cy.fit(); });
   }
 
-  async function loadNetwork(slug) {
+  async function loadNetwork(slug, clustered=false) {
     // Nuke old instance to avoid stale state
     if (cy) { try { cy.destroy(); } catch(e){} cy = null; }
     cyDiv.innerHTML = "";
     if (metaEl) metaEl.textContent = "Loading…";
 
-    const url = "{% url 'network_json_by_slug' cancer='__slug__' %}".replace('__slug__', slug) + `?t=${Date.now()}`;
+    const params = new URLSearchParams();
+    params.set("t", Date.now());
+    if (clustered) {
+      params.set("cluster", "1");
+      params.set("method", "leiden");  // or make dropdown later
+      params.set("res", "1.0");
+    }
+
+    const url = "{% url 'network_json_by_slug' cancer='__slug__' %}".replace('__slug__', slug) + "?" + params.toString();
     let resp;
     try { resp = await fetch(url, { cache: 'no-store' }); } catch (e) { showError("Request error: " + e); return; }
     if (!resp.ok) { showError(await resp.text()); return; }
@@ -116,14 +153,16 @@
             //'label': 'data(label)',
             'font-size': 11,
             'min-zoomed-font-size': 10,
-            'color': '#212529',
+            //'color': '#212529',
             'text-valign': 'center',
             'text-halign': 'center',
-            'background-color': '#0d6efd',
-            'border-width': 0.5,
-            'border-color': '#fff',
+            'background-color': clustered
+              ? (ele) => clusterColor(ele.data('cluster'))
+              : '#0d6efd',
             'width': 14,
-            'height': 14
+            'height': 14,
+            'border-width': 0.5,
+            'border-color': '#fff'
           }
         },
         { selector: 'edge',
@@ -144,58 +183,149 @@
       boxSelectionEnabled: true
     });
 
-    // 1) Instant layout so something appears right away
-    cy.layout({ name: 'concentric', animate: false, fit: true, padding: 30 }).run();
-    forceRender();
-    updateMeta(N, M, slug, "placed");
+    // ---- Hover tooltip ----
+    const tip = document.getElementById("cy-tooltip");
+    const nodeCache = new Map();  // node_id -> payload
 
-    // 2) Fast "Kamada–Kawai-like" refine with fcose (DRAFT + HARD TIMEOUT)
-    const haveFCoSE = !!cy.layouts && typeof cytoscape !== 'undefined' && cytoscape('core', 'fcose') !== undefined;
-    if (haveFCoSE) {
-      const fcoseOpts = {
-        name: 'fcose',
-        quality: 'draft',          // speed over precision
-        animate: false,
-        randomize: true,
-        nodeSeparation: 60,
-        idealEdgeLength: 80,
-        linkCrossingFactor: 20,
-        packComponents: true,
-        samplingType: true,        // fast sampling on large graphs
-        nodeRepulsion: 4500
-      };
-      updateMeta(N, M, slug, "refining (fast)");
-
-      const controller = cy.layout(fcoseOpts);
-      const timeout = setTimeout(() => { try { controller.stop(); } catch(e){} forceRender(); updateMeta(N, M, slug, "ready"); }, 2000);
-      controller.on('layoutstop', () => { clearTimeout(timeout); cy.fit(); forceRender(); updateMeta(N, M, slug, "ready"); });
-      controller.run();
-      return;
+    function esc(s){
+      return String(s ?? "")
+        .replaceAll("&","&amp;").replaceAll("<","&lt;")
+        .replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
     }
 
-    // 3) Fallback: short COSE pass with reduced iterations
-    const coseController = cy.layout({
-      name: 'cose',
-      animate: false,
-      randomize: true,
-      nodeRepulsion: 400000,
-      idealEdgeLength: 80,
-      gravity: 0.25,
-      numIter: 500,                // shorter run
-      initialTemp: 1000,
-      coolingFactor: 0.99,
-      minTemp: 1.0,
-      fit: true
-    });
-    const coseTimeout = setTimeout(() => { try { coseController.stop(); } catch(e){} forceRender(); updateMeta(N, M, slug, "ready"); }, 1500);
-    coseController.on('layoutstop', () => { clearTimeout(coseTimeout); cy.fit(); forceRender(); updateMeta(N, M, slug, "ready"); });
-    coseController.run();
+    function renderTipHTML(d){
+      const lines = [];
+      lines.push(`<div style="font-weight:700;margin-bottom:4px;">${esc(d.node_index)}</div>`);
+      const fields = [
+        ["Sample_ID", "Tumor_Sample_Barcode"],
+        ["Age", "age_at_initial_pathologic_diagnosis"],
+        ["Gender", "gender"],
+        ["Vital status", "vital_status"],
+        ["Race", "race_list"],
+        ["Ethnicity", "ethnicity"],
+        ["#Mutations", "n_events"],
+        ["#Genes", "n_genes"],
+        ["Mutations", "event_ids"],
+        ["Genes", "genes"]
+      ];
+      for (const [lab, key] of fields){
+        if (d[key] !== undefined && d[key] !== null && String(d[key]).trim() !== ""){
+          lines.push(`<div><span style="opacity:.75;">${esc(lab)}:</span> ${esc(d[key])}</div>`);
+        }
+      }
+      return lines.join("");
+    }
 
-    window.addEventListener('resize', forceRender);
+    function positionTip(evt){
+      const p = evt.renderedPosition;
+      tip.style.left = `${p.x + 14}px`;
+      tip.style.top  = `${p.y + 14}px`;
+    }
+
+    function clusterColor(c){
+      if (c === null || c === undefined || c < 0) return "#0d6efd";
+      const hue = (c * 47) % 360;
+      return `hsl(${hue}, 65%, 50%)`;
+    }
+
+    async function fetchNodeMeta(cancerSlug, nodeId){
+      const url = `/dashboard/api/network/${encodeURIComponent(cancerSlug)}/node/${encodeURIComponent(nodeId)}.json`;
+      const resp = await fetch(url, { cache: "no-store" });
+      if (!resp.ok) throw new Error(await resp.text());
+      return await resp.json();
+    }
+
+    cy.on("mouseover", "node", async (evt) => {
+      const nodeId = evt.target.id();          // numeric index from GML
+      const slug = select.value;               // your selected cancer type slug
+
+      tip.style.display = "block";
+      tip.innerHTML = "<div style='opacity:.75;'>Loading…</div>";
+      positionTip(evt);
+
+      try {
+        const d = await fetchNodeMeta(slug, nodeId);
+        tip.innerHTML = renderTipHTML(d);
+      } catch(e) {
+        tip.innerHTML = "<div style='color:#ffb3b3;'>No metadata found</div>";
+      }
+    });
+
+    cy.on("mousemove", "node", (evt) => positionTip(evt));
+    cy.on("mouseout", "node", () => { tip.style.display = "none"; tip.innerHTML = ""; });
+
+
+    // Instant layout so something appears right away
+    if (clustered) {
+      cy.layout({ name: 'preset', fit: true, padding: 30 }).run();
+      forceRender();
+      updateMeta(N, M, slug, "clustered");
+      return;
+    } else {
+      cy.layout({ name: 'concentric', animate: false, fit: true, padding: 30 }).run();
+      forceRender();
+      updateMeta(N, M, slug, "placed");
+
+      // Fast "Kamada–Kawai-like" refine with fcose (DRAFT + HARD TIMEOUT)
+      const haveFCoSE = !!cy.layouts && typeof cytoscape !== 'undefined' && cytoscape('core', 'fcose') !== undefined;
+      if (haveFCoSE) {
+        const fcoseOpts = {
+          name: 'fcose',
+          quality: 'draft',          // speed over precision
+          animate: false,
+          randomize: true,
+          nodeSeparation: 60,
+          idealEdgeLength: 80,
+          linkCrossingFactor: 20,
+          packComponents: true,
+          samplingType: true,        // fast sampling on large graphs
+          nodeRepulsion: 4500
+        };
+        updateMeta(N, M, slug, "refining (fast)");
+
+        const controller = cy.layout(fcoseOpts);
+        const timeout = setTimeout(() => { try { controller.stop(); } catch(e){} forceRender(); updateMeta(N, M, slug, "ready"); }, 2000);
+        controller.on('layoutstop', () => { clearTimeout(timeout); cy.fit(); forceRender(); updateMeta(N, M, slug, "ready"); });
+        controller.run();
+        return;
+      }
+
+      // Fallback: short COSE pass with reduced iterations
+      const coseController = cy.layout({
+        name: 'cose',
+        animate: false,
+        randomize: true,
+        nodeRepulsion: 400000,
+        idealEdgeLength: 80,
+        gravity: 0.25,
+        numIter: 500,                // shorter run
+        initialTemp: 1000,
+        coolingFactor: 0.99,
+        minTemp: 1.0,
+        fit: true
+      });
+      const coseTimeout = setTimeout(() => { try { coseController.stop(); } catch(e){} forceRender(); updateMeta(N, M, slug, "ready"); }, 1500);
+      coseController.on('layoutstop', () => { clearTimeout(coseTimeout); cy.fit(); forceRender(); updateMeta(N, M, slug, "ready"); });
+      coseController.run();
+    }
   }
 
-  if (select && select.value) loadNetwork(select.value);
-  if (select) select.addEventListener('change', e => loadNetwork(e.target.value));
+  window.addEventListener('resize', forceRender);
+
+  if (select && select.value) loadNetwork(select.value, false);
+  if (select) select.addEventListener('change', e => loadNetwork(e.target.value, false));
+
+  const btnCluster = document.getElementById("btnCluster");
+  const btnDefault = document.getElementById("btnDefault");
+
+  if (btnCluster) btnCluster.addEventListener("click", () => {
+    if (select && select.value) loadNetwork(select.value, true);
+  });
+
+  if (btnDefault) btnDefault.addEventListener("click", () => {
+    if (select && select.value) loadNetwork(select.value, false);
+  });
+
 })();
 </script>
 

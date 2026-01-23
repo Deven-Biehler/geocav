@@ -79,11 +79,6 @@
       {% endfor %}
     </select>
 
-    <label style="margin-left:10px; display:flex; align-items:center; gap:6px;">
-    <input type="checkbox" id="showOutliersToggle" checked>
-    <strong>Show outliers</strong>
-    </label>
-
     <div>
       <label style="display:block;font-weight:600;margin-bottom:4px;">Genes (max 20)</label>
       <select id="geneSelect" class="genes-box" multiple></select>
@@ -95,7 +90,7 @@
 
     <div>
       <label style="display:block;font-weight:600;margin-bottom:4px;">
-        Variant Classification (applies only to Gene×Group plots)
+        Variant Classification
       </label>
       <select id="varClassSelect" class="genes-box" multiple></select>
       <div style="font-size:12px;color:#6b7280;margin-top:4px;">
@@ -103,7 +98,23 @@
       </div>
     </div>
 
+    <div>
+      <label style="display:block;font-weight:600;margin-bottom:4px;">
+        Impact
+      </label>
+      <select id="impactSelect" class="genes-box" multiple></select>
+      <div style="font-size:12px;color:#6b7280;margin-top:4px;">
+        Unselected = include all impacts.
+      </div>
+    </div>
+
+    <label style="margin-left:10px; display:flex; align-items:center; gap:6px;">
+    <input type="checkbox" id="showOutliersToggle" checked>
+    <strong>Show outliers</strong>
+    </label>
+
     <button id="applyBtn">Apply filters</button>
+    <button id="resetBtn" type="button">Reset filters</button>
 
     <span id="metaText" style="font-size:13px;color:#6b7280;"></span>
   </div>
@@ -150,10 +161,13 @@
   const varClassSelect  = document.getElementById("varClassSelect");
   const applyBtn        = document.getElementById("applyBtn");
   const metaText        = document.getElementById("metaText");
+  const impactSelect    = document.getElementById("impactSelect");
+  const resetBtn        = document.getElementById("resetBtn");
 
   let lastPayload = null;
 
   function selectedGenes(){
+    if (!userPickedGenes) return [];
     return Array.from(geneSelect.selectedOptions).map(o => o.value).slice(0, 20);
   }
 
@@ -185,10 +199,22 @@
     });
   }
 
+  function populateImpacts(available, used){
+    impactSelect.innerHTML = "";
+    (available || []).forEach(im => {
+      const opt = document.createElement("option");
+      opt.value = im;
+      opt.textContent = im;
+      if (used && used.includes(im)) opt.selected = true;
+      impactSelect.appendChild(opt);
+    });
+  }
+
   async function fetchDemographics(){
     const cancer = cancerSelect.value;
     const genes = selectedGenes();
     const varClasses = selectedVarClasses();
+    const impacts = Array.from(impactSelect.selectedOptions).map(o => o.value);
 
     let url = "{% url 'molecular_demographics_json' cancer_name='__C__' %}";
     url = url.replace("__C__", encodeURIComponent(cancer));
@@ -201,6 +227,9 @@
     }
     if (varClasses.length > 0){
       params.push("variant_classes=" + encodeURIComponent(varClasses.join(",")));
+    }
+    if (impacts.length){
+      params.push("impacts=" + encodeURIComponent(impacts.join(",")));
     }
 
     if (params.length > 0){
@@ -226,6 +255,7 @@
 
     populateGenes(data.available_genes, data.genes_used);
     populateVariantClasses(data.available_variant_classes, data.variant_classes_used);
+    populateImpacts(data.available_impacts, data.impacts_used);
 
     window.lastAgeMutData = data.age_vs_mut;
     renderAgeMut(window.lastAgeMutData);
@@ -244,91 +274,168 @@
     return (arr.length % 2) ? arr[mid] : (arr[mid-1] + arr[mid]) / 2;
   }
 
+  function normalizeAgeToYears(a){
+    // a is numeric already
+    if (!isFinite(a)) return null;
+
+    // If it's huge, it's almost certainly days
+    if (a > 200) return a / 365.25;
+
+    // If it's tiny and integer-ish, it might be decade-bin index (0..9 or 0..10)
+    // e.g., 0=>0-9, 1=>10-19...
+    return a;
+  }
+
   function renderAgeMut(obj){
-    obj = obj || {};
-    const agesRaw = obj.age || [];
-    const mutsRaw = obj.mut_count || [];
+    try {
+      obj = obj || {};
+      const agesRaw = obj.age || [];
+      const mutsRaw = obj.mut_count || [];
 
-    // Pair + clean (ensure numeric, keep within 0-100 for consistency)
-    const pairs = [];
-    const n = Math.min(agesRaw.length, mutsRaw.length);
+      const n = Math.min(agesRaw.length, mutsRaw.length);
 
-    for (let i = 0; i < n; i++){
-      const a = Number(agesRaw[i]);
-      const m = Number(mutsRaw[i]);
-      if (isNaN(a) || isNaN(m)) continue;
-      if (a < 0 || a > 100) continue;
-      pairs.push([a, m]);
-    }
+      function parseAge(x){
+        if (x === null || x === undefined) return null;
 
-    if (!pairs.length){
+        // Handle strings like "0-9" or "10–19"
+        if (typeof x === "string") {
+          const s = x.trim();
+          const m = s.match(/^(\d+)\s*[-–]\s*(\d+)$/);
+          if (m) return Number(m[1]); // take bin start
+        }
+
+        const a = Number(x);
+        if (!Number.isFinite(a)) return null;
+        return a;
+      }
+
+      // First pass: parse + collect ages/muts
+      const pairs0 = [];
+      let minA = Infinity, maxA = -Infinity;
+      let intCount = 0;
+
+      for (let i = 0; i < n; i++){
+        const a0 = parseAge(agesRaw[i]);
+        const m = Number(mutsRaw[i]);
+        if (!Number.isFinite(a0) || !Number.isFinite(m)) continue;
+
+        pairs0.push([a0, m]);
+
+        if (a0 < minA) minA = a0;
+        if (a0 > maxA) maxA = a0;
+        if (Math.abs(a0 - Math.round(a0)) < 1e-9) intCount++;
+      }
+
+      if (!pairs0.length){
+        Plotly.purge("ageMutPlot");
+        document.getElementById("ageMutPlot").innerHTML =
+          "<div style='color:#6b7280;font-size:13px;padding:10px 2px;'>No age vs mutation data.</div>";
+        return;
+      }
+
+      // Detect if ages look like decade-index (0..9/10 integers)
+      const looksLikeDecadeIndex = (minA >= 0 && maxA <= 10 && intCount === pairs0.length);
+
+      // Normalize ages to years
+      const pairs = [];
+      for (const [a0, m] of pairs0){
+        let a = a0;
+
+        // If days, convert to years
+        if (a > 200) a = a / 365.25;
+
+        // If decade index (0..9/10), convert to years by multiplying by 10
+        if (looksLikeDecadeIndex) a = a * 10;
+
+        // filter
+        if (a < 0 || a > 100) continue;
+        pairs.push([a, m]);
+      }
+
+      if (!pairs.length){
+        Plotly.purge("ageMutPlot");
+        document.getElementById("ageMutPlot").innerHTML =
+          "<div style='color:#6b7280;font-size:13px;padding:10px 2px;'>No age vs mutation data (after cleaning).</div>";
+        return;
+      }
+
+      console.log("[ageMutPlot] n_raw:", n,
+                  "pairs:", pairs.length,
+                  "min/max raw age:", minA, maxA,
+                  "decadeIndex?", looksLikeDecadeIndex);
+
+      const showOutliersToggle = document.getElementById("showOutliersToggle");
+      const showOutliers = showOutliersToggle ? showOutliersToggle.checked : true;
+
+      const binWidth = 10;
+      const bins = [];
+      for (let start = 0; start < 100; start += binWidth){
+        bins.push({ start, end: start + binWidth, vals: [] });
+      }
+
+      for (const [a, m] of pairs){
+        let idx = Math.floor(a / binWidth);
+        if (idx >= bins.length) idx = bins.length - 1;
+        bins[idx].vals.push(m);
+      }
+
+      const xLabels = [];
+      const yMedians = [];
+      const hoverText = [];
+
+      for (const b of bins){
+        const raw = b.vals || [];
+        if (!raw.length) continue;
+
+        const used = showOutliers ? raw : removeOutliersIQR(raw);
+        if (!used.length) continue;
+
+        const med = median(used);
+        if (med === null || !Number.isFinite(med)) continue;
+
+        const label = `${b.start}-${b.end - 1}`;
+        xLabels.push(label);
+        yMedians.push(med);
+
+        hoverText.push(
+          `Age bin: ${label}<br>` +
+          `Median mutations: ${med.toFixed(2)}<br>` +
+          `Samples: ${raw.length}` +
+          (showOutliers ? "" : `<br>(Outliers hidden: ${raw.length - used.length})`)
+        );
+      }
+
+      if (!xLabels.length){
+        Plotly.purge("ageMutPlot");
+        document.getElementById("ageMutPlot").innerHTML =
+          "<div style='color:#6b7280;font-size:13px;padding:10px 2px;'>No binned age data available.</div>";
+        return;
+      }
+
+      const trace = {
+        x: xLabels,
+        y: yMedians,
+        type: "bar",
+        text: hoverText,
+        hovertemplate: "%{text}<extra></extra>"
+      };
+
+      const layout = {
+        margin: {t: 10, r: 10, b: 70, l: 55},
+        xaxis: {title: "Age at diagnosis (years)", tickangle: -25},
+        yaxis: {title: "Median mutation count", autorange: true},
+        height: 260
+      };
+
+      Plotly.newPlot("ageMutPlot", [trace], layout, {responsive:true});
+
+    } catch (e) {
+      console.error("renderAgeMut failed:", e);
+      // Don't let one plot break the entire demographics page
       Plotly.purge("ageMutPlot");
       document.getElementById("ageMutPlot").innerHTML =
-        "<div style='color:#6b7280;font-size:13px;padding:10px 2px;'>No age vs mutation data.</div>";
-      return;
+        "<div style='color:#ef4444;font-size:13px;padding:10px 2px;'>Age plot failed. Check console.</div>";
     }
-
-    const showOutliersToggle = document.getElementById("showOutliersToggle");
-    const showOutliers = showOutliersToggle ? showOutliersToggle.checked : true;
-
-    // 10-year bins: 0-9, 10-19, ... 90-99, 100
-    const binWidth = 10;
-    const bins = [];
-    for (let start = 0; start < 100; start += binWidth){
-      bins.push({ start, end: start + binWidth, vals: [] });
-    }
-
-    // Assign mutations into bins
-    for (const [a, m] of pairs){
-      let idx = Math.floor(a / binWidth);
-      if (idx >= bins.length) idx = bins.length - 1; // age 100
-      bins[idx].vals.push(m);
-    }
-
-    // Compute median per bin (optionally trim outliers inside each bin)
-    const xLabels = [];
-    const yMedians = [];
-    const hoverText = [];
-
-    for (const b of bins){
-      const raw = b.vals || [];
-      if (!raw.length) continue;
-
-      const used = showOutliers ? raw : removeOutliersIQR(raw);
-      if (!used.length) continue;
-
-      const med = median(used);
-      if (med === null) continue;
-
-      const label = `${b.start}-${b.end - 1}`;
-      xLabels.push(label);
-      yMedians.push(med);
-
-      hoverText.push(
-        `Age bin: ${label}<br>` +
-        `Median mutations: ${med.toFixed(2)}<br>` +
-        `Samples: ${raw.length}` +
-        (showOutliers ? "" : `<br>(Outliers hidden: ${raw.length - used.length})`)
-      );
-    }
-
-    const trace = {
-      x: xLabels,
-      y: yMedians,
-      type: "bar",
-      textangle: -90,
-      text: hoverText,
-      hovertemplate: "%{text}<extra></extra>"
-    };
-
-    const layout = {
-      margin: {t: 10, r: 10, b: 70, l: 55},
-      xaxis: {title: "Age at diagnosis (years)", tickangle: -25},
-      yaxis: {title: "Median mutation count", autorange: true},
-      height: 260
-    };
-
-    Plotly.newPlot("ageMutPlot", [trace], layout, {responsive:true});
   }
 
   function removeOutliersIQR(values) {
@@ -467,6 +574,36 @@
     Plotly.newPlot(divId, [trace], layout, {responsive:true});
   }
 
+  let userPickedGenes = false;
+  geneSelect.addEventListener("change", () => {
+    userPickedGenes = true;
+  });
+
+  function clearGeneSelection(){
+    Array.from(geneSelect.options).forEach(o => o.selected = false);
+  }
+
+  function clearMultiSelect(sel){
+    Array.from(sel.options).forEach(o => { o.selected = false; });
+  }
+
+  function resetGenesToAutoTop(){
+    userPickedGenes = false;
+    clearMultiSelect(geneSelect);
+  }
+
+  impactSelect.addEventListener("change", () => {
+    userPickedGenes = false;   // force backend top=10 for this impact
+    clearGeneSelection();
+    fetchDemographics();
+  });
+
+  varClassSelect.addEventListener("change", () => {
+    userPickedGenes = false;
+    clearGeneSelection();
+    fetchDemographics();
+  });
+
   applyBtn.addEventListener("click", fetchDemographics);
   cancerSelect.addEventListener("change", () => {
     metaText.textContent = "Adjust filters and click Apply.";
@@ -482,6 +619,29 @@
         renderAgeMut(window.lastAgeMutData);
       }
     });
+  }
+
+  function clearMultiSelect(sel){
+    if (!sel) return;
+    Array.from(sel.options).forEach(o => { o.selected = false; });
+  }
+
+  function resetFilters(){
+    // Clear all multi-select filters
+    clearMultiSelect(geneSelect);
+    clearMultiSelect(varClassSelect);
+    clearMultiSelect(impactSelect);
+
+    // (Optional) turn outliers back on
+    const showOutliersToggle = document.getElementById("showOutliersToggle");
+    if (showOutliersToggle) showOutliersToggle.checked = true;
+
+    // Trigger refresh (with no genes selected -> backend uses top=10)
+    fetchDemographics();
+  }
+
+  if (resetBtn){
+    resetBtn.addEventListener("click", resetFilters);
   }
 
 

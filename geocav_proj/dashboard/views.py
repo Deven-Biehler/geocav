@@ -1,18 +1,20 @@
 from django.shortcuts import render
 from django.http import JsonResponse, Http404
 from collections import Counter
+from itertools import zip_longest
 import numpy as np
 import os
 import ast
 from pathlib import Path
 import math
 import networkx as nx
+import igraph as ig
 from django.views.decorators.http import require_http_methods, require_GET
 from .utils import (
     get_query_params, get_model_instance, apply_geographic_filter,
     apply_year_filter, load_geojson, generate_key, handle_errors
 )
-from .models import CancerIncidence, CancerType, Factor, Gender, Race, FactorMeasurement, TotalRecordAgg
+from .models import CancerIncidence, CancerType, Factor, Gender, Race, FactorMeasurement, TotalRecordAgg, NetworkNodeMeta
 
 # Path to the app's static networks directory
 APP_DIR = Path(__file__).resolve().parent
@@ -296,6 +298,119 @@ def _read_graph_any(path: str):
         except Exception:
             return nx.read_gml(path, label=None)
 
+# network clustring
+def _to_similarity_weight(dist: float) -> float:
+    # dist is edit distance; convert to similarity
+    # small dist => high similarity
+    dist = max(float(dist), 0.0)
+    return 1.0 / (1.0 + dist)
+
+def nx_to_ig(G):
+    # undirected for community detection
+    if G.is_directed():
+        G = G.to_undirected()
+
+    # nodes are "0".."N-1"
+    node_ids = sorted([int(n) for n in G.nodes()])
+    idx = {nid: i for i, nid in enumerate(node_ids)}
+
+    edges = []
+    sims = []
+    for u, v, a in G.edges(data=True):
+        ui = idx[int(u)]
+        vi = idx[int(v)]
+
+        dist = a.get("weight", 1.0)
+        try: dist = float(dist)
+        except Exception: dist = 1.0
+
+        sim = 1.0 / (1.0 + max(dist, 0.0))   # distance->similarity
+        edges.append((ui, vi))
+        sims.append(sim)
+    
+    g = ig.Graph(n=len(node_ids), edges=edges, directed=False)
+    g.es["sim"] = sims
+
+    print(np.percentile(g.es["sim"], [1,5,10,25,50,75,90,95,99]))
+
+    # crucial: store the original node id for mapping back
+    g.vs["nx_id"] = [str(nid) for nid in node_ids]
+    return g
+
+def leiden_membership(g: ig.Graph, resolution: float = 1.0):
+    """
+    Version-safe Leiden wrapper:
+    - No seed kwarg (often unsupported).
+    - Tries both resolution_parameter and resolution.
+    """
+    weights = "sim" if "sim" in g.es.attributes() else None
+
+    try:
+        # Most common in newer python-igraph
+        cl = g.community_leiden(weights=weights, resolution_parameter=resolution)
+    except TypeError:
+        # Some builds used a different kw name
+        cl = g.community_leiden(weights=weights, resolution=resolution)
+
+    return cl.membership
+
+def louvain_membership(g: ig.Graph):
+    weights = "sim" if "sim" in g.es.attributes() else None
+    return g.community_multilevel(weights=weights).membership
+
+def cluster_aware_positions(g: ig.Graph, membership):
+    """
+    Returns dict: node_id(str) -> (x,y)
+    """
+    n_clusters = max(membership) + 1 if membership else 0
+
+    # Build cluster super-graph with summed weights between communities
+    super_w = {}
+    for e in g.es:
+        a = membership[e.source]
+        b = membership[e.target]
+        if a == b:
+            continue
+        key = (a, b) if a < b else (b, a)
+        super_w[key] = super_w.get(key, 0.0) + float(e["sim"])
+
+    super_g = ig.Graph(n=n_clusters, directed=False)
+    if super_w:
+        super_g.add_edges(list(super_w.keys()))
+        super_g.es["w"] = list(super_w.values())
+
+    # Layout cluster graph (no seed kwarg)
+    super_layout = super_g.layout_fruchterman_reingold(weights="w" if super_w else None)
+    centers = [(float(p[0]), float(p[1])) for p in super_layout]
+
+    # Group vertices by cluster
+    vids_by_c = [[] for _ in range(n_clusters)]
+    for vid, c in enumerate(membership):
+        vids_by_c[c].append(vid)
+
+    pos = {}
+    for c, vids in enumerate(vids_by_c):
+        cx, cy = centers[c] if c < len(centers) else (0.0, 0.0)
+
+        if len(vids) == 1:
+            v = vids[0]
+            pos[g.vs[v]["nx_id"]] = (cx, cy)
+            continue
+
+        sub = g.subgraph(vids)
+
+        # Internal cluster layout (no seed kwarg)
+        sub_layout = sub.layout_fruchterman_reingold(weights="sim")
+        sub_xy = [(float(p[0]), float(p[1])) for p in sub_layout]
+
+        spread = 2.0 + 0.35 * math.sqrt(len(vids))
+        for i_local, v in enumerate(vids):
+            x, y = sub_xy[i_local]
+            pos[g.vs[v]["nx_id"]] = (cx + spread * x, cy + spread * y)
+
+    return pos
+
+
 def network_json_by_slug(request, cancer: str):
     nets = _available_networks()
     entry = next((n for n in nets if n["slug"] == cancer.lower()), None)
@@ -310,6 +425,30 @@ def network_json_by_slug(request, cancer: str):
         G = _read_graph_any(gml_path)
     except Exception as e:
         return JsonResponse({"error": f"Failed to parse graph file: {e}"}, status=400)
+    if G.is_directed():
+        H = G.to_undirected()
+    else:
+        H = G
+    print("connected components:", nx.number_connected_components(H))
+    do_cluster = request.GET.get("cluster", "0") in ("1", "true", "yes")
+    method = request.GET.get("method", "leiden").lower()
+    resolution = float(request.GET.get("res", "5"))
+
+    cluster_by_id = {}
+    pos = {}
+
+    if do_cluster:
+        g = nx_to_ig(G) 
+        print("IG nodes:", g.vcount(), "IG edges:", g.ecount())
+        print("NX nodes:", G.number_of_nodes(), "NX edges:", G.number_of_edges())
+        if method == "louvain":
+            membership = louvain_membership(g)
+        else:
+            membership = leiden_membership(g, resolution=resolution)
+        print("membership unique clusters:", len(set(membership)))
+        pos = cluster_aware_positions(g, membership)
+        cluster_by_id = {g.vs[i]["nx_id"]: int(membership[i]) for i in range(len(g.vs))}
+
 
     n_nodes, n_edges = G.number_of_nodes(), G.number_of_edges()
     if n_nodes == 0:
@@ -325,12 +464,34 @@ def network_json_by_slug(request, cancer: str):
         )
 
     def label_for(node, attrs):
-        return str(attrs.get("label") or attrs.get("name") or attrs.get("id") or node)
+        """
+        The node label shown in Cytoscape (NOT hover content).
+        """
+        return str(
+            attrs.get("label")
+            or attrs.get("id")
+            or node
+        )
 
     elements = []
     for n, attrs in G.nodes(data=True):
         nid = str(n)
-        elements.append({"data": {"id": nid, "label": label_for(n, attrs)}})
+        node_data = {
+            "id": nid,
+            "label": label_for(n, attrs),
+        }
+        node_el = {
+            "data": node_data
+        }
+        if do_cluster:
+            node_el["data"]["cluster"] = cluster_by_id.get(nid, -1)
+            xy = pos.get(nid)
+            if xy:
+                node_el["position"] = {
+                    "x": float(xy[0]),
+                    "y": float(xy[1]),
+                }
+        elements.append(node_el)
 
     for u, v, attrs in G.edges(data=True):
         elements.append({
@@ -342,7 +503,70 @@ def network_json_by_slug(request, cancer: str):
             }
         })
 
+    meta = {"nodes": G.number_of_nodes(), "edges": G.number_of_edges()}
+    if do_cluster:
+        meta.update({
+            "clustered": True,
+            "cluster_method": method,
+            "resolution": resolution,
+            "n_clusters": int(max(cluster_by_id.values()) + 1) if cluster_by_id else 0
+        })
+    else:
+        meta.update({"clustered": False})
+
     return JsonResponse({"elements": elements, "meta": {"nodes": n_nodes, "edges": n_edges}})
+
+def network_node_meta(request, cancer: str, node_id: str):
+    try:
+        node_index = int(node_id)
+    except ValueError:
+        return JsonResponse({"error": "node_id must be an integer"}, status=400)
+
+    # Accept folder slug OR display name
+    key = (cancer or "").strip()
+
+    candidates = [
+        key,                   
+        key.title(),             
+        f"{key} Cancer",          
+        f"{key.title()} Cancer",   
+    ]
+
+    cancer_obj = None
+    for nm in candidates:
+        cancer_obj = CancerType.objects.filter(name__iexact=nm).first()
+        if cancer_obj:
+            break
+
+    if cancer_obj is None:
+        return JsonResponse(
+            {"error": f"Unknown cancer type: {key}. Tried: {candidates}"},
+            status=404
+        )
+
+    rec = NetworkNodeMeta.objects.filter(cancer=cancer_obj, node_index=node_index).first()
+    if not rec:
+        return JsonResponse({"error": f"No metadata for node {node_index} ({cancer})"}, status=404)
+
+    return JsonResponse({
+        "node_index": rec.node_index,
+        #"Tumor_Sample_Barcode": rec.Tumor_Sample_Barcode,
+
+        # list fields
+        "event_ids": rec.event_ids or [],
+        "genes": rec.genes or [],
+
+        # clinical
+        "age_at_initial_pathologic_diagnosis": rec.age_at_initial_pathologic_diagnosis,
+        "gender": rec.gender,
+        "vital_status": rec.vital_status,
+        "race_list": rec.race_list,
+        "ethnicity": rec.ethnicity,
+
+        # optional counts
+        "n_events": rec.n_events,
+        "n_genes": rec.n_genes,
+    })
 
 def _flatten_to_list(obj):
     """
@@ -530,6 +754,16 @@ def molecular_landscape_json(request, cancer_name):
 
     qs = TotalRecordAgg.objects.filter(cancer=ct)
 
+    # -------------------------
+    # IMPACT filter (same approach as demographics)
+    # -------------------------
+    impacts_param = (request.GET.get("impacts") or "").strip()
+    impacts = [v.strip().upper() for v in impacts_param.split(",") if v.strip()]
+    iset = set(impacts)
+
+    # -------------------------
+    # group_by (unchanged)
+    # -------------------------
     group_by = (request.GET.get("group_by") or "none").strip().lower()
     allowed = {"none", "gender", "stage", "vital_status", "pharma_treatment", "radiation_treatment"}
     if group_by not in allowed:
@@ -565,45 +799,86 @@ def molecular_landscape_json(request, cancer_name):
             return yn_unknown(rec.treatments_radiation_treatment_or_therapy)
         return "All Samples"
 
+    # -------------------------
+    # Available impacts (unchanged idea; keep top 10)
+    # -------------------------
+    impact_counter = Counter()
     for rec in qs:
-        genes = clean_tokens(rec.Hugo_Symbol)
-        hgvs  = clean_tokens(rec.HGVSc)
-        vcls  = clean_tokens(rec.Variant_Classification)
+        for imp in parse_listish(getattr(rec, "IMPACT", None)):
+            imp = _clean_str(imp).upper()
+            if imp:
+                impact_counter[imp] += 1
+    available_impacts = [im for im, _ in impact_counter.most_common(10)]
 
+    # -------------------------
+    # Main aggregation loop (UPDATED to respect IMPACT filter)
+    # -------------------------
+    for rec in qs:
+        genes_all = clean_tokens(rec.Hugo_Symbol)
+        hgvs_all  = clean_tokens(rec.HGVSc)
+        vcls_all  = clean_tokens(rec.Variant_Classification)
+        imps_all  = [(_clean_str(x).upper()) for x in parse_listish(getattr(rec, "IMPACT", None)) if _clean_str(x)]
+
+        # If no impacts filter selected -> use all tokens as before
+        if not iset:
+            genes = genes_all
+            hgvs  = hgvs_all
+            vcls  = vcls_all
+        else:
+            # Apply IMPACT filter with best-effort alignment across mutation-level lists
+            genes_f, hgvs_f, vcls_f = [], [], []
+
+            # zip_longest ensures we don't crash if list lengths differ
+            for g, h, vc, imp in zip_longest(genes_all, hgvs_all, vcls_all, imps_all, fillvalue=None):
+                imp_u = (_clean_str(imp).upper() if imp is not None else "")
+
+                # If IMPACT list is missing or shorter, imp_u becomes "" and will be excluded (strict behavior)
+                if imp_u not in iset:
+                    continue
+
+                if g:
+                    genes_f.append(g)
+                if h:
+                    hgvs_f.append(h)
+                if vc:
+                    vcls_f.append(vc)
+
+            genes = genes_f
+            hgvs  = hgvs_f
+            vcls  = vcls_f
+
+        # Unique mutated genes per sample
         gset = set(genes)
-        # print('gset:', len(gset))
 
-        # total mutations per sample = number of HGVSc entries (mutation events)
-        # No fallback to gene count (that was making both plots look the same).
+        # Total mutations per sample = number of HGVSc entries (mutation events)
         mut_count = len(hgvs)
-        #print('mut_count:', mut_count)
 
-        # number of unique mutated genes per sample
+        # Number of unique mutated genes per sample
         gene_count = len(gset)
 
-        # counters for other plots
+        # Counters for other plots (respect filters)
         gene_counter.update(gset)
         variant_counter.update(vcls)
 
-        # grouped boxplot data
+        # Grouped boxplot data (respect filters)
         label = get_group_label(rec)
         grouped_mutations.setdefault(label, []).append(mut_count)
         grouped_genes.setdefault(label, []).append(gene_count)
 
-    # variant type distribution (descending)
+    # Variant type distribution (descending)
     if variant_counter:
         variant_labels, variant_counts = zip(*variant_counter.most_common())
     else:
         variant_labels, variant_counts = ([], [])
 
-    # top genes (descending)
+    # Top genes (descending)
     top_n = int(request.GET.get("top_genes", 10) or 10)
     top_n = max(1, min(top_n, 50))
     top = gene_counter.most_common(top_n)
     top_genes = [g for g, _ in top]
     top_gene_counts = [c for _, c in top]
 
-    # stable group order (optional: push Unknown last)
+    # Stable group order (push Unknown last)
     def group_sort_key(k):
         return (k == "Unknown", k)
 
@@ -615,7 +890,11 @@ def molecular_landscape_json(request, cancer_name):
             "n_samples": qs.count(),
             "group_by": group_by,
             "groups": groups_sorted,
+            "impacts_used": impacts,  # helpful for UI + debugging
         },
+        "available_impacts": available_impacts,
+        "impacts_used": impacts,
+
         "variant_distribution": {
             "labels": list(variant_labels),
             "counts": list(variant_counts),
@@ -631,6 +910,7 @@ def molecular_landscape_json(request, cancer_name):
         }
     }
     return JsonResponse(payload)
+
 
 
 
@@ -679,24 +959,68 @@ def molecular_cooccurrence_json(request, cancer_name):
     Query params:
       - genes=TP53,KRAS,...  (comma-separated, max 20)
       - top=10               (default top genes if genes not provided)
-    Returns BOTH raw + fisher matrices plus top-50 genes for picker.
+      - impacts=HIGH,MODERATE,... (optional; if provided, filters mutations to these impacts)
+
+    Returns BOTH raw + fisher matrices plus top-50 genes for picker,
+    plus available_impacts + impacts_used for UI.
     """
     try:
-        ct = CancerType.objects.get(name=cancer_name)
+        ct = CancerType.objects.get(name__iexact=cancer_name)
     except CancerType.DoesNotExist:
         raise Http404(f"Cancer '{cancer_name}' not found")
 
     qs = TotalRecordAgg.objects.filter(cancer=ct)
 
-    # Per-sample unique gene sets + frequency counter
+    # --- IMPACT filter parsing (consistent approach) ---
+    impacts_param = (request.GET.get("impacts") or "").strip()
+    impacts_used = [v.strip().upper() for v in impacts_param.split(",") if v.strip()]
+    iset = set(impacts_used)
+
+    # --- build available impacts for UI ---
+    impact_counter = Counter()
+    for rec in qs:
+        for imp in parse_listish(getattr(rec, "IMPACT", None)):
+            imp = _clean_str(imp).upper()
+            if imp:
+                impact_counter[imp] += 1
+    available_impacts = [im for im, _ in impact_counter.most_common(50)]
+
+    # Per-sample unique gene sets + frequency counter (AFTER applying IMPACT filter)
     sample_sets = []
     gene_counter = Counter()
 
     for rec in qs:
         genes = parse_listish(rec.Hugo_Symbol)
-        gset = set([g for g in genes if g])
+        imps  = parse_listish(getattr(rec, "IMPACT", None))
+
+        gset = set()
+
+        if iset:
+            for g, imp in zip_longest(genes, imps, fillvalue=None):
+                g = _clean_str(g)
+                if not g:
+                    continue
+                imp = _clean_str(imp).upper()
+                if imp and imp in iset:
+                    gset.add(g)
+
+            # optional fallback stays the same
+            if not gset:
+                if any((_clean_str(x).upper() in iset) for x in imps):
+                    gset = set(_clean_str(g) for g in genes if _clean_str(g))
+                else:
+                    gset = set()
+
+            # skip samples with no passing mutations
+            if not gset:
+                continue
+
+        else:
+            gset = set(_clean_str(g) for g in genes if _clean_str(g))
+
         sample_sets.append(gset)
         gene_counter.update(gset)
+
 
     n_samples = len(sample_sets)
     if n_samples == 0:
@@ -706,14 +1030,29 @@ def molecular_cooccurrence_json(request, cancer_name):
             "fisher_or_matrix": [],
             "fisher_p_matrix": [],
             "available_genes": [],
+            "available_impacts": available_impacts,
+            "impacts_used": impacts_used,
             "n_samples": 0,
         })
 
-    # Top 50 genes only for picker
-    available_genes = [g for g, _ in gene_counter.most_common(50)]
+    # If IMPACT filter removed everything, gene_counter might be empty
+    if not gene_counter:
+        return JsonResponse({
+            "genes": [],
+            "raw_matrix": [],
+            "fisher_or_matrix": [],
+            "fisher_p_matrix": [],
+            "available_genes": [],
+            "available_impacts": available_impacts,
+            "impacts_used": impacts_used,
+            "n_samples": n_samples,
+        })
+
+    # Top 100 genes only for picker
+    available_genes = [g for g, _ in gene_counter.most_common(100)]
 
     # Determine gene list for heatmap
-    genes_param = request.GET.get("genes", "").strip()
+    genes_param = (request.GET.get("genes") or "").strip()
     if genes_param:
         selected = [g.strip() for g in genes_param.split(",") if g.strip()]
         selected = selected[:20]
@@ -721,20 +1060,18 @@ def molecular_cooccurrence_json(request, cancer_name):
         if not genes:
             genes = [g for g, _ in gene_counter.most_common(10)]
     else:
-        top_n = int(request.GET.get("top", 10))
+        top_n = int(request.GET.get("top", 10) or 10)
         top_n = max(2, min(top_n, 20))
         genes = [g for g, _ in gene_counter.most_common(top_n)]
 
     n = len(genes)
 
     # Precompute mutation flags per gene (list of 0/1 across samples)
-    flags = {}
-    for g in genes:
-        flags[g] = [1 if g in s else 0 for s in sample_sets]
+    flags = {g: [1 if g in s else 0 for s in sample_sets] for g in genes}
 
-    raw = [[0.0]*n for _ in range(n)]
-    fisher_or = [[None]*n for _ in range(n)]
-    fisher_pneglog = [[None]*n for _ in range(n)]
+    raw = [[0.0] * n for _ in range(n)]
+    fisher_or = [[None] * n for _ in range(n)]
+    fisher_pneglog = [[None] * n for _ in range(n)]
 
     for i, gi in enumerate(genes):
         fi = flags[gi]
@@ -764,8 +1101,11 @@ def molecular_cooccurrence_json(request, cancer_name):
         "fisher_or_matrix": fisher_or,
         "fisher_p_matrix": fisher_pneglog,
         "available_genes": available_genes,
+        "available_impacts": available_impacts,
+        "impacts_used": impacts_used,
         "n_samples": n_samples,
     })
+
 
 # clinical associations
 def normalize_stage(raw):
@@ -827,8 +1167,8 @@ def molecular_clinical_json(request, cancer_name):
     for rec in qs:
         if rec.age_at_diagnosis is not None:
             try:
-                days = float(rec.age_at_diagnosis)
-                years = round(days / 365.25, 1)   # one decimal precision
+                years = float(rec.age_at_diagnosis)
+                #years = round(days / 365.25, 1)   # one decimal precision
                 ages.append(years)
             except Exception:
                 continue
@@ -937,7 +1277,7 @@ def normalize_race(raw):
     if not raw:
         return "Unknown"
     s = str(raw).strip()
-    return s  # keep as-is for now, just strip; you can map further later
+    return s  
 
 
 def normalize_ethnicity(raw):
@@ -949,55 +1289,63 @@ def normalize_ethnicity(raw):
 def _clean_str(x):
     return str(x).strip() if x is not None else ""
 
-def compute_gene_group_matrix(qs, genes_used, group_getter, variant_classes=None):
-    """
-    Returns:
-      groups: list[str]
-      genes: list[str]
-      fractions: list[list[float]]  genes x groups
-      counts: list[list[int]]       genes x groups (# mutated samples)
-      group_sizes: list[int]        groups
-    """
-    variant_classes = set(vc.strip() for vc in (variant_classes or []) if vc and vc.strip())
+from itertools import zip_longest
 
-    # group -> total samples
+def yn_norm(x):
+    s = (str(x).strip().lower() if x is not None else "")
+    if s in ("y", "yes", "true", "1", "hotspot"):
+        return "Yes"
+    if s in ("n", "no", "false", "0", "non-hotspot", "nonhotspot"):
+        return "No"
+    return "Unknown"
+
+
+def compute_gene_group_matrix(
+    qs,
+    genes_used,
+    group_getter,
+    variant_classes=None,
+    impacts=None,
+    hotspot="__all__",
+):
+    vset = set(_clean_str(vc) for vc in (variant_classes or []) if _clean_str(vc))
+    iset = set(_clean_str(im).upper() for im in (impacts or []) if _clean_str(im))
+
     group_sizes = Counter()
-    # group -> gene -> mutated sample count
-    mutated = {}  # dict[group][gene] = count
+    mutated = {}
 
-    # Pre-init
-    for g in genes_used:
-        g = _clean_str(g)
+    genes_used = [g for g in genes_used if g]  # keep order
 
     for rec in qs:
-        grp = group_getter(rec)
-        if not grp:
-            grp = "Unknown"
+        grp = group_getter(rec) or "Unknown"
         group_sizes[grp] += 1
 
         genes = parse_listish(rec.Hugo_Symbol)
-        vcls  = parse_listish(rec.Variant_Classification)
+        vcls  = parse_listish(getattr(rec, "Variant_Classification", None))
+        imps  = parse_listish(getattr(rec, "IMPACT", None))
+        hots  = parse_listish(getattr(rec, "hotspot", None))
 
-        # Build per-sample mutated gene set under selected variant classes
-        if variant_classes:
-            # try to zip genes and variant classes (aligned per MAF row in your aggregation)
-            pairs = zip(genes, vcls) if (genes and vcls and len(genes) == len(vcls)) else []
-            gset = set()
-            if pairs:
-                for g, vc in pairs:
-                    g = _clean_str(g)
-                    vc = _clean_str(vc)
-                    if g and vc in variant_classes:
-                        gset.add(g)
-            else:
-                # fallback if lengths don't match: if any selected class exists, include all genes (conservative)
-                if any(_clean_str(vc) in variant_classes for vc in vcls):
-                    gset = set(_clean_str(g) for g in genes if _clean_str(g))
-                else:
-                    gset = set()
-        else:
-            # no filter → all mutated genes
-            gset = set(_clean_str(g) for g in genes if _clean_str(g))
+        gset = set()
+
+        for g, vc, imp, hs in zip_longest(genes, vcls, imps, hots, fillvalue=None):
+            g = _clean_str(g)
+            if not g:
+                continue
+
+            vc  = _clean_str(vc)
+            imp = _clean_str(imp).upper()
+            hs  = yn_norm(hs)
+
+            if genes_used and g not in genes_used:
+                continue
+            if vset and vc not in vset:
+                continue
+            if iset and imp not in iset:
+                continue
+            if hotspot != "__all__" and hs != hotspot:
+                continue
+
+            gset.add(g)
 
         if not gset:
             continue
@@ -1005,20 +1353,15 @@ def compute_gene_group_matrix(qs, genes_used, group_getter, variant_classes=None
         if grp not in mutated:
             mutated[grp] = Counter()
 
-        # count mutated samples per gene (binary per sample)
         for g in gset:
-            if g in genes_used:
-                mutated[grp][g] += 1
+            mutated[grp][g] += 1
 
     groups = sorted(group_sizes.keys())
     group_sizes_list = [group_sizes[g] for g in groups]
 
-    # Build matrices in gene order
-    fractions = []
-    counts = []
+    fractions, counts = [], []
     for gene in genes_used:
-        row_counts = []
-        row_fracs = []
+        row_counts, row_fracs = [], []
         for gi, grp in enumerate(groups):
             k = mutated.get(grp, {}).get(gene, 0)
             n = group_sizes_list[gi] if group_sizes_list[gi] else 0
@@ -1035,19 +1378,11 @@ def compute_gene_group_matrix(qs, genes_used, group_getter, variant_classes=None
         "group_sizes": group_sizes_list,
     }
 
+from itertools import zip_longest
+from collections import Counter
+
 @require_GET
 def molecular_demographics_json(request, cancer_name):
-    """
-    Demographic associations for a given cancer:
-      - Age vs total mutation count
-      - Mutation burden by gender
-      - Gene prevalence across race / ethnicity / gender / age groups
-
-    Query params:
-      - genes: comma-separated list of genes (max 20)
-      - top: fallback when genes not provided (default 10)
-    """
-    # --- cancer look-up ---
     try:
         ct = CancerType.objects.get(name__iexact=cancer_name)
     except CancerType.DoesNotExist:
@@ -1055,46 +1390,85 @@ def molecular_demographics_json(request, cancer_name):
 
     qs = TotalRecordAgg.objects.filter(cancer=ct)
 
-    # ---- build sample-level data ----
-    samples = []
-    gene_counter = Counter()
+    # ---- parse filters ----
+    genes_param = (request.GET.get("genes") or "").strip()
+    genes_selected = [g.strip() for g in genes_param.split(",") if g.strip()][:20]
+
+    variant_classes_param = (request.GET.get("variant_classes") or "").strip()
+    variant_classes = [v.strip() for v in variant_classes_param.split(",") if v.strip()]
+    vset = set(_clean_str(v) for v in variant_classes if _clean_str(v))
+
+    impacts_param = (request.GET.get("impacts") or "").strip()
+    impacts = [v.strip().upper() for v in impacts_param.split(",") if v.strip()]
+    iset = set(_clean_str(v).upper() for v in impacts if _clean_str(v))
+
+    # ---- compute available VC / impacts for UI ----
+    vc_counter = Counter()
+    impact_counter = Counter()
+
+    for rec in qs:
+        for vc in parse_listish(getattr(rec, "Variant_Classification", None)):
+            vc = _clean_str(vc)
+            if vc:
+                vc_counter[vc] += 1
+
+        for imp in parse_listish(getattr(rec, "IMPACT", None)):
+            imp = _clean_str(imp).upper()
+            if imp:
+                impact_counter[imp] += 1
+
+    available_variant_classes = [vc for vc, _ in vc_counter.most_common(50)]
+    available_impacts = [im for im, _ in impact_counter.most_common(50)]
+
+    # ---- KEY FIX: available_genes depends on (vset/iset) ----
+    gene_counter_filtered = Counter()
 
     for rec in qs:
         genes = parse_listish(rec.Hugo_Symbol)
-        hgvs  = parse_listish(rec.HGVSc)
+        vcls  = parse_listish(getattr(rec, "Variant_Classification", None))
+        imps  = parse_listish(getattr(rec, "IMPACT", None))
 
-        gset = set(g for g in genes if g)
+        gset = set()
 
-        if hgvs:
-            mut_count = len([m for m in hgvs if m])
-        else:
-            mut_count = len(gset)
+        for g, vc, imp in zip_longest(genes, vcls, imps, fillvalue=None):
+            g = _clean_str(g)
+            if not g:
+                continue
+            vc  = _clean_str(vc)
+            imp = _clean_str(imp).upper()
 
-        age_years = age_days_to_years(rec.age_at_diagnosis)
-        gender = normalize_gender(rec.gender)
-        race = normalize_race(rec.race)
-        ethnicity = normalize_ethnicity(rec.ethnicity)
+            if vset and vc not in vset:
+                continue
+            if iset and imp not in iset:
+                continue
 
-        samples.append({
-            "genes": gset,
-            "mut_count": mut_count,
-            "age_years": age_years,
-            "gender": gender,
-            "race": race,
-            "ethnicity": ethnicity,
-        })
-        gene_counter.update(gset)
+            gset.add(g)
 
+        if gset:
+            gene_counter_filtered.update(gset)
 
-    n_samples = len(samples)
-    if n_samples == 0:
+    available_genes = [g for g, _ in gene_counter_filtered.most_common(50)]  # or 100
+
+    # ---- decide genes_used based on filtered genes ----
+    if genes_selected:
+        genes_used = [g for g in genes_selected if g in gene_counter_filtered]
+        if not genes_used:
+            genes_used = [g for g, _ in gene_counter_filtered.most_common(10)]
+    else:
+        top_n = int(request.GET.get("top", 10) or 10)
+        top_n = max(2, min(top_n, 20))
+        genes_used = [g for g, _ in gene_counter_filtered.most_common(top_n)]
+
+    # If filters remove everything:
+    if not gene_counter_filtered:
         return JsonResponse({
-            "meta": {
-                "cancer": cancer_name,
-                "n_samples": 0,
-            },
+            "meta": {"cancer": cancer_name, "n_samples": 0},
             "available_genes": [],
             "genes_used": [],
+            "available_variant_classes": available_variant_classes,
+            "variant_classes_used": variant_classes,
+            "available_impacts": available_impacts,
+            "impacts_used": impacts,
             "age_vs_mut": {"age": [], "mut_count": []},
             "gender_burden": {"genders": [], "counts": []},
             "gene_by_race": {},
@@ -1103,168 +1477,135 @@ def molecular_demographics_json(request, cancer_name):
             "gene_by_agebin": {},
         })
 
-    # ---- gene selection ----
-    available_genes = [g for g, _ in gene_counter.most_common(50)]
+    # ---- build samples with ALL filters (now includes genes_used, vset, iset) ----
+    samples = []
+    n_qs = qs.count()
 
-    genes_param = request.GET.get("genes", "").strip()
-    if genes_param:
-        selected = [g.strip() for g in genes_param.split(",") if g.strip()]
-        selected = selected[:20]
-        genes_used = [g for g in selected if g in gene_counter]
-        if not genes_used:
-            genes_used = [g for g, _ in gene_counter.most_common(10)]
-    else:
-        top_n = int(request.GET.get("top", 10))
-        top_n = max(2, min(top_n, 20))
-        genes_used = [g for g, _ in gene_counter.most_common(top_n)]
-
-    # ---- variant class selection ----
-    variant_classes_param = (request.GET.get("variant_classes") or "").strip()
-    variant_classes = [v.strip() for v in variant_classes_param.split(",") if v.strip()]
-
-    vc_counter = Counter()
     for rec in qs:
-        for vc in parse_listish(rec.Variant_Classification):
-            vc = _clean_str(vc)
-            if vc:
-                vc_counter[vc] += 1
-    available_variant_classes = [vc for vc, _ in vc_counter.most_common(20)]
+        genes = parse_listish(rec.Hugo_Symbol)
+        vcls  = parse_listish(getattr(rec, "Variant_Classification", None))
+        imps  = parse_listish(getattr(rec, "IMPACT", None))
+        hgvs  = parse_listish(getattr(rec, "HGVSc", None))
 
-    # ---- age vs mutation count ----
-    age_vals = []
-    mut_vals = []
+        gset = set()
+        mut_count = 0
+
+        for g, vc, imp, h in zip_longest(genes, vcls, imps, hgvs, fillvalue=None):
+            g = _clean_str(g)
+            if not g:
+                continue
+            vc  = _clean_str(vc)
+            imp = _clean_str(imp).upper()
+
+            if genes_used and g not in genes_used:
+                continue
+            if vset and vc not in vset:
+                continue
+            if iset and imp not in iset:
+                continue
+
+            gset.add(g)
+            mut_count += 1
+
+        age_years = None
+        if rec.age_at_diagnosis is not None:
+            try:
+                age_years = float(rec.age_at_diagnosis)  # already years
+            except Exception:
+                age_years = None
+
+        samples.append({
+            "genes": gset,
+            "mut_count": mut_count,
+            "age_years": age_years,
+            "gender": normalize_gender(rec.gender),
+            "race": normalize_race(rec.race),
+            "ethnicity": normalize_ethnicity(rec.ethnicity),
+        })
+
+    n_samples = len(samples)
+
+    # age vs mut
+    age_vals, mut_vals = [], []
     for s in samples:
         if s["age_years"] is not None:
             age_vals.append(s["age_years"])
             mut_vals.append(s["mut_count"])
 
-    # ---- mutation burden by gender ----
+    # gender burden
     gender_map = {}
     for s in samples:
-        g = s["gender"]
+        g = s["gender"] or "Unknown"
         gender_map.setdefault(g, []).append(s["mut_count"])
 
-    gender_labels = []
-    gender_counts = []
-    for g, vals in gender_map.items():
-        gender_labels.append(g)
-        gender_counts.append(vals)  # list of mut counts for boxplot
+    gender_labels = list(gender_map.keys())
+    gender_counts = [gender_map[g] for g in gender_labels]
 
-    # ---- group helpers for gene prevalence ----
-
-    def age_bin(age):
-        if age is None:
-            return "Unknown"
-        if age < 50:
-            return "< 50"
-        if age < 65:
-            return "50–64"
-        if age < 80:
-            return "65–79"
-        return "≥ 80"
-
-    # group counters: group -> count, gene_group_counts: gene -> group -> count
-    def build_gene_group_matrix(group_key_func, group_order=None):
-        group_counter = Counter()
-        gene_group_counts = {g: Counter() for g in genes_used}
-
-        for s in samples:
-            grp = group_key_func(s)
-            group_counter[grp] += 1
-            gset = s["genes"]
-            for g in genes_used:
-                if g in gset:
-                    gene_group_counts[g][grp] += 1
-
-        # group labels in nice order
-        if group_order:
-            labels = [g for g in group_order if g in group_counter]
-            # add any extra leftover
-            for g in group_counter:
-                if g not in labels:
-                    labels.append(g)
-        else:
-            labels = list(group_counter.keys())
-
-        # build matrix: rows = genes_used, cols = labels
-        matrix = []
-        for g in genes_used:
-            row = []
-            for grp in labels:
-                denom = group_counter[grp]
-                if denom > 0:
-                    freq = gene_group_counts[g][grp] / denom
-                    row.append(round(freq, 3))
-                else:
-                    row.append(None)
-            matrix.append(row)
-
-        return {
-            "genes": genes_used,
-            "groups": labels,
-            "matrix": matrix
-        }
-
-    gene_by_race = compute_gene_group_matrix(
-        qs, genes_used,
-        group_getter=lambda r: _clean_str(r.race) or "Unknown",
-        variant_classes=variant_classes
-    )
-
-    gene_by_ethnicity = compute_gene_group_matrix(
-        qs, genes_used,
-        group_getter=lambda r: _clean_str(r.ethnicity) or "Unknown",
-        variant_classes=variant_classes
-    )
-
-    gene_by_gender = compute_gene_group_matrix(
-        qs, genes_used,
-        group_getter=lambda r: normalize_gender(r.gender) or "Unknown",
-        variant_classes=variant_classes
-    )
-
-    # age bins (example: 0-39, 40-49, ... or 10-year bins)
     def age_bin_years(rec):
-        a = rec.age_at_diagnosis  # stored as days in DB
+        a = rec.age_at_diagnosis
         if a is None:
             return "Unknown"
         try:
-            years = float(a) / 365.25
+            years = float(a)
         except Exception:
             return "Unknown"
-
         if years < 0:
             return "Unknown"
-
         b = int(years // 10) * 10
         return f"{b}-{b+9}"
 
+    # use compute_gene_group_matrix but pass hotspot removed version
+    gene_by_race = compute_gene_group_matrix(
+        qs, genes_used,
+        group_getter=lambda r: normalize_race(r.race) or "Unknown",
+        variant_classes=variant_classes,
+        impacts=impacts,
+        hotspot="__all__",  # harmless if your function still expects it
+    )
+    gene_by_ethnicity = compute_gene_group_matrix(
+        qs, genes_used,
+        group_getter=lambda r: normalize_ethnicity(r.ethnicity) or "Unknown",
+        variant_classes=variant_classes,
+        impacts=impacts,
+        hotspot="__all__",
+    )
+    gene_by_gender = compute_gene_group_matrix(
+        qs, genes_used,
+        group_getter=lambda r: normalize_gender(r.gender) or "Unknown",
+        variant_classes=variant_classes,
+        impacts=impacts,
+        hotspot="__all__",
+    )
     gene_by_agebin = compute_gene_group_matrix(
         qs, genes_used,
         group_getter=age_bin_years,
-        variant_classes=variant_classes
+        variant_classes=variant_classes,
+        impacts=impacts,
+        hotspot="__all__",
     )
 
-    payload = {
+    return JsonResponse({
         "meta": {
             "cancer": cancer_name,
             "n_samples": n_samples,
+            "n_records_in_db": n_qs,
+            "filters": {
+                "genes": genes_used,
+                "variant_classes": variant_classes,
+                "impacts": impacts,
+            }
         },
         "available_genes": available_genes,
         "genes_used": genes_used,
-        "age_vs_mut": {
-            "age": age_vals,
-            "mut_count": mut_vals,
-        },
-        "gender_burden": {
-            "genders": gender_labels,
-            "counts": gender_counts,
-        },
+        "available_variant_classes": available_variant_classes,
+        "variant_classes_used": variant_classes,
+        "available_impacts": available_impacts,
+        "impacts_used": impacts,
+        "age_vs_mut": {"age": age_vals, "mut_count": mut_vals},
+        "gender_burden": {"genders": gender_labels, "counts": gender_counts},
         "gene_by_race": gene_by_race,
         "gene_by_ethnicity": gene_by_ethnicity,
         "gene_by_gender": gene_by_gender,
         "gene_by_agebin": gene_by_agebin,
-        "available_variant_classes": available_variant_classes,
-        "variant_classes_used": variant_classes,
-    }
-    return JsonResponse(payload)
+    })
+
