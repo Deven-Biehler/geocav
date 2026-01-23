@@ -22,7 +22,7 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('', include('dashboard.urls')),  # Add this line
-    path('admin/', admin.site.urls),
+    # path('admin/', admin.site.urls), # Admin disabled
     path('dashboard/', include('dashboard.urls')),
 ]
 
