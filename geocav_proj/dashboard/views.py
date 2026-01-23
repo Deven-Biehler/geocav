@@ -231,20 +231,20 @@ def get_pie_data(request):
         params['level'], params['cancer_year'], params['gender'], params['race']
     )
 
-    cancer_queryset = CancerIncidence.objects.select_related('cancer_type').all()
-    cancer_queryset = apply_geographic_filter(cancer_queryset, level)
-    cancer_queryset = apply_year_filter(cancer_queryset, cancer_year)
+    cancer_queryset = CancerIncidence.objects.select_related('cancer_type').all() # Start with all records
+    cancer_queryset = apply_geographic_filter(cancer_queryset, level) # Filter by level
+    cancer_queryset = apply_year_filter(cancer_queryset, cancer_year) # Filter by year
     
-    if gender_name.lower() != 'all':
+    if gender_name.lower() != 'all': # If specified, filter by gender, otherwise keep all entries
         gender = get_model_instance(Gender, 'name', gender_name)
         cancer_queryset = cancer_queryset.filter(gender=gender)
     
-    if race_name.lower() != 'all':
-        race = get_model_instance(Race, 'name', race_name)
-        cancer_queryset = cancer_queryset.filter(race=race)
+    race = get_model_instance(Race, 'name', race_name)
+    cancer_queryset = cancer_queryset.filter(race=race) # Fitler by race ex: (all, white, hispanic, etc)
 
-    cancer_queryset = cancer_queryset.values('statefp', 'countyfp', 'state', 'county', 'cancer_type__name', 'gender__name', 'incidence_rate')
+    cancer_queryset = cancer_queryset.values('statefp', 'countyfp', 'state', 'county', 'cancer_type__name', 'gender__name', 'incidence_rate') # Only select needed fields
 
+    # Organize data into nested dict: {geo_key: {cancer_type: {gender: rate}}}
     cancer_data = {}
     for record in cancer_queryset:
         key = generate_key(record, level)

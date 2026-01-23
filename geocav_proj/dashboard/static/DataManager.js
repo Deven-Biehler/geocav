@@ -176,17 +176,29 @@ export class DataManager {
         }
 
         console.log('[DataManager] Pie data fetched with filters:', filters);
-        this.cancer_data = result.cancer_data;
+        console.log('[DataManager] Cancer data for pie chart:', result.cancer_data);
 
         // Add geojson properties
-        try {
-            const geojsonResponse = await fetch(`/get_geojson?level=${filters.level}`);
-            const geojson = await geojsonResponse.json();
-            const statesLayer = this.addGeoJSONProperties(geojson, filters.level, this.cancer_data, {}, filters);
-            return statesLayer;
-        } catch (error) {
-            console.error('[DataManager] Error processing pie data:', error);
-            throw error;
-        }
+        const geojsonResponse = await fetch(`/get_geojson?level=${filters.level}`);
+        const geojson = await geojsonResponse.json();
+        console.log('[DataManager] GeoJSON data for pie chart:', geojson);  
+
+        // find where the name matches and add the rate object to the geojson properties
+        geojson.features.forEach((feature) => {
+            const statefp = filters.level === 'county' 
+                ? feature.properties.STATEFP 
+                : feature.id;
+            const countyfp = filters.level === 'county' 
+                ? feature.properties.COUNTYFP
+                : 'All';
+            const key = filters.level === 'state' 
+                ? statefp 
+                : statefp + countyfp;
+            feature.rate = result.cancer_data[key] ? result.cancer_data[key]['rate'] : {};
+            
+        });
+
+        console.log('[DataManager] Merged cancer data with GeoJSON geometries for pie chart:', geojson);
+        return geojson;
     }
 }

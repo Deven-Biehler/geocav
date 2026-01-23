@@ -11,6 +11,7 @@ export class ChoroplethMap {
     }
 
     async getDataStats(data) {
+        console.log('[Choropleth Map] Calculating data statistics for choropleth rendering...');
         /* Calculate necessary statistics for choropleth rendering */
         
         // Calculate min/max for normalization (using all data for single view)
@@ -201,6 +202,7 @@ export class ChoroplethMap {
 
         console.log('[Choropleth Map] Creating choropleth layer...');
         console.log('[Choropleth Map] States layer data:', data);
+        console.log('[Choropleth Map] checking maxAbsResidual:', this.maxAbsResidual);
         
         const layer = L.geoJson(data, {
             style: (feature) => this.getBivariateMapStyle(feature),     // Apply bivariate styling

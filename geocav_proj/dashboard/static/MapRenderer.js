@@ -63,6 +63,8 @@ export class MapRenderer {
             }   
             
             // Render the choropleth map
+            console.log('[MapRenderer] Rendering map type:', this.map_type);
+            console.log('[MapRenderer] States Layer Data:', statesLayer);
             this.map_type.renderMap(this.map, statesLayer);
         } catch (error) {
             console.error('[MapRenderer] Error rendering map:', error);
