@@ -62,5 +62,9 @@ urlpatterns = [
         views.network_node_meta, 
         name="network_node_meta"
     ),
-
+    path(
+        "api/gene_search/<str:cancer_name>/", 
+        views.molecular_gene_search_json, 
+        name="molecular_gene_search_json"
+    ),
 ]

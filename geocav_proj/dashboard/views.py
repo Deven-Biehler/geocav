@@ -9,6 +9,7 @@ from pathlib import Path
 import math
 import networkx as nx
 import igraph as ig
+import leidenalg as la
 from django.views.decorators.http import require_http_methods, require_GET
 from .utils import (
     get_query_params, get_model_instance, apply_geographic_filter,
@@ -264,6 +265,7 @@ def get_pie_data(request):
 def home(request):
     return render(request, 'home.html')
 
+# Network Analysis
 def _available_networks():
     nets = []
     if NETWORKS_DIR.exists():
@@ -298,118 +300,49 @@ def _read_graph_any(path: str):
         except Exception:
             return nx.read_gml(path, label=None)
 
-# network clustring
-def _to_similarity_weight(dist: float) -> float:
-    # dist is edit distance; convert to similarity
-    # small dist => high similarity
-    dist = max(float(dist), 0.0)
-    return 1.0 / (1.0 + dist)
+# ------------------------------------------------------------
+# NEW: igraph loader for clustering (matches your local method)
+# ------------------------------------------------------------
 
-def nx_to_ig(G):
-    # undirected for community detection
-    if G.is_directed():
-        G = G.to_undirected()
+def _igraph_from_gml(path: str) -> ig.Graph:
+    """
+    Read GML directly with igraph for clustering/layout.
+    This avoids NX->IG mapping bugs and matches local behavior.
+    """
+    g = ig.Graph.Read_GML(path)
 
-    # nodes are "0".."N-1"
-    node_ids = sorted([int(n) for n in G.nodes()])
-    idx = {nid: i for i, nid in enumerate(node_ids)}
+    # community detection: undirected is standard
+    if g.is_directed():
+        g = g.as_undirected(combine_edges="min")
 
-    edges = []
-    sims = []
-    for u, v, a in G.edges(data=True):
-        ui = idx[int(u)]
-        vi = idx[int(v)]
+    # simplify multiedges/self-loops
+    g.simplify(combine_edges="min", loops=True)
 
-        dist = a.get("weight", 1.0)
-        try: dist = float(dist)
-        except Exception: dist = 1.0
+    # Ensure we have a stable "name" attribute if missing
+    if "name" not in g.vs.attributes():
+        g.vs["name"] = [str(i) for i in range(g.vcount())]
 
-        sim = 1.0 / (1.0 + max(dist, 0.0))   # distance->similarity
-        edges.append((ui, vi))
-        sims.append(sim)
-    
-    g = ig.Graph(n=len(node_ids), edges=edges, directed=False)
-    g.es["sim"] = sims
-
-    print(np.percentile(g.es["sim"], [1,5,10,25,50,75,90,95,99]))
-
-    # crucial: store the original node id for mapping back
-    g.vs["nx_id"] = [str(nid) for nid in node_ids]
     return g
 
-def leiden_membership(g: ig.Graph, resolution: float = 1.0):
+def _leiden_membership_leidenalg(g: ig.Graph):
     """
-    Version-safe Leiden wrapper:
-    - No seed kwarg (often unsupported).
-    - Tries both resolution_parameter and resolution.
+    EXACTLY like your local code:
+      la.find_partition(graph, la.ModularityVertexPartition)
     """
-    weights = "sim" if "sim" in g.es.attributes() else None
+    part = la.find_partition(g, la.ModularityVertexPartition)
+    return list(part.membership)
 
-    try:
-        # Most common in newer python-igraph
-        cl = g.community_leiden(weights=weights, resolution_parameter=resolution)
-    except TypeError:
-        # Some builds used a different kw name
-        cl = g.community_leiden(weights=weights, resolution=resolution)
-
-    return cl.membership
-
-def louvain_membership(g: ig.Graph):
-    weights = "sim" if "sim" in g.es.attributes() else None
-    return g.community_multilevel(weights=weights).membership
-
-def cluster_aware_positions(g: ig.Graph, membership):
+def _cluster_positions_simple(g: ig.Graph):
     """
-    Returns dict: node_id(str) -> (x,y)
+    Simple natural layout for clustered response.
+    No seed= (igraph expects a matrix for 'seed').
     """
-    n_clusters = max(membership) + 1 if membership else 0
+    lay = g.layout_fruchterman_reingold()
+    return {str(i): (float(lay[i][0]), float(lay[i][1])) for i in range(g.vcount())}
 
-    # Build cluster super-graph with summed weights between communities
-    super_w = {}
-    for e in g.es:
-        a = membership[e.source]
-        b = membership[e.target]
-        if a == b:
-            continue
-        key = (a, b) if a < b else (b, a)
-        super_w[key] = super_w.get(key, 0.0) + float(e["sim"])
-
-    super_g = ig.Graph(n=n_clusters, directed=False)
-    if super_w:
-        super_g.add_edges(list(super_w.keys()))
-        super_g.es["w"] = list(super_w.values())
-
-    # Layout cluster graph (no seed kwarg)
-    super_layout = super_g.layout_fruchterman_reingold(weights="w" if super_w else None)
-    centers = [(float(p[0]), float(p[1])) for p in super_layout]
-
-    # Group vertices by cluster
-    vids_by_c = [[] for _ in range(n_clusters)]
-    for vid, c in enumerate(membership):
-        vids_by_c[c].append(vid)
-
-    pos = {}
-    for c, vids in enumerate(vids_by_c):
-        cx, cy = centers[c] if c < len(centers) else (0.0, 0.0)
-
-        if len(vids) == 1:
-            v = vids[0]
-            pos[g.vs[v]["nx_id"]] = (cx, cy)
-            continue
-
-        sub = g.subgraph(vids)
-
-        # Internal cluster layout (no seed kwarg)
-        sub_layout = sub.layout_fruchterman_reingold(weights="sim")
-        sub_xy = [(float(p[0]), float(p[1])) for p in sub_layout]
-
-        spread = 2.0 + 0.35 * math.sqrt(len(vids))
-        for i_local, v in enumerate(vids):
-            x, y = sub_xy[i_local]
-            pos[g.vs[v]["nx_id"]] = (cx + spread * x, cy + spread * y)
-
-    return pos
-
+# ------------------------------------------------------------
+# Updated network_json_by_slug (minimal changes, correct meta)
+# ------------------------------------------------------------
 
 def network_json_by_slug(request, cancer: str):
     nets = _available_networks()
@@ -421,34 +354,11 @@ def network_json_by_slug(request, cancer: str):
     if not os.path.exists(gml_path):
         return JsonResponse({"error": f"GML file missing: {gml_path}"}, status=404)
 
+    # Read NX graph for elements (your current rendering path)
     try:
         G = _read_graph_any(gml_path)
     except Exception as e:
         return JsonResponse({"error": f"Failed to parse graph file: {e}"}, status=400)
-    if G.is_directed():
-        H = G.to_undirected()
-    else:
-        H = G
-    print("connected components:", nx.number_connected_components(H))
-    do_cluster = request.GET.get("cluster", "0") in ("1", "true", "yes")
-    method = request.GET.get("method", "leiden").lower()
-    resolution = float(request.GET.get("res", "5"))
-
-    cluster_by_id = {}
-    pos = {}
-
-    if do_cluster:
-        g = nx_to_ig(G) 
-        print("IG nodes:", g.vcount(), "IG edges:", g.ecount())
-        print("NX nodes:", G.number_of_nodes(), "NX edges:", G.number_of_edges())
-        if method == "louvain":
-            membership = louvain_membership(g)
-        else:
-            membership = leiden_membership(g, resolution=resolution)
-        print("membership unique clusters:", len(set(membership)))
-        pos = cluster_aware_positions(g, membership)
-        cluster_by_id = {g.vs[i]["nx_id"]: int(membership[i]) for i in range(len(g.vs))}
-
 
     n_nodes, n_edges = G.number_of_nodes(), G.number_of_edges()
     if n_nodes == 0:
@@ -463,36 +373,51 @@ def network_json_by_slug(request, cancer: str):
             status=400
         )
 
+    # Cluster request flags
+    do_cluster = request.GET.get("cluster", "0") in ("1", "true", "yes")
+    # Keep method param for future, but for now we implement the "simple local" Leidenalg method
+    method = request.GET.get("method", "leiden").lower()
+
+    cluster_by_id = {}
+    pos = {}
+
+    if do_cluster:
+        # Read with igraph for clustering to match local behavior
+        g_ig = _igraph_from_gml(gml_path)
+
+        # Run leidenalg exactly like local
+        membership = _leiden_membership_leidenalg(g_ig)
+
+        # Map membership by vertex index -> node id "0..N-1"
+        # Assumes your webtool node ids are the index strings (as you've been using)
+        cluster_by_id = {str(i): int(membership[i]) for i in range(len(membership))}
+
+        # Natural layout positions from igraph
+        pos = _cluster_positions_simple(g_ig)
+
     def label_for(node, attrs):
         """
-        The node label shown in Cytoscape (NOT hover content).
+        Node label shown in Cytoscape (NOT hover content).
         """
-        return str(
-            attrs.get("label")
-            or attrs.get("id")
-            or node
-        )
+        return str(attrs.get("label") or attrs.get("id") or node)
 
     elements = []
+
+    # Nodes
     for n, attrs in G.nodes(data=True):
         nid = str(n)
-        node_data = {
-            "id": nid,
-            "label": label_for(n, attrs),
-        }
-        node_el = {
-            "data": node_data
-        }
+        node_data = {"id": nid, "label": label_for(n, attrs)}
+        node_el = {"data": node_data}
+
         if do_cluster:
             node_el["data"]["cluster"] = cluster_by_id.get(nid, -1)
             xy = pos.get(nid)
             if xy:
-                node_el["position"] = {
-                    "x": float(xy[0]),
-                    "y": float(xy[1]),
-                }
+                node_el["position"] = {"x": float(xy[0]), "y": float(xy[1])}
+
         elements.append(node_el)
 
+    # Edges
     for u, v, attrs in G.edges(data=True):
         elements.append({
             "data": {
@@ -503,18 +428,19 @@ def network_json_by_slug(request, cancer: str):
             }
         })
 
-    meta = {"nodes": G.number_of_nodes(), "edges": G.number_of_edges()}
+    meta = {"nodes": n_nodes, "edges": n_edges}
     if do_cluster:
         meta.update({
             "clustered": True,
-            "cluster_method": method,
-            "resolution": resolution,
-            "n_clusters": int(max(cluster_by_id.values()) + 1) if cluster_by_id else 0
+            "cluster_method": "leidenalg.ModularityVertexPartition",
+            "n_clusters": int(len(set(cluster_by_id.values()))) if cluster_by_id else 0
         })
     else:
         meta.update({"clustered": False})
 
-    return JsonResponse({"elements": elements, "meta": {"nodes": n_nodes, "edges": n_edges}})
+    # IMPORTANT: return meta (your code previously computed meta but returned a different dict)
+    return JsonResponse({"elements": elements, "meta": meta})
+
 
 def network_node_meta(request, cancer: str, node_id: str):
     try:
@@ -1378,8 +1304,6 @@ def compute_gene_group_matrix(
         "group_sizes": group_sizes_list,
     }
 
-from itertools import zip_longest
-from collections import Counter
 
 @require_GET
 def molecular_demographics_json(request, cancer_name):
@@ -1402,7 +1326,7 @@ def molecular_demographics_json(request, cancer_name):
     impacts = [v.strip().upper() for v in impacts_param.split(",") if v.strip()]
     iset = set(_clean_str(v).upper() for v in impacts if _clean_str(v))
 
-    # ---- compute available VC / impacts for UI ----
+    # ---- compute available VC / impacts for UI (NOT filtered) ----
     vc_counter = Counter()
     impact_counter = Counter()
 
@@ -1420,7 +1344,8 @@ def molecular_demographics_json(request, cancer_name):
     available_variant_classes = [vc for vc, _ in vc_counter.most_common(50)]
     available_impacts = [im for im, _ in impact_counter.most_common(50)]
 
-    # ---- KEY FIX: available_genes depends on (vset/iset) ----
+    # ---- compute gene_counter_filtered under (vset/iset) ----
+    # IMPORTANT: count per-sample presence (binary), not per mutation-row
     gene_counter_filtered = Counter()
 
     for rec in qs:
@@ -1429,7 +1354,6 @@ def molecular_demographics_json(request, cancer_name):
         imps  = parse_listish(getattr(rec, "IMPACT", None))
 
         gset = set()
-
         for g, vc, imp in zip_longest(genes, vcls, imps, fillvalue=None):
             g = _clean_str(g)
             if not g:
@@ -1447,22 +1371,10 @@ def molecular_demographics_json(request, cancer_name):
         if gset:
             gene_counter_filtered.update(gset)
 
-    available_genes = [g for g, _ in gene_counter_filtered.most_common(50)]  # or 100
-
-    # ---- decide genes_used based on filtered genes ----
-    if genes_selected:
-        genes_used = [g for g in genes_selected if g in gene_counter_filtered]
-        if not genes_used:
-            genes_used = [g for g, _ in gene_counter_filtered.most_common(10)]
-    else:
-        top_n = int(request.GET.get("top", 10) or 10)
-        top_n = max(2, min(top_n, 20))
-        genes_used = [g for g, _ in gene_counter_filtered.most_common(top_n)]
-
-    # If filters remove everything:
+    # If filters remove everything early:
     if not gene_counter_filtered:
         return JsonResponse({
-            "meta": {"cancer": cancer_name, "n_samples": 0},
+            "meta": {"cancer": cancer_name, "n_samples": 0, "n_records_in_db": qs.count()},
             "available_genes": [],
             "genes_used": [],
             "available_variant_classes": available_variant_classes,
@@ -1477,7 +1389,37 @@ def molecular_demographics_json(request, cancer_name):
             "gene_by_agebin": {},
         })
 
-    # ---- build samples with ALL filters (now includes genes_used, vset, iset) ----
+    # ---- B: build available_genes = pinned selected + topN under filters ----
+    # Allow a bigger top list but keep UI manageable.
+    TOP_AVAILABLE = 100  # top genes shown under current filters
+    MAX_AVAILABLE = 200  # hard cap after pinning
+
+    top_under_filters = [g for g, _ in gene_counter_filtered.most_common(TOP_AVAILABLE)]
+
+    # Pin selected genes at the top if they exist anywhere in filtered universe.
+    pinned = []
+    for g in genes_selected:
+        g_clean = _clean_str(g)
+        if not g_clean:
+            continue
+        if g_clean in gene_counter_filtered and g_clean not in pinned:
+            pinned.append(g_clean)
+
+    # Merge pinned + top list with stable order, no duplicates
+    available_genes = pinned + [g for g in top_under_filters if g not in pinned]
+    available_genes = available_genes[:MAX_AVAILABLE]
+
+    # ---- decide genes_used based on filtered genes (default top 10) ----
+    if genes_selected:
+        genes_used = [g for g in genes_selected if g in gene_counter_filtered]
+        if not genes_used:
+            genes_used = [g for g, _ in gene_counter_filtered.most_common(10)]
+    else:
+        top_n = int(request.GET.get("top", 10) or 10)
+        top_n = max(2, min(top_n, 20))
+        genes_used = [g for g, _ in gene_counter_filtered.most_common(top_n)]
+
+    # ---- build sample-level data with ALL filters applied ----
     samples = []
     n_qs = qs.count()
 
@@ -1497,6 +1439,7 @@ def molecular_demographics_json(request, cancer_name):
             vc  = _clean_str(vc)
             imp = _clean_str(imp).upper()
 
+            # ALL filters apply to ALL plots now
             if genes_used and g not in genes_used:
                 continue
             if vset and vc not in vset:
@@ -1510,7 +1453,7 @@ def molecular_demographics_json(request, cancer_name):
         age_years = None
         if rec.age_at_diagnosis is not None:
             try:
-                age_years = float(rec.age_at_diagnosis)  # already years
+                age_years = float(rec.age_at_diagnosis)  # already years in your new dataset
             except Exception:
                 age_years = None
 
@@ -1525,14 +1468,14 @@ def molecular_demographics_json(request, cancer_name):
 
     n_samples = len(samples)
 
-    # age vs mut
+    # ---- age vs mut ----
     age_vals, mut_vals = [], []
     for s in samples:
         if s["age_years"] is not None:
             age_vals.append(s["age_years"])
             mut_vals.append(s["mut_count"])
 
-    # gender burden
+    # ---- gender burden ----
     gender_map = {}
     for s in samples:
         g = s["gender"] or "Unknown"
@@ -1554,13 +1497,13 @@ def molecular_demographics_json(request, cancer_name):
         b = int(years // 10) * 10
         return f"{b}-{b+9}"
 
-    # use compute_gene_group_matrix but pass hotspot removed version
+    # gene group plots (keep your existing helper; hotspot left as harmless arg)
     gene_by_race = compute_gene_group_matrix(
         qs, genes_used,
         group_getter=lambda r: normalize_race(r.race) or "Unknown",
         variant_classes=variant_classes,
         impacts=impacts,
-        hotspot="__all__",  # harmless if your function still expects it
+        hotspot="__all__",
     )
     gene_by_ethnicity = compute_gene_group_matrix(
         qs, genes_used,
@@ -1609,3 +1552,68 @@ def molecular_demographics_json(request, cancer_name):
         "gene_by_agebin": gene_by_agebin,
     })
 
+
+@require_GET
+def molecular_gene_search_json(request, cancer_name):
+    """
+    Autocomplete gene search under current filters.
+    Query params:
+      - q=TP5
+      - variant_classes=...
+      - impacts=...
+    """
+    try:
+        ct = CancerType.objects.get(name__iexact=cancer_name)
+    except CancerType.DoesNotExist:
+        raise Http404(f"Cancer '{cancer_name}' not found in CancerType.name")
+
+    qs = TotalRecordAgg.objects.filter(cancer=ct)
+
+    q = _clean_str(request.GET.get("q") or "")
+    if not q:
+        return JsonResponse({"genes": []})
+
+    variant_classes_param = (request.GET.get("variant_classes") or "").strip()
+    variant_classes = [v.strip() for v in variant_classes_param.split(",") if v.strip()]
+    vset = set(_clean_str(v) for v in variant_classes if _clean_str(v))
+
+    impacts_param = (request.GET.get("impacts") or "").strip()
+    impacts = [v.strip().upper() for v in impacts_param.split(",") if v.strip()]
+    iset = set(_clean_str(v).upper() for v in impacts if _clean_str(v))
+
+    q_upper = q.upper()
+
+    # Count matches under filters (binary per sample)
+    counter = Counter()
+
+    for rec in qs:
+        genes = parse_listish(rec.Hugo_Symbol)
+        vcls  = parse_listish(getattr(rec, "Variant_Classification", None))
+        imps  = parse_listish(getattr(rec, "IMPACT", None))
+
+        gset = set()
+        for g, vc, imp in zip_longest(genes, vcls, imps, fillvalue=None):
+            g = _clean_str(g)
+            if not g:
+                continue
+
+            # prefix match
+            if g.upper().startswith(q_upper) is False:
+                continue
+
+            vc  = _clean_str(vc)
+            imp = _clean_str(imp).upper()
+
+            if vset and vc not in vset:
+                continue
+            if iset and imp not in iset:
+                continue
+
+            gset.add(g)
+
+        if gset:
+            counter.update(gset)
+
+    # return top matches (most common first)
+    genes_out = [g for g, _ in counter.most_common(30)]
+    return JsonResponse({"genes": genes_out})
