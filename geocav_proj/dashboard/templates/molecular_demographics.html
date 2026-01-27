@@ -162,7 +162,7 @@
 
   <div id="sharedGeneLegend"
       style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
-    <div style="font-weight:600;margin-bottom:8px;">Genes</div>
+    <div style="font-weight:600;margin-bottom:8px;">Legend for Top Genes</div>
     <div id="sharedGeneLegendItems"
         style="display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;"></div>
   </div>
@@ -443,13 +443,16 @@
     window.lastGenderBurdenData = data.gender_burden;
     renderGenderBurden(window.lastGenderBurdenData);
 
-    renderGeneGroupedBars("raceHeatmap", data.gene_by_race, "Gene mutation frequency by Race");
-    renderGeneGroupedBars("ethHeatmap", data.gene_by_ethnicity, "Gene mutation frequency by Ethnicity");
-    renderGeneGroupedBars("genderHeatmap", data.gene_by_gender, "Gene mutation frequency by Gender");
-    renderGeneGroupedBars("agebinHeatmap", data.gene_by_agebin, "Gene mutation frequency by Age Group");
-    // shared gene legend (use the genes actually plotted)
-    const legendGenes = (data.gene_by_race && data.gene_by_race.genes) ? data.gene_by_race.genes : (data.genes_used || []);
-    renderSharedGeneLegend(legendGenes);
+    Promise.all([
+      renderGeneGroupedBars("raceHeatmap", data.gene_by_race, "Gene mutation frequency by Race"),
+      renderGeneGroupedBars("ethHeatmap", data.gene_by_ethnicity, "Gene mutation frequency by Ethnicity"),
+      renderGeneGroupedBars("genderHeatmap", data.gene_by_gender, "Gene mutation frequency by Gender"),
+      renderGeneGroupedBars("agebinHeatmap", data.gene_by_agebin, "Gene mutation frequency by Age Group"),
+    ]).then(() => {
+      // build legend from one rendered plot (colors now resolved)
+      renderSharedGeneLegendFromPlot("raceHeatmap");
+    });
+
   }
 
   // -------------------------
@@ -477,6 +480,39 @@
 
     return arr.filter(v => v >= lower && v <= upper);
   }
+
+  function wrapTickLabel(label, maxLineLen = 12, maxLines = 3){
+    const s = String(label ?? "").trim();
+    if (!s) return "Unknown";
+
+    // If label already has separators, prefer splitting there
+    const parts = s.split(/\s+/); // split by spaces
+    const lines = [];
+    let line = "";
+
+    for (const w of parts){
+      if (!line) {
+        line = w;
+      } else if ((line + " " + w).length <= maxLineLen) {
+        line += " " + w;
+      } else {
+        lines.push(line);
+        line = w;
+      }
+      if (lines.length === maxLines - 1) break; // reserve last line
+    }
+
+    if (line) lines.push(line);
+
+    // If we truncated words, append ellipsis
+    const usedWordCount = lines.join(" ").split(/\s+/).length;
+    if (usedWordCount < parts.length){
+      lines[lines.length - 1] = lines[lines.length - 1].replace(/\.*$/, "") + "…";
+    }
+
+    return lines.join("<br>");
+  }
+
 
   function renderAgeMut(obj){
     try {
@@ -646,15 +682,20 @@
 
   function renderGeneGroupedBars(divId, obj, title){
     if (!obj || !obj.groups || !obj.genes || !obj.fractions){
-      Plotly.newPlot(divId, [], {title, height: 260}, {responsive:true});
-      return;
+      return Plotly.newPlot(divId, [], {title, height: 260}, {responsive:true});
     }
 
     const groups = obj.groups || [];
+    function toTitleCase(s){
+      return String(s ?? "")
+        .toLowerCase()
+        .replace(/\b\w/g, c => c.toUpperCase());
+    }
+    const tickText = groups.map(g => wrapTickLabel(toTitleCase(g), 12, 3));
     const genes  = obj.genes  || [];
-    const fracs  = obj.fractions || []; // matrix: genes x groups
-    const counts = obj.counts || [];    // matrix: genes x groups (mutated sample counts)
-    const groupSizes = obj.group_sizes || []; // groups length
+    const fracs  = obj.fractions || [];
+    const counts = obj.counts || [];
+    const groupSizes = obj.group_sizes || [];
 
     const traces = genes.map((g, gi) => {
       const y = (fracs[gi] || []).map(v => (v == null ? 0 : v));
@@ -673,21 +714,26 @@
         text,
         textposition: "auto",
         hovertemplate: `<b>${g}</b><br>%{x}<br>%{text}<extra></extra>`,
-        showlegend: false   // ✅ hide per-plot legend
+        showlegend: false  //hide per-plot legend
       };
     });
 
     const layout = {
       title: {text: title, font: {size: 12}},
-      margin: {t: 30, r: 10, b: 90, l: 60}, // ✅ more room for x labels
+      xaxis: {
+        tickmode: "array",
+        tickvals: groups,
+        ticktext: tickText,
+        tickangle: 0,        
+        automargin: true
+      },
+      margin: {t: 30, r: 10, b: 60, l: 60},
       barmode: "group",
       yaxis: {title: "Fraction mutated", range: [0, 1]},
-      xaxis: {tickangle: -35},
-      height: 260,
-      showlegend: false     // ✅ ensure legend is off
+      height: 260
     };
 
-    Plotly.newPlot(divId, traces, layout, {responsive:true});
+    return Plotly.newPlot(divId, traces, layout, {responsive:true});
   }
 
   function getPlotlyLegendColorForTrace(divId, traceIndex){
@@ -742,6 +788,72 @@
 
     wrap.style.display = genes.length ? "block" : "none";
   }
+
+  function getTraceColor(gd, i){
+    // Plotly computed traces (auto colors resolved here)
+    const fd = (gd && gd._fullData && gd._fullData[i]) ? gd._fullData[i] : null;
+    if (fd){
+      const c =
+        (fd.marker && fd.marker.color) ||
+        (fd.line && fd.line.color) ||
+        (fd.marker && fd.marker.line && fd.marker.line.color);
+      if (c) return c;
+    }
+
+    // use Plotly's colorway (what auto colors come from)
+    const colorway = (gd && gd._fullLayout && gd._fullLayout.colorway) ? gd._fullLayout.colorway : null;
+    if (colorway && colorway.length){
+      return colorway[i % colorway.length];
+    }
+
+    // 3) Fallback
+    return "#999";
+  }
+
+  function renderSharedGeneLegendFromPlot(plotDivId){
+    const gd = document.getElementById(plotDivId);
+    const wrap = document.getElementById("sharedGeneLegend");
+    const items = document.getElementById("sharedGeneLegendItems");
+
+    if (!gd || !items) return;
+
+    // Use computed traces if available, otherwise use gd.data as a fallback
+    const traces = (gd._fullData && gd._fullData.length) ? gd._fullData : (gd.data || []);
+    if (!traces.length) return;
+
+    items.innerHTML = "";
+
+    traces.forEach((tr, i) => {
+      if (!tr || !tr.name) return;
+
+      const color = getTraceColor(gd, i);
+
+      const item = document.createElement("div");
+      item.style.display = "flex";
+      item.style.alignItems = "center";
+      item.style.gap = "6px";
+
+      const dot = document.createElement("span");
+      dot.style.width = "10px";
+      dot.style.height = "10px";
+      dot.style.borderRadius = "50%";
+      dot.style.background = color;
+      dot.style.display = "inline-block";
+      dot.style.border = "1px solid #d1d5db";
+
+      const label = document.createElement("span");
+      label.textContent = tr.name;
+      label.style.fontSize = "13px";
+
+      item.appendChild(dot);
+      item.appendChild(label);
+      items.appendChild(item);
+    });
+
+    if (wrap) wrap.style.display = "block";
+  }
+
+
 
   // --- Events (IMPORTANT: no auto-fetch on filter change) ---
   geneSelect.addEventListener("change", () => {

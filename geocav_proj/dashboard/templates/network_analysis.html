@@ -81,6 +81,7 @@
 
     <button id="btnDefault" type="button">Display Network</button>
     <button id="btnCluster" type="button">Cluster Network</button>
+    <button id="btnDownload" type="button">Download PNG</button>
 
     <div id="netMeta"></div>
   </div>
@@ -128,14 +129,20 @@
       "</pre></div>";
     if (metaEl) metaEl.textContent = "";
   }
-  function updateMeta(n, m, slug, phase) {
-    if (metaEl) metaEl.textContent =
-      `Nodes: ${n} | Edges: ${m} | ${slug}${phase ? " — " + phase : ""}`;
+  function updateMeta(n, m, slug, phase, meta){
+    const parts = [`Nodes: ${n}`, `Edges: ${m}`, slug];
+    if (phase) parts.push(phase);
+
+    if (meta && meta.clustered && Number.isFinite(meta.n_clusters)) {
+      parts.push(`Clusters: ${meta.n_clusters}`);
+    }
+
+    if (metaEl) metaEl.textContent = parts.join(" | ");
   }
   function forceRender() {
     if (!cy) return;
-    cy.resize(); cy.fit();
-    requestAnimationFrame(() => { cy.resize(); cy.fit(); });
+    cy.resize(); cy.fit(undefined, 60);
+    requestAnimationFrame(() => { cy.resize(); cy.fit(undefined, 60); });
   }
 
   async function loadNetwork(slug, clustered=false) {
@@ -193,8 +200,9 @@
             'color': '#212529',
             'text-valign': 'center',
             'text-halign': 'center',
-            'border-width': 0.5,
-            'border-color': '#fff',
+            'border-width': 0.8,          
+            'border-color': '#000000',    
+            'border-opacity': 1,       
             'width': 14,
             'height': 14
           }
@@ -216,6 +224,24 @@
       wheelSensitivity: 0.25,
       boxSelectionEnabled: true
     });
+
+    const btnDownload = document.getElementById("btnDownload");
+    if (btnDownload) {
+      btnDownload.onclick = () => {
+        if (!cy) return;
+
+        // higher = better resolution (also bigger file)
+        const scale = 3; // 2–4 is usually great
+        const png64 = cy.png({ full: true, scale, bg: "#ffffff", padding: 120});
+
+        const a = document.createElement("a");
+        a.href = png64;
+        a.download = `${slug}_${clustered ? "clustered" : "network"}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      };
+    }
 
     // ---- Hover tooltip ----
     const tip = document.getElementById("cy-tooltip");
@@ -291,9 +317,9 @@
 
     // Instant layout so something appears right away
     // Instant layout so something appears right away (ALWAYS run this)
-    cy.layout({ name: 'concentric', animate: false, fit: true, padding: 30 }).run();
+    cy.layout({ name: 'concentric', animate: false, fit: true, padding: 60}).run();
     forceRender();
-    updateMeta(N, M, slug, clustered ? "clustered (placed)" : "placed");
+    updateMeta(N, M, slug, clustered ? "clustered (placed)" : "placed", info);
 
     // Then run the same fast refine you use today
     const haveFCoSE = !!cy.layouts && typeof cytoscape !== 'undefined' && cytoscape('core', 'fcose') !== undefined;
@@ -309,22 +335,24 @@
         linkCrossingFactor: 20,
         packComponents: true,
         samplingType: true,
-        nodeRepulsion: 4500
+        nodeRepulsion: 4500,
+        fit: true,
+        padding: 60
       };
 
-      updateMeta(N, M, slug, clustered ? "clustered (refining)" : "refining (fast)");
+      updateMeta(N, M, slug, clustered ? "clustered (refining)" : "refining (fast)", info);
 
       const controller = cy.layout(fcoseOpts);
       const timeout = setTimeout(() => {
         try { controller.stop(); } catch(e){}
         cy.fit(); forceRender();
-        updateMeta(N, M, slug, clustered ? "clustered" : "ready");
+        updateMeta(N, M, slug, clustered ? "clustered" : "ready", info);
       }, 2000);
 
       controller.on('layoutstop', () => {
         clearTimeout(timeout);
         cy.fit(); forceRender();
-        updateMeta(N, M, slug, clustered ? "clustered" : "ready");
+        updateMeta(N, M, slug, clustered ? "clustered" : "ready", info);
       });
 
       controller.run();
@@ -344,19 +372,20 @@
       initialTemp: 1000,
       coolingFactor: 0.99,
       minTemp: 1.0,
-      fit: true
+      fit: true,
+      padding: 60
     });
 
     const coseTimeout = setTimeout(() => {
       try { coseController.stop(); } catch(e){}
       cy.fit(); forceRender();
-      updateMeta(N, M, slug, clustered ? "clustered" : "ready");
+      updateMeta(N, M, slug, clustered ? "clustered" : "ready", info);
     }, 1500);
 
     coseController.on('layoutstop', () => {
       clearTimeout(coseTimeout);
       cy.fit(); forceRender();
-      updateMeta(N, M, slug, clustered ? "clustered" : "ready");
+      updateMeta(N, M, slug, clustered ? "clustered" : "ready", info);
     });
 
     coseController.run();
