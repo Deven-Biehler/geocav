@@ -62,7 +62,6 @@ export class MapRenderer {
                 statesLayer = await this.dataManager.fetchStatesLayer(selectedFilters);
             }   
             
-            // Render the choropleth map
             console.log('[MapRenderer] Rendering map type:', this.map_type);
             console.log('[MapRenderer] States Layer Data:', statesLayer);
             this.map_type.renderMap(this.map, statesLayer);
@@ -119,10 +118,13 @@ export class MapRenderer {
         const statesLayer = await this.dataManager.fetchStatesLayer(selectedFilters);
         
         // Calculate PC scores for each region
-        this.computePCScores(statesLayer, pcResults, pcIndex, selectedFilters);
+        this.computePCScores(statesLayer, pcResults, pcIndex, selectedFilters); 
         
         // Create a modified filters object that indicates PC visualization
         const pcFilters = {...selectedFilters, isPCVisualization: true, pcIndex: pcIndex};
+
+        console.log('[MapRenderer] PC Filters for rendering:', pcFilters);
+        console.log('[MapRenderer] States Layer with PC scores:', statesLayer);
         
         // Create choropleth map and render with PC scores
         this.map_type = new ChoroplethMap(pcFilters);
@@ -176,27 +178,21 @@ export class MapRenderer {
         
         // For each region in the statesLayer, compute its PC score
         statesLayer.features.forEach((feature, idx) => {
-            if (!feature.properties) feature.properties = {};
-            
             let pcScore = 0;
             let validFactorCount = 0;
             
             // Sum (standardized_factor_value * loading) for each factor
             factorNames.forEach((factorName, factorIdx) => {
-                const factorValue = feature.properties[factorName];
+                const factorValue = feature[factorName];
                 const loading = loadings[factorIdx];
                 
-                if (factorValue !== undefined && factorValue !== null && !isNaN(factorValue)) {
-                    // Standardize the factor value
-                    let standardizedValue = factorValue;
-                    if (computedStds[factorIdx] && computedStds[factorIdx] !== 0) {
-                        const mean = computedMeans[factorIdx] || 0;
-                        standardizedValue = (factorValue - mean) / computedStds[factorIdx];
-                    }
-                    
-                    pcScore += standardizedValue * loading;
-                    validFactorCount++;
-                }
+                // Standardize the factor value
+                let standardizedValue = factorValue;
+                const mean = computedMeans[factorIdx] || 0;
+                standardizedValue = (factorValue - mean) / computedStds[factorIdx];
+                
+                pcScore += standardizedValue * loading;
+                validFactorCount++;
             });
             
             // Store the PC score as the visualization value

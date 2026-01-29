@@ -164,7 +164,6 @@ export class FilterManager {
 
     updateVisualization() {
         console.log('[FilterManager] Updating visualization with filters:', JSON.parse(JSON.stringify(this.selectedFilters)));
-        this.mapRenderer.renderMap(this.selectedFilters);
 
         if (this.isPCAActive && this.pcaPlot.pcResults) {
             const pcData = {
@@ -173,8 +172,10 @@ export class FilterManager {
                 selectedPCs: this.pcaPlot.selectedPCs && this.pcaPlot.selectedPCs.length > 0 ? this.pcaPlot.selectedPCs : [0]
             };
             this.regressionPlot.renderPlot(this.selectedFilters, pcData);
+            this.mapRenderer.renderMap(this.selectedFilters, pcData);
         } else {
             this.regressionPlot.renderPlot(this.selectedFilters);
+            this.mapRenderer.renderMap(this.selectedFilters);
         }
 
         this.tableRenderer.renderTable(this.selectedFilters);

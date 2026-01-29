@@ -5,7 +5,7 @@ import { getDeviationLegendContent, getStandardLegendContent, createBivariatePop
 
 export class ChoroplethMap {
     constructor(selectedFilters) {
-        console.log('[Choropleth Map] ChoroplethMap constructor called with level:', selectedFilters.level, 'and cancer type:', selectedFilters.cancer_type);
+        console.log('[Choropleth Map] ChoroplethMap constructor called with filters:', selectedFilters);
         this.layer = null;
         this.selectedFilters = selectedFilters
     }
@@ -105,7 +105,7 @@ export class ChoroplethMap {
     }
 
     async renderMap(map, data) {
-        console.log('[Choropleth Map] Rendering choropleth map with cancer type:', this.selectedFilters.cancer_type, 'and level:', this.selectedFilters.level);
+        console.log('[Choropleth Map] Rendering choropleth map with filters:', this.selectedFilters, 'and level:', this.selectedFilters.level);
         console.log('[Choropleth Map] Data received for rendering:', data);
 
         const layersToRemove = [];
