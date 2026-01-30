@@ -24,7 +24,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Successfully loaded all data'))
 
     def load_data(self):
-        self.clear_existing_data()
+        # self.clear_existing_data()
         self.load_factors()
         self.load_cancer_incidence()
 
