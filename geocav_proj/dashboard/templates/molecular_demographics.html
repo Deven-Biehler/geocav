@@ -83,8 +83,17 @@
       <label style="display:block;font-weight:600;margin-bottom:4px;">Genes (max 20)</label>
       <select id="geneSelect" class="genes-box" multiple></select>
       <div style="font-size:12px;color:#6b7280;margin-top:4px;">
-        Top 50 genes available for selection.<br>
+        Top 100 genes available for selection.<br>
         Default = top 10 genes if none selected.
+      </div>
+    </div>
+
+    <div>
+      <label style="display:block;font-weight:600;margin-bottom:4px;">Search & add gene</label>
+      <input id="geneSearchInput" type="text" placeholder="Type gene (e.g., TP53)" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
+      <div id="geneSearchResults" style="max-height:140px;overflow:auto;border:1px solid #e5e7eb;border-radius:6px;background:#fff;"></div>
+      <div style="font-size:12px;color:#6b7280;margin-top:4px;">
+        Uses current Variant Class + Impact filters.
       </div>
     </div>
 
@@ -150,6 +159,13 @@
       <div id="agebinHeatmap" class="panel-inner"></div>
     </div>
   </div>
+
+  <div id="sharedGeneLegend"
+      style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
+    <div style="font-weight:600;margin-bottom:8px;">Legend for Top Genes</div>
+    <div id="sharedGeneLegendItems"
+        style="display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;"></div>
+  </div>
 </div>
 
 <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
@@ -159,82 +175,232 @@
   const cancerSelect    = document.getElementById("cancerSelect");
   const geneSelect      = document.getElementById("geneSelect");
   const varClassSelect  = document.getElementById("varClassSelect");
-  const applyBtn        = document.getElementById("applyBtn");
-  const metaText        = document.getElementById("metaText");
   const impactSelect    = document.getElementById("impactSelect");
+  const applyBtn        = document.getElementById("applyBtn");
   const resetBtn        = document.getElementById("resetBtn");
+  const metaText        = document.getElementById("metaText");
+
+  // --- (D) gene search UI elements (must exist in HTML) ---
+  // If you haven't added them yet, add:
+  // <input id="geneSearchInput" ...> and <div id="geneSearchResults"></div>
+  const geneSearchInput   = document.getElementById("geneSearchInput");
+  const geneSearchResults = document.getElementById("geneSearchResults");
 
   let lastPayload = null;
 
-  function selectedGenes(){
-    if (!userPickedGenes) return [];
-    return Array.from(geneSelect.selectedOptions).map(o => o.value).slice(0, 20);
+  // Track whether user explicitly picked genes (vs auto-top)
+  let userPickedGenes = false;
+
+  // Track whether UI changed since last fetch/apply
+  let filtersDirty = false;
+
+  // Track what was last APPLIED (for messaging only; logic uses UI state)
+  let lastApplied = {
+    impacts: [],
+    variant_classes: [],
+    genes: [] // keep a record of last applied gene list
+  };
+
+  function markDirty(){
+    filtersDirty = true;
+    metaText.textContent = "Filters changed — click Apply filters.";
   }
 
-  function populateGenes(available, used){
-    geneSelect.innerHTML = "";
-    (available || []).forEach(g => {
-      const opt = document.createElement("option");
-      opt.value = g;
-      opt.textContent = g;
-      if (used && used.includes(g)) {
-        opt.selected = true;
-      }
-      geneSelect.appendChild(opt);
-    });
+  function sameArray(a, b){
+    a = (a || []).slice().sort();
+    b = (b || []).slice().sort();
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++){
+      if (a[i] !== b[i]) return false;
+    }
+    return true;
+  }
+
+  function selectedGenes(){
+    return Array.from(geneSelect.selectedOptions).map(o => o.value).slice(0, 20);
   }
 
   function selectedVarClasses(){
     return Array.from(varClassSelect.selectedOptions).map(o => o.value);
   }
 
+  function selectedImpacts(){
+    return Array.from(impactSelect.selectedOptions).map(o => o.value);
+  }
+
+  function clearMultiSelect(sel){
+    if (!sel) return;
+    Array.from(sel.options).forEach(o => { o.selected = false; });
+  }
+
+  // --- Populate pickers ---
+  function populateGenes(available, used){
+    const usedSet = new Set((used || []).filter(Boolean));
+    geneSelect.innerHTML = "";
+
+    (available || []).forEach(g => {
+      const opt = document.createElement("option");
+      opt.value = g;
+      opt.textContent = g;
+      if (usedSet.has(g)) opt.selected = true;
+      geneSelect.appendChild(opt);
+    });
+  }
+
   function populateVariantClasses(available, used){
+    const usedSet = new Set((used || []).filter(Boolean));
     varClassSelect.innerHTML = "";
     (available || []).forEach(vc => {
       const opt = document.createElement("option");
       opt.value = vc;
       opt.textContent = vc;
-      if (used && used.includes(vc)) opt.selected = true;
+      if (usedSet.has(vc)) opt.selected = true;
       varClassSelect.appendChild(opt);
     });
   }
 
   function populateImpacts(available, used){
+    const usedSet = new Set((used || []).filter(Boolean));
     impactSelect.innerHTML = "";
     (available || []).forEach(im => {
       const opt = document.createElement("option");
       opt.value = im;
       opt.textContent = im;
-      if (used && used.includes(im)) opt.selected = true;
+      if (usedSet.has(im)) opt.selected = true;
       impactSelect.appendChild(opt);
     });
   }
 
+  // --- (B) add/pin a gene to picker + select it ---
+  function addGeneToPicker(gene){
+    gene = (gene || "").trim();
+    if (!gene) return;
+
+    // already exists?
+    const existing = Array.from(geneSelect.options).find(o => o.value === gene);
+    if (!existing){
+      const opt = document.createElement("option");
+      opt.value = gene;
+      opt.textContent = gene;
+
+      // pin visually at top
+      geneSelect.insertBefore(opt, geneSelect.firstChild);
+    }
+
+    // select it
+    Array.from(geneSelect.options).forEach(o => {
+      if (o.value === gene) o.selected = true;
+    });
+
+    userPickedGenes = true;
+    markDirty();
+  }
+
+  // --- (D) gene search ---
+  function debounce(fn, ms){
+    let t = null;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  }
+
+  async function searchGenes(q){
+    if (!geneSearchResults) return;
+
+    geneSearchResults.innerHTML = "";
+    q = (q || "").trim();
+    if (q.length < 2) return;
+
+    const cancer = cancerSelect.value;
+
+    // MUST match your url name from urls.py
+    // e.g. path("api/gene_search/<str:cancer_name>/", ..., name="molecular_gene_search_json")
+    let url = "{% url 'molecular_gene_search_json' cancer_name='__C__' %}"
+                .replace("__C__", encodeURIComponent(cancer));
+
+    const params = [];
+    params.push("q=" + encodeURIComponent(q));
+
+    const vcs = selectedVarClasses();
+    const imps = selectedImpacts();
+    if (vcs.length) params.push("variant_classes=" + encodeURIComponent(vcs.join(",")));
+    if (imps.length) params.push("impacts=" + encodeURIComponent(imps.join(",")));
+
+    url += "?" + params.join("&");
+
+    let resp;
+    try {
+      resp = await fetch(url, {cache:"no-store"});
+    } catch (e){
+      console.error(e);
+      return;
+    }
+    if (!resp.ok) return;
+
+    const data = await resp.json();
+    const genes = data.genes || [];
+
+    if (!genes.length){
+      geneSearchResults.innerHTML =
+        "<div style='padding:6px 8px;color:#6b7280;font-size:12px;'>No matches</div>";
+      return;
+    }
+
+    genes.forEach(g => {
+      const row = document.createElement("div");
+      row.textContent = g;
+      row.style.padding = "6px 8px";
+      row.style.cursor = "pointer";
+      row.style.fontSize = "13px";
+      row.addEventListener("click", () => {
+        addGeneToPicker(g);
+        geneSearchResults.innerHTML = "";
+        if (geneSearchInput) geneSearchInput.value = "";
+      });
+      row.addEventListener("mouseenter", () => row.style.background = "#f3f4f6");
+      row.addEventListener("mouseleave", () => row.style.background = "transparent");
+      geneSearchResults.appendChild(row);
+    });
+  }
+
+  if (geneSearchInput){
+    geneSearchInput.addEventListener("input", debounce((e) => {
+      searchGenes(e.target.value);
+    }, 250));
+  }
+
+  // --- Fetch + Render ---
   async function fetchDemographics(){
     const cancer = cancerSelect.value;
-    const genes = selectedGenes();
-    const varClasses = selectedVarClasses();
-    const impacts = Array.from(impactSelect.selectedOptions).map(o => o.value);
+
+    // Snapshot current UI selections BEFORE fetch
+    const uiGenes = selectedGenes();
+    const uiVarClasses = selectedVarClasses();
+    const uiImpacts = selectedImpacts();
 
     let url = "{% url 'molecular_demographics_json' cancer_name='__C__' %}";
     url = url.replace("__C__", encodeURIComponent(cancer));
 
     const params = [];
-    if (genes.length > 0){
-      params.push("genes=" + encodeURIComponent(genes.join(",")));
+
+    // IMPORTANT:
+    // - If user picked genes explicitly, send genes=
+    // - Otherwise, send top=10 so backend recomputes top genes under filters
+    if (userPickedGenes && uiGenes.length > 0){
+      params.push("genes=" + encodeURIComponent(uiGenes.join(",")));
     } else {
       params.push("top=10");
     }
-    if (varClasses.length > 0){
-      params.push("variant_classes=" + encodeURIComponent(varClasses.join(",")));
+
+    if (uiVarClasses.length > 0){
+      params.push("variant_classes=" + encodeURIComponent(uiVarClasses.join(",")));
     }
-    if (impacts.length){
-      params.push("impacts=" + encodeURIComponent(impacts.join(",")));
+    if (uiImpacts.length > 0){
+      params.push("impacts=" + encodeURIComponent(uiImpacts.join(",")));
     }
 
-    if (params.length > 0){
-      url += "?" + params.join("&");
-    }
+    url += "?" + params.join("&");
 
     metaText.textContent = "Loading…";
 
@@ -250,22 +416,48 @@
     const data = await resp.json();
     lastPayload = data;
 
+    // After a successful APPLY fetch, mark clean
+    filtersDirty = false;
+
+    // Update lastApplied snapshot (what backend actually used)
+    lastApplied.variant_classes = data.variant_classes_used || [];
+    lastApplied.impacts = data.impacts_used || [];
+    lastApplied.genes = data.genes_used || [];
+
     metaText.textContent =
       `Cancer: ${data.meta.cancer} | Samples: ${data.meta.n_samples}`;
 
-    populateGenes(data.available_genes, data.genes_used);
+    // --- (B) Preserve currently selected genes if userPickedGenes ---
+    // If user picked genes, we preserve their selection across repopulate
+    // BUT also respect server "pinning" (server should include them in available_genes)
+    const preserveGenes = userPickedGenes ? uiGenes : (data.genes_used || []);
+
+    populateGenes(data.available_genes, preserveGenes);
     populateVariantClasses(data.available_variant_classes, data.variant_classes_used);
     populateImpacts(data.available_impacts, data.impacts_used);
 
+    // Render plots
     window.lastAgeMutData = data.age_vs_mut;
     renderAgeMut(window.lastAgeMutData);
+
     window.lastGenderBurdenData = data.gender_burden;
     renderGenderBurden(window.lastGenderBurdenData);
-    renderGeneGroupedBars("raceHeatmap", data.gene_by_race, "Gene mutation frequency by Race");
-    renderGeneGroupedBars("ethHeatmap", data.gene_by_ethnicity, "Gene mutation frequency by Ethnicity");
-    renderGeneGroupedBars("genderHeatmap", data.gene_by_gender, "Gene mutation frequency by Gender");
-    renderGeneGroupedBars("agebinHeatmap", data.gene_by_agebin, "Gene mutation frequency by Age Group");
+
+    Promise.all([
+      renderGeneGroupedBars("raceHeatmap", data.gene_by_race, "Gene mutation frequency by Race"),
+      renderGeneGroupedBars("ethHeatmap", data.gene_by_ethnicity, "Gene mutation frequency by Ethnicity"),
+      renderGeneGroupedBars("genderHeatmap", data.gene_by_gender, "Gene mutation frequency by Gender"),
+      renderGeneGroupedBars("agebinHeatmap", data.gene_by_agebin, "Gene mutation frequency by Age Group"),
+    ]).then(() => {
+      // build legend from one rendered plot (colors now resolved)
+      renderSharedGeneLegendFromPlot("raceHeatmap");
+    });
+
   }
+
+  // -------------------------
+  // Your existing render helpers below (unchanged)
+  // -------------------------
 
   function median(values){
     const arr = (values || []).slice().sort((a,b)=>a-b);
@@ -274,17 +466,53 @@
     return (arr.length % 2) ? arr[mid] : (arr[mid-1] + arr[mid]) / 2;
   }
 
-  function normalizeAgeToYears(a){
-    // a is numeric already
-    if (!isFinite(a)) return null;
+  function removeOutliersIQR(values) {
+    const arr = (values || []).filter(v => typeof v === "number" && !isNaN(v));
+    if (arr.length < 8) return arr;
 
-    // If it's huge, it's almost certainly days
-    if (a > 200) return a / 365.25;
+    const sorted = [...arr].sort((a, b) => a - b);
+    const q1 = sorted[Math.floor(sorted.length * 0.25)];
+    const q3 = sorted[Math.floor(sorted.length * 0.75)];
+    const iqr = q3 - q1;
 
-    // If it's tiny and integer-ish, it might be decade-bin index (0..9 or 0..10)
-    // e.g., 0=>0-9, 1=>10-19...
-    return a;
+    const lower = q1 - 1.5 * iqr;
+    const upper = q3 + 1.5 * iqr;
+
+    return arr.filter(v => v >= lower && v <= upper);
   }
+
+  function wrapTickLabel(label, maxLineLen = 12, maxLines = 3){
+    const s = String(label ?? "").trim();
+    if (!s) return "Unknown";
+
+    // If label already has separators, prefer splitting there
+    const parts = s.split(/\s+/); // split by spaces
+    const lines = [];
+    let line = "";
+
+    for (const w of parts){
+      if (!line) {
+        line = w;
+      } else if ((line + " " + w).length <= maxLineLen) {
+        line += " " + w;
+      } else {
+        lines.push(line);
+        line = w;
+      }
+      if (lines.length === maxLines - 1) break; // reserve last line
+    }
+
+    if (line) lines.push(line);
+
+    // If we truncated words, append ellipsis
+    const usedWordCount = lines.join(" ").split(/\s+/).length;
+    if (usedWordCount < parts.length){
+      lines[lines.length - 1] = lines[lines.length - 1].replace(/\.*$/, "") + "…";
+    }
+
+    return lines.join("<br>");
+  }
+
 
   function renderAgeMut(obj){
     try {
@@ -296,20 +524,16 @@
 
       function parseAge(x){
         if (x === null || x === undefined) return null;
-
-        // Handle strings like "0-9" or "10–19"
         if (typeof x === "string") {
           const s = x.trim();
           const m = s.match(/^(\d+)\s*[-–]\s*(\d+)$/);
-          if (m) return Number(m[1]); // take bin start
+          if (m) return Number(m[1]);
         }
-
         const a = Number(x);
         if (!Number.isFinite(a)) return null;
         return a;
       }
 
-      // First pass: parse + collect ages/muts
       const pairs0 = [];
       let minA = Infinity, maxA = -Infinity;
       let intCount = 0;
@@ -333,21 +557,13 @@
         return;
       }
 
-      // Detect if ages look like decade-index (0..9/10 integers)
       const looksLikeDecadeIndex = (minA >= 0 && maxA <= 10 && intCount === pairs0.length);
 
-      // Normalize ages to years
       const pairs = [];
       for (const [a0, m] of pairs0){
         let a = a0;
-
-        // If days, convert to years
         if (a > 200) a = a / 365.25;
-
-        // If decade index (0..9/10), convert to years by multiplying by 10
         if (looksLikeDecadeIndex) a = a * 10;
-
-        // filter
         if (a < 0 || a > 100) continue;
         pairs.push([a, m]);
       }
@@ -358,11 +574,6 @@
           "<div style='color:#6b7280;font-size:13px;padding:10px 2px;'>No age vs mutation data (after cleaning).</div>";
         return;
       }
-
-      console.log("[ageMutPlot] n_raw:", n,
-                  "pairs:", pairs.length,
-                  "min/max raw age:", minA, maxA,
-                  "decadeIndex?", looksLikeDecadeIndex);
 
       const showOutliersToggle = document.getElementById("showOutliersToggle");
       const showOutliers = showOutliersToggle ? showOutliersToggle.checked : true;
@@ -431,29 +642,11 @@
 
     } catch (e) {
       console.error("renderAgeMut failed:", e);
-      // Don't let one plot break the entire demographics page
       Plotly.purge("ageMutPlot");
       document.getElementById("ageMutPlot").innerHTML =
         "<div style='color:#ef4444;font-size:13px;padding:10px 2px;'>Age plot failed. Check console.</div>";
     }
   }
-
-  function removeOutliersIQR(values) {
-    const arr = (values || []).filter(v => typeof v === "number" && !isNaN(v));
-    if (arr.length < 8) return arr;
-
-    const sorted = [...arr].sort((a, b) => a - b);
-    const q1 = sorted[Math.floor(sorted.length * 0.25)];
-    const q3 = sorted[Math.floor(sorted.length * 0.75)];
-    const iqr = q3 - q1;
-
-    const lower = q1 - 1.5 * iqr;
-    const upper = q3 + 1.5 * iqr;
-
-    return arr.filter(v => v >= lower && v <= upper);
-  }
-
-
 
   function renderGenderBurden(obj){
     const genders = obj.genders || [];
@@ -465,9 +658,7 @@
 
     genders.forEach((g, idx) => {
       const originalVals = countsList[idx] || [];
-      const plotVals = showOutliers
-        ? originalVals
-        : removeOutliersIQR(originalVals);
+      const plotVals = showOutliers ? originalVals : removeOutliersIQR(originalVals);
 
       traces.push({
         y: plotVals,
@@ -481,10 +672,7 @@
 
     const layout = {
       margin: {t: 10, r: 10, b: 40, l: 55},
-      yaxis: {
-        title: "Total mutation count",
-        autorange: true   // 🔑 force rescale
-      },
+      yaxis: { title: "Total mutation count", autorange: true },
       height: 260,
       boxmode: "group"
     };
@@ -494,15 +682,20 @@
 
   function renderGeneGroupedBars(divId, obj, title){
     if (!obj || !obj.groups || !obj.genes || !obj.fractions){
-      Plotly.newPlot(divId, [], {title, height: 260}, {responsive:true});
-      return;
+      return Plotly.newPlot(divId, [], {title, height: 260}, {responsive:true});
     }
 
     const groups = obj.groups || [];
+    function toTitleCase(s){
+      return String(s ?? "")
+        .toLowerCase()
+        .replace(/\b\w/g, c => c.toUpperCase());
+    }
+    const tickText = groups.map(g => wrapTickLabel(toTitleCase(g), 12, 3));
     const genes  = obj.genes  || [];
-    const fracs  = obj.fractions || []; // matrix: genes x groups
-    const counts = obj.counts || [];    // matrix: genes x groups (mutated sample counts)
-    const groupSizes = obj.group_sizes || []; // groups length
+    const fracs  = obj.fractions || [];
+    const counts = obj.counts || [];
+    const groupSizes = obj.group_sizes || [];
 
     const traces = genes.map((g, gi) => {
       const y = (fracs[gi] || []).map(v => (v == null ? 0 : v));
@@ -515,115 +708,191 @@
 
       return {
         x: groups,
-        y: y,
+        y,
         type: "bar",
         name: g,
-        text: text,
+        text,
         textposition: "auto",
-        hovertemplate: `<b>${g}</b><br>%{x}<br>%{text}<extra></extra>`
+        hovertemplate: `<b>${g}</b><br>%{x}<br>%{text}<extra></extra>`,
+        showlegend: false  //hide per-plot legend
       };
     });
 
     const layout = {
       title: {text: title, font: {size: 12}},
-      margin: {t: 30, r: 10, b: 80, l: 60},
+      xaxis: {
+        tickmode: "array",
+        tickvals: groups,
+        ticktext: tickText,
+        tickangle: 0,        
+        automargin: true
+      },
+      margin: {t: 30, r: 10, b: 60, l: 60},
       barmode: "group",
       yaxis: {title: "Fraction mutated", range: [0, 1]},
-      xaxis: {tickangle: -35},
-      height: 260,
-      legend: {orientation: "h", y: -0.35}
+      height: 260
     };
 
-    Plotly.newPlot(divId, traces, layout, {responsive:true});
+    return Plotly.newPlot(divId, traces, layout, {responsive:true});
   }
 
+  function getPlotlyLegendColorForTrace(divId, traceIndex){
+    try {
+      const gd = document.getElementById(divId);
+      // After Plotly.newPlot, trace styles exist in gd.data
+      const t = gd?.data?.[traceIndex];
+      // For bar traces, Plotly stores marker.color if assigned; otherwise it may be undefined.
+      // In that case we fall back to CSS color dot without exact match.
+      return t?.marker?.color || null;
+    } catch (e){
+      return null;
+    }
+  }
 
-  function renderGeneHeatmap(divId, obj, title){
-    if (!obj || !obj.genes || !obj.groups){
-      Plotly.newPlot(divId, [], {
-        margin: {t: 20, r: 10, b: 60, l: 120},
-        title: title,
-        height: 260
-      }, {responsive:true});
-      return;
+  function renderSharedGeneLegend(genes){
+    const wrap = document.getElementById("sharedGeneLegend");
+    const items = document.getElementById("sharedGeneLegendItems");
+    if (!wrap || !items) return;
+
+    items.innerHTML = "";
+
+    // Try to read actual colors from one plot after it’s drawn (raceHeatmap is fine)
+    const sampleDivId = "raceHeatmap";
+
+    genes.forEach((g, idx) => {
+      const dot = document.createElement("span");
+      dot.style.display = "inline-block";
+      dot.style.width = "10px";
+      dot.style.height = "10px";
+      dot.style.borderRadius = "999px";
+      dot.style.border = "1px solid #d1d5db";
+
+      const c = getPlotlyLegendColorForTrace(sampleDivId, idx);
+      if (c) dot.style.background = c;   // best case: matches Plotly colors
+      else dot.style.background = "#9ca3af"; // fallback neutral if Plotly doesn't expose
+
+      const label = document.createElement("span");
+      label.textContent = g;
+      label.style.fontSize = "13px";
+      label.style.color = "#111827";
+
+      const item = document.createElement("div");
+      item.style.display = "flex";
+      item.style.alignItems = "center";
+      item.style.gap = "6px";
+
+      item.appendChild(dot);
+      item.appendChild(label);
+      items.appendChild(item);
+    });
+
+    wrap.style.display = genes.length ? "block" : "none";
+  }
+
+  function getTraceColor(gd, i){
+    // Plotly computed traces (auto colors resolved here)
+    const fd = (gd && gd._fullData && gd._fullData[i]) ? gd._fullData[i] : null;
+    if (fd){
+      const c =
+        (fd.marker && fd.marker.color) ||
+        (fd.line && fd.line.color) ||
+        (fd.marker && fd.marker.line && fd.marker.line.color);
+      if (c) return c;
     }
 
-    const genes = obj.genes;
-    const groups = obj.groups;
-    const matrix = obj.matrix || [];
+    // use Plotly's colorway (what auto colors come from)
+    const colorway = (gd && gd._fullLayout && gd._fullLayout.colorway) ? gd._fullLayout.colorway : null;
+    if (colorway && colorway.length){
+      return colorway[i % colorway.length];
+    }
 
-    const trace = {
-      z: matrix,
-      x: groups,
-      y: genes,
-      type: "heatmap",
-      colorscale: "Viridis",
-      zmin: 0,
-      zmax: 1,
-      colorbar: {title: "Fraction mutated"},
-      hovertemplate: "Gene %{y}<br>Group %{x}<br>Fraction: %{z}<extra></extra>"
-    };
-
-    const layout = {
-      margin: {t: 20, r: 10, b: 80, l: 120},
-      title: title,
-      height: 260,
-      xaxis: {tickangle: -45}
-    };
-
-    Plotly.newPlot(divId, [trace], layout, {responsive:true});
+    // 3) Fallback
+    return "#999";
   }
 
-  let userPickedGenes = false;
+  function renderSharedGeneLegendFromPlot(plotDivId){
+    const gd = document.getElementById(plotDivId);
+    const wrap = document.getElementById("sharedGeneLegend");
+    const items = document.getElementById("sharedGeneLegendItems");
+
+    if (!gd || !items) return;
+
+    // Use computed traces if available, otherwise use gd.data as a fallback
+    const traces = (gd._fullData && gd._fullData.length) ? gd._fullData : (gd.data || []);
+    if (!traces.length) return;
+
+    items.innerHTML = "";
+
+    traces.forEach((tr, i) => {
+      if (!tr || !tr.name) return;
+
+      const color = getTraceColor(gd, i);
+
+      const item = document.createElement("div");
+      item.style.display = "flex";
+      item.style.alignItems = "center";
+      item.style.gap = "6px";
+
+      const dot = document.createElement("span");
+      dot.style.width = "10px";
+      dot.style.height = "10px";
+      dot.style.borderRadius = "50%";
+      dot.style.background = color;
+      dot.style.display = "inline-block";
+      dot.style.border = "1px solid #d1d5db";
+
+      const label = document.createElement("span");
+      label.textContent = tr.name;
+      label.style.fontSize = "13px";
+
+      item.appendChild(dot);
+      item.appendChild(label);
+      items.appendChild(item);
+    });
+
+    if (wrap) wrap.style.display = "block";
+  }
+
+
+
+  // --- Events (IMPORTANT: no auto-fetch on filter change) ---
   geneSelect.addEventListener("change", () => {
     userPickedGenes = true;
+    markDirty();
   });
 
-  function clearGeneSelection(){
-    Array.from(geneSelect.options).forEach(o => o.selected = false);
-  }
+  varClassSelect.addEventListener("change", markDirty);
+  impactSelect.addEventListener("change", markDirty);
 
-  function clearMultiSelect(sel){
-    Array.from(sel.options).forEach(o => { o.selected = false; });
-  }
+  applyBtn.addEventListener("click", () => {
+    // If the user has NOT explicitly picked genes, we keep userPickedGenes=false
+    // so backend will recompute top=10 under chosen filters.
+    // If the user HAS picked genes, keep them.
+    filtersDirty = false;
+    fetchDemographics();
+  });
 
-  function resetGenesToAutoTop(){
+  cancerSelect.addEventListener("change", () => {
+    // When cancer changes, return to auto-top behavior
     userPickedGenes = false;
     clearMultiSelect(geneSelect);
-  }
+    clearMultiSelect(varClassSelect);
+    clearMultiSelect(impactSelect);
 
-  impactSelect.addEventListener("change", () => {
-    userPickedGenes = false;   // force backend top=10 for this impact
-    clearGeneSelection();
+    if (geneSearchResults) geneSearchResults.innerHTML = "";
+    if (geneSearchInput) geneSearchInput.value = "";
+
+    metaText.textContent = "Loading…";
     fetchDemographics();
   });
 
-  varClassSelect.addEventListener("change", () => {
-    userPickedGenes = false;
-    clearGeneSelection();
-    fetchDemographics();
-  });
-
-  applyBtn.addEventListener("click", fetchDemographics);
-  cancerSelect.addEventListener("change", () => {
-    metaText.textContent = "Adjust filters and click Apply.";
-  });
-
+  // outliers toggle can re-render without fetch
   const showOutliersToggle = document.getElementById("showOutliersToggle");
   if (showOutliersToggle){
     showOutliersToggle.addEventListener("change", () => {
-      if (window.lastGenderBurdenData){
-        renderGenderBurden(window.lastGenderBurdenData);
-      }
-      if (window.lastAgeMutData){
-        renderAgeMut(window.lastAgeMutData);
-      }
+      if (window.lastGenderBurdenData) renderGenderBurden(window.lastGenderBurdenData);
+      if (window.lastAgeMutData) renderAgeMut(window.lastAgeMutData);
     });
-  }
-
-  function clearMultiSelect(sel){
-    if (!sel) return;
-    Array.from(sel.options).forEach(o => { o.selected = false; });
   }
 
   function resetFilters(){
@@ -632,18 +901,24 @@
     clearMultiSelect(varClassSelect);
     clearMultiSelect(impactSelect);
 
+    // Reset gene mode back to auto-top
+    userPickedGenes = false;
+
+    // Clear search UI
+    if (geneSearchResults) geneSearchResults.innerHTML = "";
+    if (geneSearchInput) geneSearchInput.value = "";
+
     // (Optional) turn outliers back on
     const showOutliersToggle = document.getElementById("showOutliersToggle");
     if (showOutliersToggle) showOutliersToggle.checked = true;
 
-    // Trigger refresh (with no genes selected -> backend uses top=10)
+    filtersDirty = false;
     fetchDemographics();
   }
 
   if (resetBtn){
     resetBtn.addEventListener("click", resetFilters);
   }
-
 
   // Initial load
   if (cancerSelect.value){

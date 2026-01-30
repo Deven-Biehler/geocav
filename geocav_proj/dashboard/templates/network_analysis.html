@@ -4,80 +4,112 @@
 
 {% block content %}
 
-<!-- Network fills the page -->
-<div id="network-area"
-     style="position:relative; width:100vw; height:calc(100vh - 60px); margin-left:-16px;">
+<style>
+  /* page-level: no scrollbars */
+  html, body { height: 100%; overflow: hidden; }
 
-  <!-- Floating control panel on top-left -->
-  <div id="control-panel"
-       style="
-         position:absolute;
-         top:20px;
-         left:20px;
-         z-index:1000;
-         background:rgba(255,255,255,0.95);
-         border:1px solid #dee2e6;
-         border-radius:10px;
-         box-shadow:0 6px 22px rgba(0,0,0,0.08);
-         padding:12px 14px;
-         min-width:260px;
-         backdrop-filter: blur(8px);
-       ">
-    <label for="networkSelect" style="display:block;margin-bottom:6px;font-weight:600;">
-      Select Cancer Type
-    </label>
-    <select id="networkSelect" style="width:100%;padding:8px;border:1px solid #ced4da;border-radius:6px;">
+  .net-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+    height: calc(100vh - 60px);   /* match your base header height */
+  }
+
+  .net-controls {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    flex: 0 0 auto;
+  }
+
+  .net-controls select, .net-controls button {
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+  }
+
+  /* fixed-width meta so text changes don’t shift layout */
+  #netMeta {
+    margin-left: auto;
+    width: 360px;
+    text-align: right;
+    font-size: 13px;
+    color: #6c757d;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* canvas fills remaining height */
+  #netCanvas {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  #cy {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+
+<div class="net-wrap">
+  <h1>Network Analysis</h1>
+
+  <div class="net-controls">
+    <label for="networkSelect" style="font-weight:600; margin:0;">Cancer</label>
+
+    <select id="networkSelect" style="min-width: 260px;">
       {% for n in networks %}
         <option value="{{ n.slug }}" {% if n.slug == default_slug %}selected{% endif %}>
           {{ n.label }}
         </option>
       {% endfor %}
     </select>
-    <div id="netMeta" style="margin-top:8px; font-size:13px; color:#6c757d;"></div>
+
+    <button id="btnDefault" type="button">Display Network</button>
+    <button id="btnCluster" type="button">Cluster Network</button>
+    <button id="btnDownload" type="button">Download PNG</button>
+
+    <div id="netMeta"></div>
   </div>
 
-  <div style="display:flex; gap:8px; margin-top:10px;">
-    <button id="btnDefault"
-            style="flex:1; padding:8px; border:1px solid #ced4da; border-radius:6px; background:#fff;">
-      Default View
-    </button>
+  <div id="netCanvas">
+    <div id="cy"></div>
 
-    <button id="btnCluster"
-            style="flex:1; padding:8px; border:none; border-radius:6px; background:#0d6efd; color:#fff;">
-      Cluster Network
-    </button>
-  </div>
-
-  <!-- Cytoscape canvas covers the entire viewport -->
-  <div id="cy"
-       style="
-         width:100%;
-         height:100%;
-         background:#ffffff;
-         border:none;
-         overflow:hidden;
-       ">
-  </div>
-
-  <div id="cy-tooltip"
-      style="
-        position:absolute;
-        display:none;
-        z-index:2000;
-        pointer-events:none;
-        background:rgba(20,20,20,0.92);
-        color:#fff;
-        padding:8px 10px;
-        border-radius:8px;
-        font-size:12px;
-        line-height:1.35;
-        max-width:320px;
-        box-shadow:0 8px 22px rgba(0,0,0,0.18);
-      ">
+    <div id="cy-tooltip"
+         style="
+           display:none;
+           position:absolute;
+           z-index:10;
+           max-width:360px;
+           padding:10px 12px;
+           background:rgba(17,24,39,0.92);
+           color:#fff;
+           border-radius:10px;
+           font-size:12px;
+           line-height:1.35;
+           box-shadow:0 8px 28px rgba(0,0,0,0.22);
+           pointer-events:none;
+         ">
+    </div>
   </div>
 </div>
 
-<!-- Cytoscape + fast layout plugin -->
+
+<!-- Cytoscape + layout plugin -->
 <script src="https://unpkg.com/cytoscape@3.27.0/dist/cytoscape.min.js"></script>
 <script src="https://unpkg.com/cytoscape-fcose@2.2.0/cytoscape-fcose.min.js"></script>
 
@@ -97,14 +129,20 @@
       "</pre></div>";
     if (metaEl) metaEl.textContent = "";
   }
-  function updateMeta(n, m, slug, phase) {
-    if (metaEl) metaEl.textContent =
-      `Nodes: ${n} | Edges: ${m} | ${slug}${phase ? " — " + phase : ""}`;
+  function updateMeta(n, m, slug, phase, meta){
+    const parts = [`Nodes: ${n}`, `Edges: ${m}`, slug];
+    if (phase) parts.push(phase);
+
+    if (meta && meta.clustered && Number.isFinite(meta.n_clusters)) {
+      parts.push(`Clusters: ${meta.n_clusters}`);
+    }
+
+    if (metaEl) metaEl.textContent = parts.join(" | ");
   }
   function forceRender() {
     if (!cy) return;
-    cy.resize(); cy.fit();
-    requestAnimationFrame(() => { cy.resize(); cy.fit(); });
+    cy.resize(); cy.fit(undefined, 60);
+    requestAnimationFrame(() => { cy.resize(); cy.fit(undefined, 60); });
   }
 
   async function loadNetwork(slug, clustered=false) {
@@ -121,7 +159,10 @@
       params.set("res", "1.0");
     }
 
-    const url = "{% url 'network_json_by_slug' cancer='__slug__' %}".replace('__slug__', slug) + "?" + params.toString();
+    const url =
+      "{% url 'network_json_by_slug' cancer='__slug__' %}"
+        .replace('__slug__', slug) +
+      `?cluster=${clustered ? 1 : 0}&t=${Date.now()}`;
     let resp;
     try { resp = await fetch(url, { cache: 'no-store' }); } catch (e) { showError("Request error: " + e); return; }
     if (!resp.ok) { showError(await resp.text()); return; }
@@ -150,19 +191,20 @@
       style: [
         { selector: 'node',
           style: {
-            //'label': 'data(label)',
+            'background-color': (ele) => {
+              const c = ele.data('cluster');
+              return (clustered ? clusterColor(c) : '#0d6efd');
+            },
             'font-size': 11,
             'min-zoomed-font-size': 10,
-            //'color': '#212529',
+            'color': '#212529',
             'text-valign': 'center',
             'text-halign': 'center',
-            'background-color': clustered
-              ? (ele) => clusterColor(ele.data('cluster'))
-              : '#0d6efd',
+            'border-width': 0.8,          
+            'border-color': '#000000',    
+            'border-opacity': 1,       
             'width': 14,
-            'height': 14,
-            'border-width': 0.5,
-            'border-color': '#fff'
+            'height': 14
           }
         },
         { selector: 'edge',
@@ -182,6 +224,24 @@
       wheelSensitivity: 0.25,
       boxSelectionEnabled: true
     });
+
+    const btnDownload = document.getElementById("btnDownload");
+    if (btnDownload) {
+      btnDownload.onclick = () => {
+        if (!cy) return;
+
+        // higher = better resolution (also bigger file)
+        const scale = 3; // 2–4 is usually great
+        const png64 = cy.png({ full: true, scale, bg: "#ffffff", padding: 120});
+
+        const a = document.createElement("a");
+        a.href = png64;
+        a.download = `${slug}_${clustered ? "clustered" : "network"}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      };
+    }
 
     // ---- Hover tooltip ----
     const tip = document.getElementById("cy-tooltip");
@@ -224,7 +284,7 @@
 
     function clusterColor(c){
       if (c === null || c === undefined || c < 0) return "#0d6efd";
-      const hue = (c * 47) % 360;
+      const hue = (Number(c) * 47) % 360;
       return `hsl(${hue}, 65%, 50%)`;
     }
 
@@ -256,58 +316,81 @@
 
 
     // Instant layout so something appears right away
-    if (clustered) {
-      cy.layout({ name: 'preset', fit: true, padding: 30 }).run();
-      forceRender();
-      updateMeta(N, M, slug, "clustered");
-      return;
-    } else {
-      cy.layout({ name: 'concentric', animate: false, fit: true, padding: 30 }).run();
-      forceRender();
-      updateMeta(N, M, slug, "placed");
+    // Instant layout so something appears right away (ALWAYS run this)
+    cy.layout({ name: 'concentric', animate: false, fit: true, padding: 60}).run();
+    forceRender();
+    updateMeta(N, M, slug, clustered ? "clustered (placed)" : "placed", info);
 
-      // Fast "Kamada–Kawai-like" refine with fcose (DRAFT + HARD TIMEOUT)
-      const haveFCoSE = !!cy.layouts && typeof cytoscape !== 'undefined' && cytoscape('core', 'fcose') !== undefined;
-      if (haveFCoSE) {
-        const fcoseOpts = {
-          name: 'fcose',
-          quality: 'draft',          // speed over precision
-          animate: false,
-          randomize: true,
-          nodeSeparation: 60,
-          idealEdgeLength: 80,
-          linkCrossingFactor: 20,
-          packComponents: true,
-          samplingType: true,        // fast sampling on large graphs
-          nodeRepulsion: 4500
-        };
-        updateMeta(N, M, slug, "refining (fast)");
+    // Then run the same fast refine you use today
+    const haveFCoSE = !!cy.layouts && typeof cytoscape !== 'undefined' && cytoscape('core', 'fcose') !== undefined;
 
-        const controller = cy.layout(fcoseOpts);
-        const timeout = setTimeout(() => { try { controller.stop(); } catch(e){} forceRender(); updateMeta(N, M, slug, "ready"); }, 2000);
-        controller.on('layoutstop', () => { clearTimeout(timeout); cy.fit(); forceRender(); updateMeta(N, M, slug, "ready"); });
-        controller.run();
-        return;
-      }
-
-      // Fallback: short COSE pass with reduced iterations
-      const coseController = cy.layout({
-        name: 'cose',
+    if (haveFCoSE) {
+      const fcoseOpts = {
+        name: 'fcose',
+        quality: 'draft',
         animate: false,
         randomize: true,
-        nodeRepulsion: 400000,
+        nodeSeparation: 60,
         idealEdgeLength: 80,
-        gravity: 0.25,
-        numIter: 500,                // shorter run
-        initialTemp: 1000,
-        coolingFactor: 0.99,
-        minTemp: 1.0,
-        fit: true
+        linkCrossingFactor: 20,
+        packComponents: true,
+        samplingType: true,
+        nodeRepulsion: 4500,
+        fit: true,
+        padding: 60
+      };
+
+      updateMeta(N, M, slug, clustered ? "clustered (refining)" : "refining (fast)", info);
+
+      const controller = cy.layout(fcoseOpts);
+      const timeout = setTimeout(() => {
+        try { controller.stop(); } catch(e){}
+        cy.fit(); forceRender();
+        updateMeta(N, M, slug, clustered ? "clustered" : "ready", info);
+      }, 2000);
+
+      controller.on('layoutstop', () => {
+        clearTimeout(timeout);
+        cy.fit(); forceRender();
+        updateMeta(N, M, slug, clustered ? "clustered" : "ready", info);
       });
-      const coseTimeout = setTimeout(() => { try { coseController.stop(); } catch(e){} forceRender(); updateMeta(N, M, slug, "ready"); }, 1500);
-      coseController.on('layoutstop', () => { clearTimeout(coseTimeout); cy.fit(); forceRender(); updateMeta(N, M, slug, "ready"); });
-      coseController.run();
+
+      controller.run();
+      window.addEventListener('resize', forceRender);
+      return;
     }
+
+    // Fallback COSE
+    const coseController = cy.layout({
+      name: 'cose',
+      animate: false,
+      randomize: true,
+      nodeRepulsion: 400000,
+      idealEdgeLength: 80,
+      gravity: 0.25,
+      numIter: 500,
+      initialTemp: 1000,
+      coolingFactor: 0.99,
+      minTemp: 1.0,
+      fit: true,
+      padding: 60
+    });
+
+    const coseTimeout = setTimeout(() => {
+      try { coseController.stop(); } catch(e){}
+      cy.fit(); forceRender();
+      updateMeta(N, M, slug, clustered ? "clustered" : "ready", info);
+    }, 1500);
+
+    coseController.on('layoutstop', () => {
+      clearTimeout(coseTimeout);
+      cy.fit(); forceRender();
+      updateMeta(N, M, slug, clustered ? "clustered" : "ready", info);
+    });
+
+    coseController.run();
+    window.addEventListener('resize', forceRender);
+
   }
 
   window.addEventListener('resize', forceRender);
