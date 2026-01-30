@@ -42,44 +42,10 @@ export const DEFAULT_FILTERS = {
     race: 'ALL'
 };
 
-export const FACTORS = [
-    "Air_Quality",
-    "Air_Toxins_Concentration",
-    "Air_Toxins_Concentration",
-    "Annual_Sunlight_Exposure",
-    "Annual_Sunlight_Exposure",
-    "Annual_UV_DailyDose",
-    "Annual_UV_DailyDose",
-    "CO_Poisoning_Hospitalization",
-    "Pesticide_Exposure",
-    "Coronary_Heart_Disease",
-    "Depression",
-    "Diabetes",
-    "Heart_Stroke",
-    "Heart_Stroke",
-    "High_Blood_Pressure",
-    "High_Blood_Pressure",
-    "High_Cholesterol",
-    "High_Cholesterol",
-    "Hospitalization",
-    "Hospitalization",
-    "Hospitalization_Gender",
-    "Hospitalization_Gender",
-    "No_Health_Insurance",
-    "No_Health_Insurance",
-    "Binge_Drinking",
-    "No_Physical_Activity",
-    "Obesity",
-    "Short_Sleep",
-    "Smoking",
-    "Smoking",
-    "SVI_Score",
-    'Opioid_Dispensing_Rate'
-];
-
 export const FACTORS_UNITS = {
     "Air_Quality": "AQI",
     "Air_Toxins_Concentration": "Micrograms per cubic meter (µg/m³)",
+    "Radon_Levels_Pre_Mitigation_10Y": "Picocuries per liter (pCi/L)",
     "Annual_Sunlight_Exposure": "Hours",
     "Annual_UV_DailyDose": "Joules per square meter (J/m²)",
     "CO_Poisoning_Hospitalization": "Hospitalizations per 100,000",
@@ -130,6 +96,7 @@ export const COUNTY_FACTOR_FILTERS = [
     'Air_Toxins_Concentration',
     'Annual_Sunlight_Exposure',
     'Annual_UV_DailyDose',
+    'Radon_Levels_Pre_Mitigation_10Y',
     'Coronary_Heart_Disease',
     'Depression',
     'Diabetes',
@@ -179,6 +146,7 @@ export const STATE_FACTORS_AVAILABLE_YEARS = {
     "Air_Toxins_Concentration":     [2011, 2014, 2017, 2018, 2019],
     "Annual_Sunlight_Exposure":     [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
     "Annual_UV_DailyDose":          [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
+    "Radon_Levels_Pre_Mitigation_10Y": [2006, 2007, 2008],
     "CO_Poisoning_Hospitalization": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021],
     "Pesticide_Exposure":           [2011, 2012, 2013, 2014, 2015, 2016, 2017],
     
@@ -213,6 +181,7 @@ export const COUNTY_FACTORS_AVAILABLE_YEARS = {
     "Air_Toxins_Concentration": [2011, 2016],
     "Annual_Sunlight_Exposure": [2011, 2016],
     "Annual_UV_DailyDose": [2011, 2016],
+    "Radon_Levels_Pre_Mitigation_10Y": [2006, 2007, 2008],
     
     // Health status
     "Coronary_Heart_Disease": [2016],
@@ -233,7 +202,7 @@ export const COUNTY_FACTORS_AVAILABLE_YEARS = {
     "Smoking": [2016],
 
     "SVI_Score": [2014, 2016, 2018, 2020, 2022],
-    'Opioid_Dispensing_Rate': [2016, 2017, 2018, 2019, 2020],
+    'Opioid_Dispensing_Rate': [2019, 2020],
 
     "None": []
 };

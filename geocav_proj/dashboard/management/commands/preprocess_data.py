@@ -103,6 +103,8 @@ class Command(BaseCommand):
             df = self._standardize_factor_df(df=df, file=file)
             dfs.append(df)
         
+        dfs.append(self._preprocess_outliers())
+        
         merged_df = pd.concat(dfs, ignore_index=True)
 
 
@@ -229,6 +231,40 @@ class Command(BaseCommand):
         df['CountyFIPS'] = df['CountyFIPS'].apply(lambda x: int(x))
         
         return df
+    
+    def _preprocess_outliers(self):
+        """Custom Processing for unusual data formats"""
+        dfs = []
+        def preprocess_radon_level_data():
+            """
+            Before:
+            "StateFIPS","State","CountyFIPS","County","Start Year","End Year","Value","Data Comment",
+            "01","Alabama","01001","Autauga","2006","2015","1.5","",
+
+            After:
+            "StateFIPS","State","CountyFIPS","County","Year","Value","Data Comment"
+            """
+            path = "data/CDC Data/Factors/County_Level/Environment/Radon_Levels_Pre_Mitigation_10Y.csv"
+            file = os.path.join(settings.BASE_DIR, path)
+            df = pd.read_csv(file)
+            df.rename(columns={"Data Comment": "Data_Comment"}, inplace=True)
+            df = df[["StateFIPS","State","CountyFIPS","County","Start Year","End Year","Value","Data_Comment"]]
+            df['StateFIPS'] = df['StateFIPS'].apply(lambda x: int(x))
+            df['CountyFIPS'] = df['CountyFIPS'].apply(lambda x: int(x))
+            df['Year'] = df['Start Year']
+            df = df[["StateFIPS","State","CountyFIPS","County","Year","Value","Data_Comment"]]
+            
+            return df
+        
+        # Preprocess Radon Level data
+        df = self._standardize_factor_df(df=preprocess_radon_level_data(), file="Radon_Levels_Pre_Mitigation_10Y.csv")
+        dfs.append(df)
+
+        
+
+        merged_df = pd.concat(dfs, ignore_index=True)
+        return merged_df
+
 
     # --------------------------------------------------------------
     #                   SVI DATA PRE-PROCESSING

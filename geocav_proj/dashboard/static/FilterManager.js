@@ -91,6 +91,14 @@ export class FilterManager {
                 }
             });
         }
+        
+        // Factor select listener
+        this.factorSelect.addEventListener('change', (e) => {
+            const selectedOptions = Array.from(e.target.selectedOptions).map(option => option.value);
+            this.selectedFilters.factor = selectedOptions;
+            this.updateSelectedFilters();
+            this.filterChanged();
+        });
 
         // PC select listener
         if (this.pcSelect) {
