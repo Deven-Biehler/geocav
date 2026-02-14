@@ -1,0 +1,511 @@
+StateFIPS,State,Year,Value
+1,Alabama,2011,3572
+1,Alabama,2012,3456
+1,Alabama,2013,3408
+1,Alabama,2014,3739
+1,Alabama,2015,3677
+1,Alabama,2016,3952
+1,Alabama,2017,3907
+1,Alabama,2018,3818
+1,Alabama,2019,4023
+1,Alabama,2020,4092
+2,Alaska,2011,1515
+2,Alaska,2012,1465
+2,Alaska,2013,1560
+2,Alaska,2014,1627
+2,Alaska,2015,1722
+2,Alaska,2016,1848
+2,Alaska,2017,1786
+2,Alaska,2018,1866
+2,Alaska,2019,1996
+2,Alaska,2020,1957
+4,Arizona,2011,4049
+4,Arizona,2012,4191
+4,Arizona,2013,4161
+4,Arizona,2014,4174
+4,Arizona,2015,4202
+4,Arizona,2016,4428
+4,Arizona,2017,4451
+4,Arizona,2018,4277
+4,Arizona,2019,4457
+4,Arizona,2020,4931
+5,Arkansas,2011,3322
+5,Arkansas,2012,3433
+5,Arkansas,2013,3276
+5,Arkansas,2014,3363
+5,Arkansas,2015,3469
+5,Arkansas,2016,3680
+5,Arkansas,2017,3816
+5,Arkansas,2018,3729
+5,Arkansas,2019,3686
+5,Arkansas,2020,4103
+6,California,2011,3367
+6,California,2012,3600
+6,California,2013,3776
+6,California,2014,3852
+6,California,2015,3899
+6,California,2016,4131
+6,California,2017,4047
+6,California,2018,3969
+6,California,2019,4076
+6,California,2020,4541
+8,Colorado,2011,3508
+8,Colorado,2012,3662
+8,Colorado,2013,3457
+8,Colorado,2014,3635
+8,Colorado,2015,3775
+8,Colorado,2016,4190
+8,Colorado,2017,4180
+8,Colorado,2018,4203
+8,Colorado,2019,4305
+8,Colorado,2020,4474
+9,Connecticut,2011,2369
+9,Connecticut,2012,2374
+9,Connecticut,2013,2491
+9,Connecticut,2014,2557
+9,Connecticut,2015,2658
+9,Connecticut,2016,3093
+9,Connecticut,2017,2693
+9,Connecticut,2018,2770
+9,Connecticut,2019,2945
+9,Connecticut,2020,3100
+10,Delaware,2011,2630
+10,Delaware,2012,2678
+10,Delaware,2013,2534
+10,Delaware,2014,2520
+10,Delaware,2015,2863
+10,Delaware,2016,3148
+10,Delaware,2017,3767
+10,Delaware,2018,3062
+10,Delaware,2019,3248
+10,Delaware,2020,3512
+11,District of Columbia,2011,2564
+11,District of Columbia,2012,2857
+11,District of Columbia,2013,2577
+11,District of Columbia,2014,2837
+11,District of Columbia,2015,3177
+11,District of Columbia,2016,3442
+11,District of Columbia,2017,3359
+11,District of Columbia,2018,3158
+11,District of Columbia,2019,3546
+11,District of Columbia,2020,3581
+12,Florida,2011,3970
+12,Florida,2012,3890
+12,Florida,2013,4001
+12,Florida,2014,4057
+12,Florida,2015,4079
+12,Florida,2016,4258
+12,Florida,2017,4321
+12,Florida,2018,4212
+12,Florida,2019,4473
+12,Florida,2020,4596
+13,Georgia,2011,3580
+13,Georgia,2012,3436
+13,Georgia,2013,3459
+13,Georgia,2014,3634
+13,Georgia,2015,3667
+13,Georgia,2016,3960
+13,Georgia,2017,4004
+13,Georgia,2018,3911
+13,Georgia,2019,4115
+13,Georgia,2020,4168
+15,Hawaii,2011,4576
+15,Hawaii,2012,4634
+15,Hawaii,2013,4788
+15,Hawaii,2014,4706
+15,Hawaii,2015,4797
+15,Hawaii,2016,5018
+15,Hawaii,2017,4879
+15,Hawaii,2018,4549
+15,Hawaii,2019,4989
+15,Hawaii,2020,4793
+16,Idaho,2011,2730
+16,Idaho,2012,3026
+16,Idaho,2013,2896
+16,Idaho,2014,3090
+16,Idaho,2015,3210
+16,Idaho,2016,3358
+16,Idaho,2017,3343
+16,Idaho,2018,3290
+16,Idaho,2019,3184
+16,Idaho,2020,3604
+17,Illinois,2011,2693
+17,Illinois,2012,2937
+17,Illinois,2013,2585
+17,Illinois,2014,2755
+17,Illinois,2015,2988
+17,Illinois,2016,3396
+17,Illinois,2017,3392
+17,Illinois,2018,3148
+17,Illinois,2019,3418
+17,Illinois,2020,3615
+18,Indiana,2011,2602
+18,Indiana,2012,2814
+18,Indiana,2013,2527
+18,Indiana,2014,2791
+18,Indiana,2015,2907
+18,Indiana,2016,3384
+18,Indiana,2017,3407
+18,Indiana,2018,3294
+18,Indiana,2019,3416
+18,Indiana,2020,3486
+19,Iowa,2011,2549
+19,Iowa,2012,2963
+19,Iowa,2013,2569
+19,Iowa,2014,2599
+19,Iowa,2015,2894
+19,Iowa,2016,3147
+19,Iowa,2017,3118
+19,Iowa,2018,3054
+19,Iowa,2019,2978
+19,Iowa,2020,3254
+20,Kansas,2011,3191
+20,Kansas,2012,3435
+20,Kansas,2013,3058
+20,Kansas,2014,3240
+20,Kansas,2015,3350
+20,Kansas,2016,3775
+20,Kansas,2017,3744
+20,Kansas,2018,3565
+20,Kansas,2019,3673
+20,Kansas,2020,4077
+21,Kentucky,2011,2774
+21,Kentucky,2012,2961
+21,Kentucky,2013,2748
+21,Kentucky,2014,2982
+21,Kentucky,2015,3156
+21,Kentucky,2016,3717
+21,Kentucky,2017,3700
+21,Kentucky,2018,3531
+21,Kentucky,2019,3739
+21,Kentucky,2020,3733
+22,Louisiana,2011,3884
+22,Louisiana,2012,3793
+22,Louisiana,2013,3827
+22,Louisiana,2014,3720
+22,Louisiana,2015,3782
+22,Louisiana,2016,3897
+22,Louisiana,2017,3994
+22,Louisiana,2018,3942
+22,Louisiana,2019,4151
+22,Louisiana,2020,4242
+23,Maine,2011,2155
+23,Maine,2012,2332
+23,Maine,2013,2300
+23,Maine,2014,2299
+23,Maine,2015,2649
+23,Maine,2016,2617
+23,Maine,2017,2683
+23,Maine,2018,2741
+23,Maine,2019,2712
+23,Maine,2020,2937
+24,Maryland,2011,2641
+24,Maryland,2012,2760
+24,Maryland,2013,2652
+24,Maryland,2014,2760
+24,Maryland,2015,3035
+24,Maryland,2016,3343
+24,Maryland,2017,3401
+24,Maryland,2018,3085
+24,Maryland,2019,3391
+24,Maryland,2020,3503
+25,Massachusetts,2011,2332
+25,Massachusetts,2012,2471
+25,Massachusetts,2013,2439
+25,Massachusetts,2014,2516
+25,Massachusetts,2015,2646
+25,Massachusetts,2016,2958
+25,Massachusetts,2017,2758
+25,Massachusetts,2018,2698
+25,Massachusetts,2019,2957
+25,Massachusetts,2020,3002
+26,Michigan,2011,2332
+26,Michigan,2012,2629
+26,Michigan,2013,2276
+26,Michigan,2014,2319
+26,Michigan,2015,2512
+26,Michigan,2016,2911
+26,Michigan,2017,2714
+26,Michigan,2018,2800
+26,Michigan,2019,2803
+26,Michigan,2020,3021
+27,Minnesota,2011,2296
+27,Minnesota,2012,2608
+27,Minnesota,2013,2290
+27,Minnesota,2014,2323
+27,Minnesota,2015,2655
+27,Minnesota,2016,2850
+27,Minnesota,2017,2678
+27,Minnesota,2018,2646
+27,Minnesota,2019,2680
+27,Minnesota,2020,3003
+28,Mississippi,2011,3595
+28,Mississippi,2012,3574
+28,Mississippi,2013,3510
+28,Mississippi,2014,3697
+28,Mississippi,2015,3646
+28,Mississippi,2016,3837
+28,Mississippi,2017,3846
+28,Mississippi,2018,3805
+28,Mississippi,2019,3994
+28,Mississippi,2020,4068
+29,Missouri,2011,2875
+29,Missouri,2012,3137
+29,Missouri,2013,2801
+29,Missouri,2014,2981
+29,Missouri,2015,3128
+29,Missouri,2016,3544
+29,Missouri,2017,3588
+29,Missouri,2018,3486
+29,Missouri,2019,3515
+29,Missouri,2020,3742
+30,Montana,2011,2449
+30,Montana,2012,2763
+30,Montana,2013,2601
+30,Montana,2014,2695
+30,Montana,2015,2856
+30,Montana,2016,2936
+30,Montana,2017,2910
+30,Montana,2018,2790
+30,Montana,2019,2814
+30,Montana,2020,3209
+31,Nebraska,2011,2881
+31,Nebraska,2012,3313
+31,Nebraska,2013,2829
+31,Nebraska,2014,2970
+31,Nebraska,2015,3020
+31,Nebraska,2016,3427
+31,Nebraska,2017,3536
+31,Nebraska,2018,3190
+31,Nebraska,2019,3246
+31,Nebraska,2020,3663
+32,Nevada,2011,3319
+32,Nevada,2012,3546
+32,Nevada,2013,3570
+32,Nevada,2014,3741
+32,Nevada,2015,3657
+32,Nevada,2016,4084
+32,Nevada,2017,3990
+32,Nevada,2018,3918
+32,Nevada,2019,3984
+32,Nevada,2020,4419
+33,New Hampshire,2011,2173
+33,New Hampshire,2012,2348
+33,New Hampshire,2013,2287
+33,New Hampshire,2014,2347
+33,New Hampshire,2015,2611
+33,New Hampshire,2016,2756
+33,New Hampshire,2017,2625
+33,New Hampshire,2018,2686
+33,New Hampshire,2019,2794
+33,New Hampshire,2020,2921
+34,New Jersey,2011,2463
+34,New Jersey,2012,2483
+34,New Jersey,2013,2591
+34,New Jersey,2014,2500
+34,New Jersey,2015,2849
+34,New Jersey,2016,3048
+34,New Jersey,2017,3423
+34,New Jersey,2018,3044
+34,New Jersey,2019,3226
+34,New Jersey,2020,3264
+35,New Mexico,2011,3965
+35,New Mexico,2012,3965
+35,New Mexico,2013,3899
+35,New Mexico,2014,4030
+35,New Mexico,2015,4017
+35,New Mexico,2016,4441
+35,New Mexico,2017,4549
+35,New Mexico,2018,4394
+35,New Mexico,2019,4484
+35,New Mexico,2020,4797
+36,New York,2011,2229
+36,New York,2012,2343
+36,New York,2013,2370
+36,New York,2014,2418
+36,New York,2015,2851
+36,New York,2016,2916
+36,New York,2017,2704
+36,New York,2018,2603
+36,New York,2019,2783
+36,New York,2020,3002
+37,North Carolina,2011,3127
+37,North Carolina,2012,3085
+37,North Carolina,2013,3075
+37,North Carolina,2014,3234
+37,North Carolina,2015,3476
+37,North Carolina,2016,3832
+37,North Carolina,2017,3945
+37,North Carolina,2018,3874
+37,North Carolina,2019,3941
+37,North Carolina,2020,4025
+38,North Dakota,2011,2272
+38,North Dakota,2012,2630
+38,North Dakota,2013,2263
+38,North Dakota,2014,2341
+38,North Dakota,2015,2671
+38,North Dakota,2016,2769
+38,North Dakota,2017,2756
+38,North Dakota,2018,2610
+38,North Dakota,2019,2553
+38,North Dakota,2020,3041
+39,Ohio,2011,2490
+39,Ohio,2012,2742
+39,Ohio,2013,2531
+39,Ohio,2014,2641
+39,Ohio,2015,2889
+39,Ohio,2016,3189
+39,Ohio,2017,3057
+39,Ohio,2018,3104
+39,Ohio,2019,3294
+39,Ohio,2020,3384
+40,Oklahoma,2011,3447
+40,Oklahoma,2012,3527
+40,Oklahoma,2013,3353
+40,Oklahoma,2014,3450
+40,Oklahoma,2015,3564
+40,Oklahoma,2016,3963
+40,Oklahoma,2017,3849
+40,Oklahoma,2018,3756
+40,Oklahoma,2019,3864
+40,Oklahoma,2020,4248
+41,Oregon,2011,2674
+41,Oregon,2012,2943
+41,Oregon,2013,2978
+41,Oregon,2014,3108
+41,Oregon,2015,3153
+41,Oregon,2016,3117
+41,Oregon,2017,3132
+41,Oregon,2018,3070
+41,Oregon,2019,3025
+41,Oregon,2020,3607
+42,Pennsylvania,2011,2371
+42,Pennsylvania,2012,2483
+42,Pennsylvania,2013,2400
+42,Pennsylvania,2014,2500
+42,Pennsylvania,2015,2851
+42,Pennsylvania,2016,3067
+42,Pennsylvania,2017,2937
+42,Pennsylvania,2018,2839
+42,Pennsylvania,2019,3011
+42,Pennsylvania,2020,3257
+44,Rhode Island,2011,2456
+44,Rhode Island,2012,2433
+44,Rhode Island,2013,2398
+44,Rhode Island,2014,2486
+44,Rhode Island,2015,2626
+44,Rhode Island,2016,2951
+44,Rhode Island,2017,2870
+44,Rhode Island,2018,2917
+44,Rhode Island,2019,3120
+44,Rhode Island,2020,3084
+45,South Carolina,2011,3422
+45,South Carolina,2012,3416
+45,South Carolina,2013,3346
+45,South Carolina,2014,3504
+45,South Carolina,2015,3639
+45,South Carolina,2016,3887
+45,South Carolina,2017,3985
+45,South Carolina,2018,3768
+45,South Carolina,2019,3982
+45,South Carolina,2020,4051
+46,South Dakota,2011,2594
+46,South Dakota,2012,3064
+46,South Dakota,2013,2577
+46,South Dakota,2014,2650
+46,South Dakota,2015,2845
+46,South Dakota,2016,3140
+46,South Dakota,2017,2961
+46,South Dakota,2018,2848
+46,South Dakota,2019,2807
+46,South Dakota,2020,3284
+47,Tennessee,2011,3030
+47,Tennessee,2012,3110
+47,Tennessee,2013,2948
+47,Tennessee,2014,3219
+47,Tennessee,2015,3358
+47,Tennessee,2016,3935
+47,Tennessee,2017,3842
+47,Tennessee,2018,3668
+47,Tennessee,2019,4036
+47,Tennessee,2020,3869
+48,Texas,2011,4052
+48,Texas,2012,3920
+48,Texas,2013,3911
+48,Texas,2014,3911
+48,Texas,2015,3895
+48,Texas,2016,4200
+48,Texas,2017,4173
+48,Texas,2018,4046
+48,Texas,2019,4250
+48,Texas,2020,4529
+49,Utah,2011,3277
+49,Utah,2012,3496
+49,Utah,2013,3364
+49,Utah,2014,3447
+49,Utah,2015,3612
+49,Utah,2016,3930
+49,Utah,2017,4005
+49,Utah,2018,3868
+49,Utah,2019,4001
+49,Utah,2020,4314
+50,Vermont,2011,2175
+50,Vermont,2012,2293
+50,Vermont,2013,2236
+50,Vermont,2014,2293
+50,Vermont,2015,2670
+50,Vermont,2016,2706
+50,Vermont,2017,2506
+50,Vermont,2018,2510
+50,Vermont,2019,2722
+50,Vermont,2020,2873
+51,Virginia,2011,2833
+51,Virginia,2012,2859
+51,Virginia,2013,2834
+51,Virginia,2014,3001
+51,Virginia,2015,3334
+51,Virginia,2016,3639
+51,Virginia,2017,3741
+51,Virginia,2018,3586
+51,Virginia,2019,3702
+51,Virginia,2020,3937
+53,Washington,2011,2365
+53,Washington,2012,2629
+53,Washington,2013,2598
+53,Washington,2014,2774
+53,Washington,2015,2906
+53,Washington,2016,2755
+53,Washington,2017,2792
+53,Washington,2018,2826
+53,Washington,2019,2742
+53,Washington,2020,3117
+54,West Virginia,2011,2605
+54,West Virginia,2012,2752
+54,West Virginia,2013,2626
+54,West Virginia,2014,2829
+54,West Virginia,2015,3101
+54,West Virginia,2016,3449
+54,West Virginia,2017,3479
+54,West Virginia,2018,3382
+54,West Virginia,2019,3459
+54,West Virginia,2020,3484
+55,Wisconsin,2011,2325
+55,Wisconsin,2012,2574
+55,Wisconsin,2013,2255
+55,Wisconsin,2014,2393
+55,Wisconsin,2015,2764
+55,Wisconsin,2016,2741
+55,Wisconsin,2017,2624
+55,Wisconsin,2018,2742
+55,Wisconsin,2019,2730
+55,Wisconsin,2020,3005
+56,Wyoming,2011,2853
+56,Wyoming,2012,3124
+56,Wyoming,2013,2852
+56,Wyoming,2014,3050
+56,Wyoming,2015,3288
+56,Wyoming,2016,3468
+56,Wyoming,2017,3478
+56,Wyoming,2018,3448
+56,Wyoming,2019,3378
+56,Wyoming,2020,3720

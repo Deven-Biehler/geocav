@@ -49,8 +49,8 @@ def get_model_instance(model, field_name, value, case_insensitive=True):
 def apply_geographic_filter(queryset, level, county_field='county'):
     """Apply geographic level filter to queryset."""
     if level == 'state':
-        return queryset.filter(**{county_field: 'All'})
-    return queryset.exclude(**{county_field: 'All'})
+        return queryset.filter(geographic_level='State')
+    return queryset.filter(geographic_level='County')
 
 def apply_year_filter(queryset, year, start_year_field='start_year', end_year_field='end_year'):
     """Apply year filter to queryset, defaulting to latest year if none provided."""

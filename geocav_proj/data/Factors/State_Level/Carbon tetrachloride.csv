@@ -1,0 +1,265 @@
+StateFIPS,State,Year,Value
+1,Alabama,2011,0.55
+1,Alabama,2014,0.53
+1,Alabama,2017,0.5
+1,Alabama,2018,0.37
+1,Alabama,2019,0.5
+2,Alaska,2011,0.55
+2,Alaska,2014,0.53
+2,Alaska,2017,0.53
+2,Alaska,2018,0.37
+2,Alaska,2019,0.37
+4,Arizona,2011,0.55
+4,Arizona,2014,0.49
+4,Arizona,2017,0.44
+4,Arizona,2018,0.32
+4,Arizona,2019,0.44
+5,Arkansas,2011,0.55
+5,Arkansas,2014,0.53
+5,Arkansas,2017,0.51
+5,Arkansas,2018,0.37
+5,Arkansas,2019,0.51
+6,California,2011,0.55
+6,California,2014,0.52
+6,California,2017,0.48
+6,California,2018,0.35
+6,California,2019,0.48
+8,Colorado,2011,0.55
+8,Colorado,2014,0.45
+8,Colorado,2017,0.42
+8,Colorado,2018,0.31
+8,Colorado,2019,0.42
+9,Connecticut,2011,0.55
+9,Connecticut,2014,0.55
+9,Connecticut,2017,0.52
+9,Connecticut,2018,0.38
+9,Connecticut,2019,0.52
+10,Delaware,2011,0.55
+10,Delaware,2014,0.55
+10,Delaware,2017,0.52
+10,Delaware,2018,0.38
+10,Delaware,2019,0.52
+11,District of Columbia,2011,0.55
+11,District of Columbia,2014,0.55
+11,District of Columbia,2017,0.52
+11,District of Columbia,2018,0.38
+11,District of Columbia,2019,0.52
+12,Florida,2011,0.55
+12,Florida,2014,0.53
+12,Florida,2017,0.5
+12,Florida,2018,0.37
+12,Florida,2019,0.5
+13,Georgia,2011,0.55
+13,Georgia,2014,0.53
+13,Georgia,2017,0.5
+13,Georgia,2018,0.37
+13,Georgia,2019,0.5
+15,Hawaii,2011,0.55
+15,Hawaii,2014,0.53
+15,Hawaii,2017,0.53
+15,Hawaii,2018,0.35
+15,Hawaii,2019,0.35
+16,Idaho,2011,0.55
+16,Idaho,2014,0.49
+16,Idaho,2017,0.45
+16,Idaho,2018,0.33
+16,Idaho,2019,0.45
+17,Illinois,2011,0.55
+17,Illinois,2014,0.54
+17,Illinois,2017,0.51
+17,Illinois,2018,0.38
+17,Illinois,2019,0.52
+18,Indiana,2011,0.55
+18,Indiana,2014,0.54
+18,Indiana,2017,0.51
+18,Indiana,2018,0.38
+18,Indiana,2019,0.51
+19,Iowa,2011,0.55
+19,Iowa,2014,0.54
+19,Iowa,2017,0.51
+19,Iowa,2018,0.38
+19,Iowa,2019,0.51
+20,Kansas,2011,0.55
+20,Kansas,2014,0.52
+20,Kansas,2017,0.49
+20,Kansas,2018,0.36
+20,Kansas,2019,0.49
+21,Kentucky,2011,0.55
+21,Kentucky,2014,0.53
+21,Kentucky,2017,0.51
+21,Kentucky,2018,0.37
+21,Kentucky,2019,0.51
+22,Louisiana,2011,0.55
+22,Louisiana,2014,0.53
+22,Louisiana,2017,0.51
+22,Louisiana,2018,0.37
+22,Louisiana,2019,0.51
+23,Maine,2011,0.55
+23,Maine,2014,0.55
+23,Maine,2017,0.53
+23,Maine,2018,0.39
+23,Maine,2019,0.53
+24,Maryland,2011,0.55
+24,Maryland,2014,0.54
+24,Maryland,2017,0.52
+24,Maryland,2018,0.38
+24,Maryland,2019,0.52
+25,Massachusetts,2011,0.55
+25,Massachusetts,2014,0.55
+25,Massachusetts,2017,0.52
+25,Massachusetts,2018,0.38
+25,Massachusetts,2019,0.52
+26,Michigan,2011,0.55
+26,Michigan,2014,0.54
+26,Michigan,2017,0.52
+26,Michigan,2018,0.38
+26,Michigan,2019,0.52
+27,Minnesota,2011,0.55
+27,Minnesota,2014,0.54
+27,Minnesota,2017,0.52
+27,Minnesota,2018,0.38
+27,Minnesota,2019,0.52
+28,Mississippi,2011,0.55
+28,Mississippi,2014,0.53
+28,Mississippi,2017,0.51
+28,Mississippi,2018,0.37
+28,Mississippi,2019,0.51
+29,Missouri,2011,0.55
+29,Missouri,2014,0.53
+29,Missouri,2017,0.51
+29,Missouri,2018,0.37
+29,Missouri,2019,0.51
+30,Montana,2011,0.55
+30,Montana,2014,0.49
+30,Montana,2017,0.47
+30,Montana,2018,0.34
+30,Montana,2019,0.47
+31,Nebraska,2011,0.55
+31,Nebraska,2014,0.52
+31,Nebraska,2017,0.48
+31,Nebraska,2018,0.36
+31,Nebraska,2019,0.49
+32,Nevada,2011,0.55
+32,Nevada,2014,0.47
+32,Nevada,2017,0.43
+32,Nevada,2018,0.32
+32,Nevada,2019,0.44
+33,New Hampshire,2011,0.55
+33,New Hampshire,2014,0.55
+33,New Hampshire,2017,0.52
+33,New Hampshire,2018,0.38
+33,New Hampshire,2019,0.52
+34,New Jersey,2011,0.55
+34,New Jersey,2014,0.55
+34,New Jersey,2017,0.52
+34,New Jersey,2018,0.38
+34,New Jersey,2019,0.52
+35,New Mexico,2011,0.55
+35,New Mexico,2014,0.45
+35,New Mexico,2017,0.42
+35,New Mexico,2018,0.31
+35,New Mexico,2019,0.43
+36,New York,2011,0.55
+36,New York,2014,0.54
+36,New York,2017,0.51
+36,New York,2018,0.38
+36,New York,2019,0.52
+37,North Carolina,2011,0.55
+37,North Carolina,2014,0.53
+37,North Carolina,2017,0.5
+37,North Carolina,2018,0.37
+37,North Carolina,2019,0.5
+38,North Dakota,2011,0.55
+38,North Dakota,2014,0.54
+38,North Dakota,2017,0.51
+38,North Dakota,2018,0.37
+38,North Dakota,2019,0.51
+39,Ohio,2011,0.55
+39,Ohio,2014,0.54
+39,Ohio,2017,0.51
+39,Ohio,2018,0.37
+39,Ohio,2019,0.51
+40,Oklahoma,2011,0.55
+40,Oklahoma,2014,0.52
+40,Oklahoma,2017,0.5
+40,Oklahoma,2018,0.36
+40,Oklahoma,2019,0.5
+41,Oregon,2011,0.55
+41,Oregon,2014,0.53
+41,Oregon,2017,0.48
+41,Oregon,2018,0.35
+41,Oregon,2019,0.48
+42,Pennsylvania,2011,0.55
+42,Pennsylvania,2014,0.54
+42,Pennsylvania,2017,0.51
+42,Pennsylvania,2018,0.37
+42,Pennsylvania,2019,0.51
+44,Rhode Island,2011,0.55
+44,Rhode Island,2014,0.55
+44,Rhode Island,2017,0.53
+44,Rhode Island,2018,0.39
+44,Rhode Island,2019,0.53
+45,South Carolina,2011,0.55
+45,South Carolina,2014,0.53
+45,South Carolina,2017,0.51
+45,South Carolina,2018,0.37
+45,South Carolina,2019,0.51
+46,South Dakota,2011,0.55
+46,South Dakota,2014,0.52
+46,South Dakota,2017,0.49
+46,South Dakota,2018,0.36
+46,South Dakota,2019,0.5
+47,Tennessee,2011,0.55
+47,Tennessee,2014,0.53
+47,Tennessee,2017,0.5
+47,Tennessee,2018,0.37
+47,Tennessee,2019,0.5
+48,Texas,2011,0.55
+48,Texas,2014,0.52
+48,Texas,2017,0.49
+48,Texas,2018,0.36
+48,Texas,2019,0.49
+49,Utah,2011,0.55
+49,Utah,2014,0.45
+49,Utah,2017,0.43
+49,Utah,2018,0.31
+49,Utah,2019,0.43
+50,Vermont,2011,0.55
+50,Vermont,2014,0.54
+50,Vermont,2017,0.51
+50,Vermont,2018,0.38
+50,Vermont,2019,0.52
+51,Virginia,2011,0.55
+51,Virginia,2014,0.53
+51,Virginia,2017,0.5
+51,Virginia,2018,0.37
+51,Virginia,2019,0.5
+53,Washington,2011,0.55
+53,Washington,2014,0.53
+53,Washington,2017,0.5
+53,Washington,2018,0.36
+53,Washington,2019,0.5
+54,West Virginia,2011,0.55
+54,West Virginia,2014,0.53
+54,West Virginia,2017,0.5
+54,West Virginia,2018,0.36
+54,West Virginia,2019,0.5
+55,Wisconsin,2011,0.55
+55,Wisconsin,2014,0.54
+55,Wisconsin,2017,0.52
+55,Wisconsin,2018,0.38
+55,Wisconsin,2019,0.52
+56,Wyoming,2011,0.55
+56,Wyoming,2014,0.46
+56,Wyoming,2017,0.43
+56,Wyoming,2018,0.31
+56,Wyoming,2019,0.43
+72,Puerto Rico,2011,0.55
+72,Puerto Rico,2014,0.53
+72,Puerto Rico,2017,0.53
+72,Puerto Rico,2018,0.35
+72,Puerto Rico,2019,0.35
+78,Virgin Islands of the US,2014,0.53
+78,Virgin Islands of the US,2017,0.53
+78,Virgin Islands of the US,2018,0.36
+78,Virgin Islands of the US,2019,0.36

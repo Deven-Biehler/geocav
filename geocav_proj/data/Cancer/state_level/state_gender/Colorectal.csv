@@ -1,0 +1,1015 @@
+StateFIPS,State,Year,Sex,Value
+1,Alabama,2011,Male,52.26
+1,Alabama,2011,Female,34.21
+1,Alabama,2012,Male,51.82
+1,Alabama,2012,Female,38.2
+1,Alabama,2013,Male,52.72
+1,Alabama,2013,Female,37.61
+1,Alabama,2014,Male,52.78
+1,Alabama,2014,Female,37.93
+1,Alabama,2015,Male,49.34
+1,Alabama,2015,Female,37.93
+1,Alabama,2016,Male,48.43
+1,Alabama,2016,Female,40.21
+1,Alabama,2017,Male,49.88
+1,Alabama,2017,Female,36.48
+1,Alabama,2018,Male,47.16
+1,Alabama,2018,Female,35.68
+1,Alabama,2019,Male,49.03
+1,Alabama,2019,Female,35.89
+1,Alabama,2020,Male,42.39
+1,Alabama,2020,Female,33.58
+2,Alaska,2011,Male,49.68
+2,Alaska,2011,Female,34.71
+2,Alaska,2012,Male,43.86
+2,Alaska,2012,Female,39.58
+2,Alaska,2013,Male,45.09
+2,Alaska,2013,Female,45.57
+2,Alaska,2014,Male,49.12
+2,Alaska,2014,Female,40.13
+2,Alaska,2015,Male,48.18
+2,Alaska,2015,Female,37.8
+2,Alaska,2016,Male,36.6
+2,Alaska,2016,Female,42.73
+2,Alaska,2017,Male,49.68
+2,Alaska,2017,Female,38.67
+2,Alaska,2018,Male,45.5
+2,Alaska,2018,Female,38.17
+2,Alaska,2019,Male,44.56
+2,Alaska,2019,Female,37.16
+2,Alaska,2020,Male,44.33
+2,Alaska,2020,Female,37.69
+4,Arizona,2011,Male,40.9
+4,Arizona,2011,Female,30.42
+4,Arizona,2012,Male,41.03
+4,Arizona,2012,Female,30.49
+4,Arizona,2013,Male,39.33
+4,Arizona,2013,Female,28.56
+4,Arizona,2014,Male,40.45
+4,Arizona,2014,Female,29.84
+4,Arizona,2015,Male,37.58
+4,Arizona,2015,Female,29.28
+4,Arizona,2016,Male,36.22
+4,Arizona,2016,Female,27.65
+4,Arizona,2017,Male,37.05
+4,Arizona,2017,Female,27.98
+4,Arizona,2018,Male,38.36
+4,Arizona,2018,Female,28.25
+4,Arizona,2019,Male,35.74
+4,Arizona,2019,Female,27.18
+4,Arizona,2020,Male,31.8
+4,Arizona,2020,Female,26.43
+5,Arkansas,2011,Male,44.96
+5,Arkansas,2011,Female,37.93
+5,Arkansas,2012,Male,46.33
+5,Arkansas,2012,Female,36.44
+5,Arkansas,2013,Male,49.18
+5,Arkansas,2013,Female,36.8
+5,Arkansas,2014,Male,50.25
+5,Arkansas,2014,Female,37.72
+5,Arkansas,2015,Male,50.43
+5,Arkansas,2015,Female,38.8
+5,Arkansas,2016,Male,44.47
+5,Arkansas,2016,Female,38.91
+5,Arkansas,2017,Male,48.34
+5,Arkansas,2017,Female,36.79
+5,Arkansas,2018,Male,46.98
+5,Arkansas,2018,Female,36.65
+5,Arkansas,2019,Male,52.9
+5,Arkansas,2019,Female,38.74
+5,Arkansas,2020,Male,41.41
+5,Arkansas,2020,Female,31.81
+6,California,2011,Male,44.02
+6,California,2011,Female,33.51
+6,California,2012,Male,42.13
+6,California,2012,Female,32.71
+6,California,2013,Male,40.57
+6,California,2013,Female,31.8
+6,California,2014,Male,42.39
+6,California,2014,Female,31.5
+6,California,2015,Male,40.9
+6,California,2015,Female,31.41
+6,California,2016,Male,39.0
+6,California,2016,Female,31.27
+6,California,2017,Male,38.57
+6,California,2017,Female,30.39
+6,California,2018,Male,39.08
+6,California,2018,Female,29.83
+6,California,2019,Male,39.13
+6,California,2019,Female,30.32
+6,California,2020,Male,33.79
+6,California,2020,Female,27.29
+8,Colorado,2011,Male,39.51
+8,Colorado,2011,Female,31.24
+8,Colorado,2012,Male,38.05
+8,Colorado,2012,Female,30.87
+8,Colorado,2013,Male,38.63
+8,Colorado,2013,Female,31.2
+8,Colorado,2014,Male,36.33
+8,Colorado,2014,Female,30.54
+8,Colorado,2015,Male,38.92
+8,Colorado,2015,Female,29.8
+8,Colorado,2016,Male,35.57
+8,Colorado,2016,Female,30.09
+8,Colorado,2017,Male,36.94
+8,Colorado,2017,Female,28.9
+8,Colorado,2018,Male,35.2
+8,Colorado,2018,Female,28.09
+8,Colorado,2019,Male,35.03
+8,Colorado,2019,Female,28.16
+8,Colorado,2020,Male,31.44
+8,Colorado,2020,Female,24.84
+9,Connecticut,2011,Male,46.3
+9,Connecticut,2011,Female,34.15
+9,Connecticut,2012,Male,46.07
+9,Connecticut,2012,Female,36.33
+9,Connecticut,2013,Male,43.06
+9,Connecticut,2013,Female,31.37
+9,Connecticut,2014,Male,39.52
+9,Connecticut,2014,Female,33.68
+9,Connecticut,2015,Male,39.91
+9,Connecticut,2015,Female,31.4
+9,Connecticut,2016,Male,42.03
+9,Connecticut,2016,Female,30.55
+9,Connecticut,2017,Male,38.99
+9,Connecticut,2017,Female,29.97
+9,Connecticut,2018,Male,40.05
+9,Connecticut,2018,Female,31.64
+9,Connecticut,2019,Male,39.46
+9,Connecticut,2019,Female,27.45
+9,Connecticut,2020,Male,33.71
+9,Connecticut,2020,Female,28.19
+10,Delaware,2011,Male,46.35
+10,Delaware,2011,Female,31.83
+10,Delaware,2012,Male,40.52
+10,Delaware,2012,Female,31.9
+10,Delaware,2013,Male,41.77
+10,Delaware,2013,Female,30.45
+10,Delaware,2014,Male,43.31
+10,Delaware,2014,Female,32.92
+10,Delaware,2015,Male,43.77
+10,Delaware,2015,Female,37.61
+10,Delaware,2016,Male,48.1
+10,Delaware,2016,Female,32.43
+10,Delaware,2017,Male,45.89
+10,Delaware,2017,Female,31.51
+10,Delaware,2018,Male,37.79
+10,Delaware,2018,Female,33.93
+10,Delaware,2019,Male,40.69
+10,Delaware,2019,Female,27.31
+10,Delaware,2020,Male,33.23
+10,Delaware,2020,Female,26.21
+11,District of Columbia,2011,Male,51.0
+11,District of Columbia,2011,Female,37.45
+11,District of Columbia,2012,Male,51.33
+11,District of Columbia,2012,Female,32.23
+11,District of Columbia,2013,Male,39.64
+11,District of Columbia,2013,Female,41.03
+11,District of Columbia,2014,Male,56.1
+11,District of Columbia,2014,Female,37.95
+11,District of Columbia,2015,Male,35.98
+11,District of Columbia,2015,Female,30.54
+11,District of Columbia,2016,Male,34.55
+11,District of Columbia,2016,Female,36.03
+11,District of Columbia,2017,Male,38.7
+11,District of Columbia,2017,Female,34.36
+11,District of Columbia,2018,Male,47.24
+11,District of Columbia,2018,Female,31.27
+11,District of Columbia,2019,Male,41.85
+11,District of Columbia,2019,Female,29.52
+11,District of Columbia,2020,Male,33.83
+11,District of Columbia,2020,Female,26.18
+12,Florida,2011,Male,47.15
+12,Florida,2011,Female,34.74
+12,Florida,2012,Male,43.37
+12,Florida,2012,Female,33.19
+12,Florida,2013,Male,44.3
+12,Florida,2013,Female,33.51
+12,Florida,2014,Male,44.42
+12,Florida,2014,Female,32.97
+12,Florida,2015,Male,43.28
+12,Florida,2015,Female,33.1
+12,Florida,2016,Male,42.51
+12,Florida,2016,Female,33.1
+12,Florida,2017,Male,41.22
+12,Florida,2017,Female,31.28
+12,Florida,2018,Male,40.65
+12,Florida,2018,Female,31.3
+12,Florida,2019,Male,40.96
+12,Florida,2019,Female,32.07
+12,Florida,2020,Male,38.28
+12,Florida,2020,Female,28.4
+13,Georgia,2011,Male,49.46
+13,Georgia,2011,Female,36.65
+13,Georgia,2012,Male,50.18
+13,Georgia,2012,Female,36.47
+13,Georgia,2013,Male,49.3
+13,Georgia,2013,Female,35.41
+13,Georgia,2014,Male,50.38
+13,Georgia,2014,Female,35.74
+13,Georgia,2015,Male,49.55
+13,Georgia,2015,Female,36.32
+13,Georgia,2016,Male,48.72
+13,Georgia,2016,Female,36.68
+13,Georgia,2017,Male,45.93
+13,Georgia,2017,Female,33.91
+13,Georgia,2018,Male,47.22
+13,Georgia,2018,Female,34.08
+13,Georgia,2019,Male,47.21
+13,Georgia,2019,Female,33.72
+13,Georgia,2020,Male,41.64
+13,Georgia,2020,Female,31.97
+15,Hawaii,2011,Male,56.17
+15,Hawaii,2011,Female,35.53
+15,Hawaii,2012,Male,49.8
+15,Hawaii,2012,Female,34.87
+15,Hawaii,2013,Male,51.19
+15,Hawaii,2013,Female,33.88
+15,Hawaii,2014,Male,45.24
+15,Hawaii,2014,Female,38.52
+15,Hawaii,2015,Male,46.95
+15,Hawaii,2015,Female,36.09
+15,Hawaii,2016,Male,48.35
+15,Hawaii,2016,Female,35.2
+15,Hawaii,2017,Male,45.19
+15,Hawaii,2017,Female,35.13
+15,Hawaii,2018,Male,45.83
+15,Hawaii,2018,Female,29.07
+15,Hawaii,2019,Male,45.18
+15,Hawaii,2019,Female,33.34
+15,Hawaii,2020,Male,41.88
+15,Hawaii,2020,Female,31.96
+16,Idaho,2011,Male,42.94
+16,Idaho,2011,Female,35.63
+16,Idaho,2012,Male,37.88
+16,Idaho,2012,Female,33.95
+16,Idaho,2013,Male,42.48
+16,Idaho,2013,Female,29.68
+16,Idaho,2014,Male,38.04
+16,Idaho,2014,Female,35.01
+16,Idaho,2015,Male,39.92
+16,Idaho,2015,Female,32.97
+16,Idaho,2016,Male,41.12
+16,Idaho,2016,Female,29.99
+16,Idaho,2017,Male,37.91
+16,Idaho,2017,Female,30.59
+16,Idaho,2018,Male,42.1
+16,Idaho,2018,Female,31.55
+16,Idaho,2019,Male,38.49
+16,Idaho,2019,Female,31.73
+16,Idaho,2020,Male,38.32
+16,Idaho,2020,Female,27.58
+17,Illinois,2011,Male,54.57
+17,Illinois,2011,Female,40.25
+17,Illinois,2012,Male,52.2
+17,Illinois,2012,Female,37.39
+17,Illinois,2013,Male,50.91
+17,Illinois,2013,Female,37.58
+17,Illinois,2014,Male,50.1
+17,Illinois,2014,Female,36.78
+17,Illinois,2015,Male,50.77
+17,Illinois,2015,Female,36.42
+17,Illinois,2016,Male,49.8
+17,Illinois,2016,Female,38.97
+17,Illinois,2017,Male,47.72
+17,Illinois,2017,Female,35.45
+17,Illinois,2018,Male,47.05
+17,Illinois,2018,Female,36.36
+17,Illinois,2019,Male,45.64
+17,Illinois,2019,Female,33.98
+17,Illinois,2020,Male,41.17
+17,Illinois,2020,Female,29.21
+18,Indiana,2011,Male,49.49
+18,Indiana,2011,Female,40.91
+18,Indiana,2012,Male,49.85
+18,Indiana,2012,Female,38.17
+18,Indiana,2013,Male,49.58
+18,Indiana,2013,Female,39.03
+18,Indiana,2014,Male,49.63
+18,Indiana,2014,Female,37.78
+18,Indiana,2015,Male,50.35
+18,Indiana,2015,Female,37.6
+18,Indiana,2017,Male,50.21
+18,Indiana,2017,Female,35.73
+18,Indiana,2018,Male,47.28
+18,Indiana,2018,Female,35.44
+18,Indiana,2019,Male,43.55
+18,Indiana,2019,Female,35.92
+19,Iowa,2011,Male,54.48
+19,Iowa,2011,Female,38.58
+19,Iowa,2012,Male,49.34
+19,Iowa,2012,Female,40.6
+19,Iowa,2013,Male,50.33
+19,Iowa,2013,Female,37.87
+19,Iowa,2014,Male,52.13
+19,Iowa,2014,Female,42.51
+19,Iowa,2015,Male,51.65
+19,Iowa,2015,Female,38.11
+19,Iowa,2016,Male,48.94
+19,Iowa,2016,Female,38.73
+19,Iowa,2017,Male,45.29
+19,Iowa,2017,Female,38.59
+19,Iowa,2018,Male,44.75
+19,Iowa,2018,Female,37.12
+19,Iowa,2019,Male,46.98
+19,Iowa,2019,Female,36.8
+19,Iowa,2020,Male,40.2
+19,Iowa,2020,Female,31.49
+21,Kentucky,2011,Male,60.69
+21,Kentucky,2011,Female,41.25
+21,Kentucky,2012,Male,58.32
+21,Kentucky,2012,Female,43.41
+21,Kentucky,2013,Male,58.49
+21,Kentucky,2013,Female,42.32
+21,Kentucky,2014,Male,60.02
+21,Kentucky,2014,Female,41.64
+21,Kentucky,2015,Male,56.62
+21,Kentucky,2015,Female,44.15
+21,Kentucky,2016,Male,57.14
+21,Kentucky,2016,Female,40.79
+21,Kentucky,2017,Male,53.21
+21,Kentucky,2017,Female,39.23
+21,Kentucky,2018,Male,56.41
+21,Kentucky,2018,Female,42.08
+21,Kentucky,2019,Male,54.69
+21,Kentucky,2019,Female,41.15
+21,Kentucky,2020,Male,50.1
+21,Kentucky,2020,Female,35.34
+22,Louisiana,2011,Male,56.23
+22,Louisiana,2011,Female,42.45
+22,Louisiana,2012,Male,58.91
+22,Louisiana,2012,Female,41.47
+22,Louisiana,2013,Male,53.93
+22,Louisiana,2013,Female,38.66
+22,Louisiana,2014,Male,53.65
+22,Louisiana,2014,Female,39.99
+22,Louisiana,2015,Male,53.71
+22,Louisiana,2015,Female,37.69
+22,Louisiana,2016,Male,53.32
+22,Louisiana,2016,Female,39.24
+22,Louisiana,2017,Male,52.34
+22,Louisiana,2017,Female,38.27
+22,Louisiana,2018,Male,50.94
+22,Louisiana,2018,Female,40.01
+22,Louisiana,2019,Male,55.72
+22,Louisiana,2019,Female,39.95
+22,Louisiana,2020,Male,47.03
+22,Louisiana,2020,Female,33.58
+23,Maine,2011,Male,43.23
+23,Maine,2011,Female,35.3
+23,Maine,2012,Male,44.14
+23,Maine,2012,Female,33.78
+23,Maine,2013,Male,42.39
+23,Maine,2013,Female,33.8
+23,Maine,2014,Male,39.44
+23,Maine,2014,Female,34.83
+23,Maine,2015,Male,39.81
+23,Maine,2015,Female,33.22
+23,Maine,2016,Male,44.06
+23,Maine,2016,Female,33.62
+23,Maine,2017,Male,37.97
+23,Maine,2017,Female,32.75
+23,Maine,2018,Male,39.01
+23,Maine,2018,Female,31.73
+23,Maine,2019,Male,39.28
+23,Maine,2019,Female,34.05
+23,Maine,2020,Male,38.18
+23,Maine,2020,Female,28.55
+24,Maryland,2011,Male,44.57
+24,Maryland,2011,Female,34.08
+24,Maryland,2012,Male,42.71
+24,Maryland,2012,Female,32.64
+24,Maryland,2013,Male,39.81
+24,Maryland,2013,Female,34.01
+24,Maryland,2014,Male,42.63
+24,Maryland,2014,Female,33.36
+24,Maryland,2015,Male,41.07
+24,Maryland,2015,Female,32.92
+24,Maryland,2016,Male,38.78
+24,Maryland,2016,Female,33.54
+24,Maryland,2017,Male,41.87
+24,Maryland,2017,Female,32.03
+24,Maryland,2018,Male,41.87
+24,Maryland,2018,Female,32.94
+24,Maryland,2019,Male,40.35
+24,Maryland,2019,Female,34.54
+24,Maryland,2020,Male,35.48
+24,Maryland,2020,Female,30.04
+25,Massachusetts,2011,Male,43.62
+25,Massachusetts,2011,Female,34.27
+25,Massachusetts,2012,Male,42.33
+25,Massachusetts,2012,Female,33.28
+25,Massachusetts,2013,Male,40.92
+25,Massachusetts,2013,Female,33.23
+25,Massachusetts,2014,Male,44.28
+25,Massachusetts,2014,Female,32.19
+25,Massachusetts,2015,Male,39.57
+25,Massachusetts,2015,Female,33.04
+25,Massachusetts,2016,Male,39.58
+25,Massachusetts,2016,Female,31.91
+25,Massachusetts,2017,Male,38.61
+25,Massachusetts,2017,Female,28.66
+25,Massachusetts,2018,Male,38.06
+25,Massachusetts,2018,Female,28.29
+25,Massachusetts,2019,Male,37.3
+25,Massachusetts,2019,Female,28.22
+25,Massachusetts,2020,Male,32.85
+25,Massachusetts,2020,Female,26.21
+26,Michigan,2011,Male,45.19
+26,Michigan,2011,Female,35.89
+26,Michigan,2012,Male,45.11
+26,Michigan,2012,Female,34.36
+26,Michigan,2013,Male,43.26
+26,Michigan,2013,Female,33.96
+26,Michigan,2014,Male,42.79
+26,Michigan,2014,Female,34.66
+26,Michigan,2015,Male,43.73
+26,Michigan,2015,Female,34.46
+26,Michigan,2016,Male,44.92
+26,Michigan,2016,Female,35.62
+26,Michigan,2017,Male,43.59
+26,Michigan,2017,Female,34.35
+26,Michigan,2018,Male,40.39
+26,Michigan,2018,Female,33.11
+26,Michigan,2019,Male,42.23
+26,Michigan,2019,Female,33.01
+26,Michigan,2020,Male,34.61
+26,Michigan,2020,Female,27.94
+27,Minnesota,2011,Male,45.9
+27,Minnesota,2011,Female,33.66
+27,Minnesota,2012,Male,42.45
+27,Minnesota,2012,Female,33.89
+27,Minnesota,2013,Male,43.86
+27,Minnesota,2013,Female,34.97
+27,Minnesota,2014,Male,40.91
+27,Minnesota,2014,Female,34.46
+27,Minnesota,2015,Male,43.51
+27,Minnesota,2015,Female,33.96
+27,Minnesota,2016,Male,42.55
+27,Minnesota,2016,Female,34.55
+27,Minnesota,2017,Male,43.94
+27,Minnesota,2017,Female,32.97
+27,Minnesota,2018,Male,42.38
+27,Minnesota,2018,Female,32.43
+27,Minnesota,2019,Male,40.53
+27,Minnesota,2019,Female,30.94
+27,Minnesota,2020,Male,36.74
+27,Minnesota,2020,Female,28.94
+28,Mississippi,2011,Male,59.24
+28,Mississippi,2011,Female,41.73
+28,Mississippi,2012,Male,57.51
+28,Mississippi,2012,Female,41.89
+28,Mississippi,2013,Male,61.23
+28,Mississippi,2013,Female,40.43
+28,Mississippi,2014,Male,55.04
+28,Mississippi,2014,Female,40.77
+28,Mississippi,2015,Male,57.95
+28,Mississippi,2015,Female,42.27
+28,Mississippi,2016,Male,56.48
+28,Mississippi,2016,Female,40.89
+28,Mississippi,2017,Male,54.92
+28,Mississippi,2017,Female,42.42
+28,Mississippi,2018,Male,58.4
+28,Mississippi,2018,Female,42.94
+28,Mississippi,2019,Male,55.91
+28,Mississippi,2019,Female,40.52
+28,Mississippi,2020,Male,46.93
+28,Mississippi,2020,Female,33.86
+29,Missouri,2011,Male,50.77
+29,Missouri,2011,Female,37.17
+29,Missouri,2012,Male,49.42
+29,Missouri,2012,Female,37.87
+29,Missouri,2013,Male,48.28
+29,Missouri,2013,Female,34.84
+29,Missouri,2014,Male,46.1
+29,Missouri,2014,Female,36.29
+29,Missouri,2015,Male,46.9
+29,Missouri,2015,Female,34.61
+29,Missouri,2016,Male,45.55
+29,Missouri,2016,Female,35.2
+29,Missouri,2017,Male,44.79
+29,Missouri,2017,Female,35.39
+29,Missouri,2018,Male,46.01
+29,Missouri,2018,Female,35.29
+29,Missouri,2019,Male,42.75
+29,Missouri,2019,Female,34.32
+29,Missouri,2020,Male,40.01
+29,Missouri,2020,Female,31.26
+30,Montana,2011,Male,42.81
+30,Montana,2011,Female,36.18
+30,Montana,2012,Male,41.32
+30,Montana,2012,Female,32.35
+30,Montana,2013,Male,46.96
+30,Montana,2013,Female,32.18
+30,Montana,2014,Male,42.76
+30,Montana,2014,Female,34.55
+30,Montana,2015,Male,48.19
+30,Montana,2015,Female,33.08
+30,Montana,2016,Male,41.83
+30,Montana,2016,Female,32.89
+30,Montana,2017,Male,45.87
+30,Montana,2017,Female,31.19
+30,Montana,2018,Male,40.55
+30,Montana,2018,Female,30.3
+30,Montana,2019,Male,40.42
+30,Montana,2019,Female,30.91
+30,Montana,2020,Male,41.64
+30,Montana,2020,Female,31.09
+31,Nebraska,2011,Male,50.37
+31,Nebraska,2011,Female,41.09
+31,Nebraska,2012,Male,51.24
+31,Nebraska,2012,Female,37.68
+31,Nebraska,2013,Male,49.52
+31,Nebraska,2013,Female,34.98
+31,Nebraska,2014,Male,50.07
+31,Nebraska,2014,Female,35.85
+31,Nebraska,2015,Male,47.03
+31,Nebraska,2015,Female,39.26
+31,Nebraska,2016,Male,48.96
+31,Nebraska,2016,Female,41.85
+31,Nebraska,2017,Male,45.35
+31,Nebraska,2017,Female,38.58
+31,Nebraska,2018,Male,48.0
+31,Nebraska,2018,Female,37.99
+31,Nebraska,2019,Male,43.96
+31,Nebraska,2019,Female,34.23
+31,Nebraska,2020,Male,39.84
+31,Nebraska,2020,Female,32.47
+32,Nevada,2011,Male,46.05
+32,Nevada,2011,Female,38.53
+32,Nevada,2012,Male,46.02
+32,Nevada,2012,Female,34.15
+32,Nevada,2013,Male,43.49
+32,Nevada,2013,Female,35.1
+32,Nevada,2014,Male,44.22
+32,Nevada,2014,Female,31.24
+32,Nevada,2015,Male,40.67
+32,Nevada,2015,Female,29.57
+32,Nevada,2016,Male,41.01
+32,Nevada,2016,Female,32.38
+32,Nevada,2017,Male,38.67
+32,Nevada,2017,Female,31.42
+32,Nevada,2018,Male,40.86
+32,Nevada,2018,Female,30.15
+32,Nevada,2019,Male,36.8
+32,Nevada,2019,Female,28.03
+33,New Hampshire,2011,Male,45.83
+33,New Hampshire,2011,Female,38.08
+33,New Hampshire,2012,Male,42.34
+33,New Hampshire,2012,Female,33.8
+33,New Hampshire,2013,Male,43.35
+33,New Hampshire,2013,Female,33.66
+33,New Hampshire,2014,Male,41.75
+33,New Hampshire,2014,Female,34.07
+33,New Hampshire,2015,Male,42.12
+33,New Hampshire,2015,Female,31.56
+33,New Hampshire,2016,Male,43.55
+33,New Hampshire,2016,Female,33.96
+33,New Hampshire,2017,Male,41.5
+33,New Hampshire,2017,Female,26.82
+33,New Hampshire,2018,Male,42.4
+33,New Hampshire,2018,Female,31.73
+33,New Hampshire,2019,Male,39.03
+33,New Hampshire,2019,Female,35.3
+33,New Hampshire,2020,Male,32.82
+33,New Hampshire,2020,Female,29.84
+34,New Jersey,2011,Male,49.09
+34,New Jersey,2011,Female,39.19
+34,New Jersey,2012,Male,47.87
+34,New Jersey,2012,Female,38.49
+34,New Jersey,2013,Male,48.2
+34,New Jersey,2013,Female,36.59
+34,New Jersey,2014,Male,47.64
+34,New Jersey,2014,Female,37.06
+34,New Jersey,2015,Male,48.92
+34,New Jersey,2015,Female,35.18
+34,New Jersey,2016,Male,46.51
+34,New Jersey,2016,Female,36.35
+34,New Jersey,2017,Male,45.72
+34,New Jersey,2017,Female,35.38
+34,New Jersey,2018,Male,42.43
+34,New Jersey,2018,Female,33.94
+34,New Jersey,2019,Male,47.01
+34,New Jersey,2019,Female,34.61
+34,New Jersey,2020,Male,39.59
+34,New Jersey,2020,Female,32.75
+35,New Mexico,2011,Male,42.52
+35,New Mexico,2011,Female,31.16
+35,New Mexico,2012,Male,37.93
+35,New Mexico,2012,Female,29.46
+35,New Mexico,2013,Male,39.68
+35,New Mexico,2013,Female,27.73
+35,New Mexico,2014,Male,38.73
+35,New Mexico,2014,Female,28.67
+35,New Mexico,2015,Male,36.58
+35,New Mexico,2015,Female,30.83
+35,New Mexico,2016,Male,39.84
+35,New Mexico,2016,Female,31.23
+35,New Mexico,2017,Male,36.83
+35,New Mexico,2017,Female,31.23
+35,New Mexico,2018,Male,40.44
+35,New Mexico,2018,Female,29.35
+35,New Mexico,2019,Male,38.24
+35,New Mexico,2019,Female,26.78
+35,New Mexico,2020,Male,36.47
+35,New Mexico,2020,Female,26.0
+36,New York,2011,Male,47.99
+36,New York,2011,Female,37.18
+36,New York,2012,Male,46.21
+36,New York,2012,Female,34.19
+36,New York,2013,Male,46.47
+36,New York,2013,Female,34.95
+36,New York,2014,Male,45.53
+36,New York,2014,Female,34.49
+36,New York,2015,Male,44.2
+36,New York,2015,Female,34.16
+36,New York,2016,Male,44.76
+36,New York,2016,Female,33.61
+36,New York,2017,Male,43.71
+36,New York,2017,Female,33.74
+36,New York,2018,Male,42.53
+36,New York,2018,Female,32.09
+36,New York,2019,Male,43.02
+36,New York,2019,Female,32.77
+36,New York,2020,Male,38.55
+36,New York,2020,Female,28.55
+37,North Carolina,2011,Male,46.04
+37,North Carolina,2011,Female,34.03
+37,North Carolina,2012,Male,43.98
+37,North Carolina,2012,Female,31.99
+37,North Carolina,2013,Male,44.27
+37,North Carolina,2013,Female,32.95
+37,North Carolina,2014,Male,43.19
+37,North Carolina,2014,Female,32.87
+37,North Carolina,2015,Male,42.83
+37,North Carolina,2015,Female,34.39
+37,North Carolina,2016,Male,43.32
+37,North Carolina,2016,Female,32.26
+37,North Carolina,2017,Male,41.52
+37,North Carolina,2017,Female,31.78
+37,North Carolina,2018,Male,41.86
+37,North Carolina,2018,Female,31.85
+37,North Carolina,2019,Male,40.76
+37,North Carolina,2019,Female,30.81
+37,North Carolina,2020,Male,35.6
+37,North Carolina,2020,Female,27.12
+38,North Dakota,2011,Male,52.56
+38,North Dakota,2011,Female,38.02
+38,North Dakota,2012,Male,62.61
+38,North Dakota,2012,Female,40.74
+38,North Dakota,2013,Male,52.08
+38,North Dakota,2013,Female,44.47
+38,North Dakota,2014,Male,49.64
+38,North Dakota,2014,Female,38.41
+38,North Dakota,2015,Male,54.3
+38,North Dakota,2015,Female,34.8
+38,North Dakota,2016,Male,47.26
+38,North Dakota,2016,Female,32.9
+38,North Dakota,2017,Male,42.31
+38,North Dakota,2017,Female,44.15
+38,North Dakota,2018,Male,47.44
+38,North Dakota,2018,Female,28.67
+38,North Dakota,2019,Male,42.76
+38,North Dakota,2019,Female,36.8
+38,North Dakota,2020,Male,40.8
+38,North Dakota,2020,Female,27.87
+39,Ohio,2011,Male,50.05
+39,Ohio,2011,Female,36.34
+39,Ohio,2012,Male,47.57
+39,Ohio,2012,Female,35.6
+39,Ohio,2013,Male,47.96
+39,Ohio,2013,Female,35.55
+39,Ohio,2014,Male,48.09
+39,Ohio,2014,Female,37.33
+39,Ohio,2015,Male,49.3
+39,Ohio,2015,Female,37.96
+39,Ohio,2016,Male,46.73
+39,Ohio,2016,Female,36.35
+39,Ohio,2017,Male,45.71
+39,Ohio,2017,Female,36.1
+39,Ohio,2018,Male,47.23
+39,Ohio,2018,Female,35.79
+39,Ohio,2019,Male,44.96
+39,Ohio,2019,Female,33.06
+39,Ohio,2020,Male,41.22
+39,Ohio,2020,Female,30.92
+40,Oklahoma,2011,Male,48.42
+40,Oklahoma,2011,Female,37.32
+40,Oklahoma,2012,Male,49.19
+40,Oklahoma,2012,Female,38.72
+40,Oklahoma,2013,Male,51.12
+40,Oklahoma,2013,Female,36.9
+40,Oklahoma,2014,Male,47.31
+40,Oklahoma,2014,Female,34.98
+40,Oklahoma,2015,Male,47.16
+40,Oklahoma,2015,Female,37.96
+40,Oklahoma,2016,Male,50.78
+40,Oklahoma,2016,Female,36.08
+40,Oklahoma,2017,Male,47.22
+40,Oklahoma,2017,Female,36.16
+40,Oklahoma,2018,Male,47.66
+40,Oklahoma,2018,Female,34.41
+40,Oklahoma,2019,Male,45.11
+40,Oklahoma,2019,Female,34.72
+40,Oklahoma,2020,Male,41.2
+40,Oklahoma,2020,Female,29.39
+41,Oregon,2011,Male,43.74
+41,Oregon,2011,Female,31.06
+41,Oregon,2012,Male,42.38
+41,Oregon,2012,Female,30.87
+41,Oregon,2013,Male,41.14
+41,Oregon,2013,Female,31.91
+41,Oregon,2014,Male,39.52
+41,Oregon,2014,Female,31.98
+41,Oregon,2015,Male,39.64
+41,Oregon,2015,Female,31.56
+41,Oregon,2016,Male,37.24
+41,Oregon,2016,Female,31.32
+41,Oregon,2017,Male,41.23
+41,Oregon,2017,Female,29.58
+41,Oregon,2018,Male,35.89
+41,Oregon,2018,Female,29.58
+41,Oregon,2019,Male,38.52
+41,Oregon,2019,Female,29.3
+41,Oregon,2020,Male,32.61
+41,Oregon,2020,Female,26.93
+42,Pennsylvania,2011,Male,52.37
+42,Pennsylvania,2011,Female,38.85
+42,Pennsylvania,2012,Male,49.41
+42,Pennsylvania,2012,Female,37.82
+42,Pennsylvania,2013,Male,49.86
+42,Pennsylvania,2013,Female,37.13
+42,Pennsylvania,2014,Male,47.48
+42,Pennsylvania,2014,Female,35.55
+42,Pennsylvania,2015,Male,49.74
+42,Pennsylvania,2015,Female,36.15
+42,Pennsylvania,2016,Male,46.7
+42,Pennsylvania,2016,Female,36.12
+42,Pennsylvania,2017,Male,44.85
+42,Pennsylvania,2017,Female,35.26
+42,Pennsylvania,2018,Male,43.02
+42,Pennsylvania,2018,Female,34.45
+42,Pennsylvania,2019,Male,45.12
+42,Pennsylvania,2019,Female,34.93
+42,Pennsylvania,2020,Male,39.3
+42,Pennsylvania,2020,Female,29.18
+44,Rhode Island,2011,Male,44.2
+44,Rhode Island,2011,Female,34.8
+44,Rhode Island,2012,Male,43.68
+44,Rhode Island,2012,Female,34.26
+44,Rhode Island,2013,Male,38.69
+44,Rhode Island,2013,Female,33.91
+44,Rhode Island,2014,Male,43.11
+44,Rhode Island,2014,Female,33.43
+44,Rhode Island,2015,Male,40.44
+44,Rhode Island,2015,Female,27.6
+44,Rhode Island,2016,Male,34.53
+44,Rhode Island,2016,Female,29.5
+44,Rhode Island,2017,Male,38.22
+44,Rhode Island,2017,Female,28.31
+44,Rhode Island,2018,Male,41.53
+44,Rhode Island,2018,Female,30.23
+44,Rhode Island,2019,Male,37.01
+44,Rhode Island,2019,Female,32.05
+44,Rhode Island,2020,Male,32.03
+44,Rhode Island,2020,Female,27.91
+45,South Carolina,2011,Male,45.63
+45,South Carolina,2011,Female,35.26
+45,South Carolina,2012,Male,44.84
+45,South Carolina,2012,Female,35.16
+45,South Carolina,2013,Male,44.4
+45,South Carolina,2013,Female,32.65
+45,South Carolina,2014,Male,43.81
+45,South Carolina,2014,Female,32.49
+45,South Carolina,2015,Male,47.66
+45,South Carolina,2015,Female,35.14
+45,South Carolina,2016,Male,44.4
+45,South Carolina,2016,Female,33.76
+45,South Carolina,2017,Male,40.15
+45,South Carolina,2017,Female,31.4
+45,South Carolina,2018,Male,42.8
+45,South Carolina,2018,Female,31.28
+45,South Carolina,2019,Male,42.67
+45,South Carolina,2019,Female,31.49
+45,South Carolina,2020,Male,37.33
+45,South Carolina,2020,Female,27.71
+46,South Dakota,2011,Male,57.06
+46,South Dakota,2011,Female,36.87
+46,South Dakota,2012,Male,45.16
+46,South Dakota,2012,Female,38.73
+46,South Dakota,2013,Male,45.41
+46,South Dakota,2013,Female,38.89
+46,South Dakota,2014,Male,54.65
+46,South Dakota,2014,Female,38.76
+46,South Dakota,2015,Male,47.2
+46,South Dakota,2015,Female,35.12
+46,South Dakota,2016,Male,46.04
+46,South Dakota,2016,Female,37.8
+46,South Dakota,2017,Male,46.83
+46,South Dakota,2017,Female,34.89
+46,South Dakota,2018,Male,46.22
+46,South Dakota,2018,Female,33.65
+46,South Dakota,2019,Male,47.64
+46,South Dakota,2019,Female,36.21
+46,South Dakota,2020,Male,38.81
+46,South Dakota,2020,Female,32.71
+47,Tennessee,2011,Male,47.13
+47,Tennessee,2011,Female,36.03
+47,Tennessee,2012,Male,48.58
+47,Tennessee,2012,Female,36.38
+47,Tennessee,2013,Male,44.22
+47,Tennessee,2013,Female,34.83
+47,Tennessee,2014,Male,46.93
+47,Tennessee,2014,Female,37.35
+47,Tennessee,2015,Male,46.7
+47,Tennessee,2015,Female,34.92
+47,Tennessee,2016,Male,46.89
+47,Tennessee,2016,Female,35.99
+47,Tennessee,2017,Male,46.53
+47,Tennessee,2017,Female,34.97
+47,Tennessee,2018,Male,46.81
+47,Tennessee,2018,Female,33.96
+47,Tennessee,2019,Male,44.57
+47,Tennessee,2019,Female,33.67
+47,Tennessee,2020,Male,43.55
+47,Tennessee,2020,Female,31.37
+48,Texas,2011,Male,47.31
+48,Texas,2011,Female,32.66
+48,Texas,2012,Male,46.87
+48,Texas,2012,Female,32.2
+48,Texas,2013,Male,45.57
+48,Texas,2013,Female,32.25
+48,Texas,2014,Male,45.23
+48,Texas,2014,Female,31.88
+48,Texas,2015,Male,46.8
+48,Texas,2015,Female,31.7
+48,Texas,2016,Male,43.77
+48,Texas,2016,Female,31.86
+48,Texas,2017,Male,45.79
+48,Texas,2017,Female,31.39
+48,Texas,2018,Male,47.38
+48,Texas,2018,Female,32.64
+48,Texas,2019,Male,45.18
+48,Texas,2019,Female,32.47
+48,Texas,2020,Male,40.35
+48,Texas,2020,Female,28.38
+49,Utah,2011,Male,36.83
+49,Utah,2011,Female,29.65
+49,Utah,2012,Male,36.65
+49,Utah,2012,Female,25.13
+49,Utah,2013,Male,37.3
+49,Utah,2013,Female,27.96
+49,Utah,2014,Male,32.47
+49,Utah,2014,Female,28.42
+49,Utah,2015,Male,29.64
+49,Utah,2015,Female,27.39
+49,Utah,2016,Male,33.07
+49,Utah,2016,Female,24.4
+49,Utah,2017,Male,32.82
+49,Utah,2017,Female,28.37
+49,Utah,2018,Male,32.98
+49,Utah,2018,Female,26.58
+49,Utah,2019,Male,31.71
+49,Utah,2019,Female,26.33
+49,Utah,2020,Male,31.18
+49,Utah,2020,Female,24.22
+50,Vermont,2011,Male,44.31
+50,Vermont,2011,Female,34.36
+50,Vermont,2012,Male,43.89
+50,Vermont,2012,Female,36.83
+50,Vermont,2013,Male,37.25
+50,Vermont,2013,Female,30.73
+50,Vermont,2014,Male,35.13
+50,Vermont,2014,Female,35.28
+50,Vermont,2015,Male,36.07
+50,Vermont,2015,Female,33.41
+50,Vermont,2016,Male,36.74
+50,Vermont,2016,Female,31.96
+50,Vermont,2017,Male,40.91
+50,Vermont,2017,Female,31.86
+50,Vermont,2018,Male,39.63
+50,Vermont,2018,Female,31.66
+50,Vermont,2019,Male,44.25
+50,Vermont,2019,Female,23.44
+50,Vermont,2020,Male,34.5
+50,Vermont,2020,Female,22.79
+51,Virginia,2011,Male,41.67
+51,Virginia,2011,Female,32.77
+51,Virginia,2012,Male,40.87
+51,Virginia,2012,Female,34.24
+51,Virginia,2013,Male,41.46
+51,Virginia,2013,Female,31.35
+51,Virginia,2014,Male,40.76
+51,Virginia,2014,Female,33.98
+51,Virginia,2015,Male,38.74
+51,Virginia,2015,Female,30.87
+51,Virginia,2016,Male,39.77
+51,Virginia,2016,Female,31.47
+51,Virginia,2017,Male,39.65
+51,Virginia,2017,Female,31.62
+51,Virginia,2018,Male,40.03
+51,Virginia,2018,Female,30.47
+51,Virginia,2019,Male,39.4
+51,Virginia,2019,Female,30.24
+51,Virginia,2020,Male,34.35
+51,Virginia,2020,Female,27.89
+53,Washington,2011,Male,42.96
+53,Washington,2011,Female,33.63
+53,Washington,2012,Male,40.15
+53,Washington,2012,Female,32.66
+53,Washington,2013,Male,39.51
+53,Washington,2013,Female,32.78
+53,Washington,2014,Male,42.28
+53,Washington,2014,Female,33.06
+53,Washington,2015,Male,39.52
+53,Washington,2015,Female,30.76
+53,Washington,2016,Male,40.24
+53,Washington,2016,Female,33.51
+53,Washington,2017,Male,38.63
+53,Washington,2017,Female,32.64
+53,Washington,2018,Male,38.71
+53,Washington,2018,Female,31.12
+53,Washington,2019,Male,40.22
+53,Washington,2019,Female,29.32
+53,Washington,2020,Male,34.87
+53,Washington,2020,Female,28.56
+54,West Virginia,2011,Male,58.07
+54,West Virginia,2011,Female,40.63
+54,West Virginia,2012,Male,51.46
+54,West Virginia,2012,Female,40.38
+54,West Virginia,2013,Male,52.85
+54,West Virginia,2013,Female,43.86
+54,West Virginia,2014,Male,53.03
+54,West Virginia,2014,Female,42.86
+54,West Virginia,2015,Male,53.83
+54,West Virginia,2015,Female,42.68
+54,West Virginia,2016,Male,51.53
+54,West Virginia,2016,Female,38.24
+54,West Virginia,2017,Male,54.51
+54,West Virginia,2017,Female,38.88
+54,West Virginia,2018,Male,50.76
+54,West Virginia,2018,Female,41.01
+54,West Virginia,2019,Male,49.2
+54,West Virginia,2019,Female,38.56
+54,West Virginia,2020,Male,45.6
+54,West Virginia,2020,Female,37.25
+55,Wisconsin,2011,Male,45.99
+55,Wisconsin,2011,Female,35.43
+55,Wisconsin,2012,Male,44.6
+55,Wisconsin,2012,Female,32.96
+55,Wisconsin,2013,Male,42.33
+55,Wisconsin,2013,Female,33.52
+55,Wisconsin,2014,Male,43.78
+55,Wisconsin,2014,Female,32.84
+55,Wisconsin,2015,Male,40.84
+55,Wisconsin,2015,Female,33.64
+55,Wisconsin,2016,Male,43.35
+55,Wisconsin,2016,Female,32.87
+55,Wisconsin,2017,Male,39.56
+55,Wisconsin,2017,Female,32.52
+55,Wisconsin,2018,Male,39.99
+55,Wisconsin,2018,Female,31.73
+55,Wisconsin,2019,Male,41.45
+55,Wisconsin,2019,Female,31.7
+55,Wisconsin,2020,Male,33.34
+55,Wisconsin,2020,Female,28.55
+56,Wyoming,2011,Male,42.28
+56,Wyoming,2011,Female,30.8
+56,Wyoming,2012,Male,48.13
+56,Wyoming,2012,Female,26.65
+56,Wyoming,2013,Male,38.84
+56,Wyoming,2013,Female,27.04
+56,Wyoming,2014,Male,32.27
+56,Wyoming,2014,Female,29.02
+56,Wyoming,2015,Male,33.82
+56,Wyoming,2015,Female,26.99
+56,Wyoming,2016,Male,35.58
+56,Wyoming,2016,Female,33.77
+56,Wyoming,2017,Male,39.07
+56,Wyoming,2017,Female,29.01
+56,Wyoming,2018,Male,37.74
+56,Wyoming,2018,Female,32.37
+56,Wyoming,2019,Male,44.14
+56,Wyoming,2019,Female,29.92
+56,Wyoming,2020,Male,39.61
+56,Wyoming,2020,Female,28.21
+72,Puerto Rico,2011,Male,
+72,Puerto Rico,2011,Female,
+72,Puerto Rico,2012,Male,
+72,Puerto Rico,2012,Female,
+72,Puerto Rico,2013,Male,
+72,Puerto Rico,2013,Female,
+72,Puerto Rico,2014,Male,
+72,Puerto Rico,2014,Female,
+72,Puerto Rico,2015,Male,
+72,Puerto Rico,2015,Female,
+72,Puerto Rico,2016,Male,
+72,Puerto Rico,2016,Female,
+72,Puerto Rico,2017,Male,
+72,Puerto Rico,2017,Female,
+72,Puerto Rico,2018,Male,
+72,Puerto Rico,2018,Female,
+72,Puerto Rico,2019,Male,
+72,Puerto Rico,2019,Female,
+72,Puerto Rico,2020,Male,
+72,Puerto Rico,2020,Female,

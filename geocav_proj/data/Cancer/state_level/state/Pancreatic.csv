@@ -1,0 +1,508 @@
+StateFIPS,State,Year,Value
+1,Alabama,2011,13.84
+1,Alabama,2012,12.52
+1,Alabama,2013,12.49
+1,Alabama,2014,12.68
+1,Alabama,2015,13.12
+1,Alabama,2016,13.72
+1,Alabama,2017,12.01
+1,Alabama,2018,14.0
+1,Alabama,2019,13.31
+1,Alabama,2020,12.72
+2,Alaska,2011,14.16
+2,Alaska,2012,12.27
+2,Alaska,2013,11.01
+2,Alaska,2014,13.61
+2,Alaska,2015,11.47
+2,Alaska,2016,15.52
+2,Alaska,2017,12.49
+2,Alaska,2018,11.85
+2,Alaska,2019,13.5
+2,Alaska,2020,14.37
+4,Arizona,2011,12.07
+4,Arizona,2012,12.7
+4,Arizona,2013,11.23
+4,Arizona,2014,12.01
+4,Arizona,2015,11.47
+4,Arizona,2016,12.1
+4,Arizona,2017,11.78
+4,Arizona,2018,12.51
+4,Arizona,2019,12.75
+4,Arizona,2020,12.21
+5,Arkansas,2011,10.69
+5,Arkansas,2012,11.29
+5,Arkansas,2013,12.44
+5,Arkansas,2014,11.4
+5,Arkansas,2015,11.69
+5,Arkansas,2016,12.34
+5,Arkansas,2017,12.74
+5,Arkansas,2018,12.5
+5,Arkansas,2019,12.73
+5,Arkansas,2020,11.4
+6,California,2011,11.64
+6,California,2012,11.71
+6,California,2013,11.66
+6,California,2014,11.93
+6,California,2015,11.99
+6,California,2016,12.25
+6,California,2017,12.01
+6,California,2018,12.34
+6,California,2019,12.66
+6,California,2020,11.77
+8,Colorado,2011,11.66
+8,Colorado,2012,12.04
+8,Colorado,2013,10.51
+8,Colorado,2014,11.55
+8,Colorado,2015,10.62
+8,Colorado,2016,11.73
+8,Colorado,2017,11.7
+8,Colorado,2018,11.26
+8,Colorado,2019,11.88
+8,Colorado,2020,11.82
+9,Connecticut,2011,13.62
+9,Connecticut,2012,13.3
+9,Connecticut,2013,12.86
+9,Connecticut,2014,13.96
+9,Connecticut,2015,13.84
+9,Connecticut,2016,14.53
+9,Connecticut,2017,13.12
+9,Connecticut,2018,14.45
+9,Connecticut,2019,13.24
+9,Connecticut,2020,14.21
+10,Delaware,2011,13.47
+10,Delaware,2012,14.15
+10,Delaware,2013,15.52
+10,Delaware,2014,14.43
+10,Delaware,2015,15.06
+10,Delaware,2016,13.08
+10,Delaware,2017,13.73
+10,Delaware,2018,13.04
+10,Delaware,2019,17.21
+10,Delaware,2020,13.54
+11,District of Columbia,2011,15.56
+11,District of Columbia,2012,15.85
+11,District of Columbia,2013,16.18
+11,District of Columbia,2014,16.07
+11,District of Columbia,2015,18.06
+11,District of Columbia,2016,13.36
+11,District of Columbia,2017,15.55
+11,District of Columbia,2018,16.75
+11,District of Columbia,2019,15.36
+11,District of Columbia,2020,13.99
+12,Florida,2011,12.07
+12,Florida,2012,12.29
+12,Florida,2013,12.21
+12,Florida,2014,12.79
+12,Florida,2015,13.02
+12,Florida,2016,12.79
+12,Florida,2017,13.0
+12,Florida,2018,12.82
+12,Florida,2019,13.43
+12,Florida,2020,13.04
+13,Georgia,2011,12.07
+13,Georgia,2012,13.27
+13,Georgia,2013,13.17
+13,Georgia,2014,13.31
+13,Georgia,2015,13.24
+13,Georgia,2016,13.26
+13,Georgia,2017,12.86
+13,Georgia,2018,13.7
+13,Georgia,2019,13.53
+13,Georgia,2020,14.11
+15,Hawaii,2011,12.92
+15,Hawaii,2012,14.39
+15,Hawaii,2013,13.66
+15,Hawaii,2014,12.44
+15,Hawaii,2015,13.78
+15,Hawaii,2016,13.84
+15,Hawaii,2017,15.22
+15,Hawaii,2018,12.79
+15,Hawaii,2019,12.8
+15,Hawaii,2020,12.8
+16,Idaho,2011,11.75
+16,Idaho,2012,12.91
+16,Idaho,2013,13.84
+16,Idaho,2014,12.92
+16,Idaho,2015,14.57
+16,Idaho,2016,13.32
+16,Idaho,2017,15.48
+16,Idaho,2018,11.8
+16,Idaho,2019,13.59
+16,Idaho,2020,14.75
+17,Illinois,2011,13.07
+17,Illinois,2012,13.02
+17,Illinois,2013,13.14
+17,Illinois,2014,13.22
+17,Illinois,2015,13.87
+17,Illinois,2016,13.53
+17,Illinois,2017,14.56
+17,Illinois,2018,14.62
+17,Illinois,2019,14.62
+17,Illinois,2020,13.45
+18,Indiana,2011,12.19
+18,Indiana,2012,13.24
+18,Indiana,2013,13.35
+18,Indiana,2014,12.93
+18,Indiana,2015,13.7
+18,Indiana,2017,14.51
+18,Indiana,2018,13.56
+18,Indiana,2019,13.21
+19,Iowa,2011,11.97
+19,Iowa,2012,12.59
+19,Iowa,2013,13.09
+19,Iowa,2014,14.29
+19,Iowa,2015,13.18
+19,Iowa,2016,13.78
+19,Iowa,2017,13.73
+19,Iowa,2018,14.26
+19,Iowa,2019,13.74
+19,Iowa,2020,12.55
+21,Kentucky,2011,13.04
+21,Kentucky,2012,12.24
+21,Kentucky,2013,13.77
+21,Kentucky,2014,13.82
+21,Kentucky,2015,13.94
+21,Kentucky,2016,13.04
+21,Kentucky,2017,13.27
+21,Kentucky,2018,14.96
+21,Kentucky,2019,13.82
+21,Kentucky,2020,13.3
+22,Louisiana,2011,14.52
+22,Louisiana,2012,13.55
+22,Louisiana,2013,14.23
+22,Louisiana,2014,14.51
+22,Louisiana,2015,15.47
+22,Louisiana,2016,13.71
+22,Louisiana,2017,13.28
+22,Louisiana,2018,14.57
+22,Louisiana,2019,15.46
+22,Louisiana,2020,14.08
+23,Maine,2011,13.61
+23,Maine,2012,13.86
+23,Maine,2013,13.03
+23,Maine,2014,13.13
+23,Maine,2015,12.68
+23,Maine,2016,14.09
+23,Maine,2017,11.95
+23,Maine,2018,13.1
+23,Maine,2019,14.46
+23,Maine,2020,15.17
+24,Maryland,2011,13.41
+24,Maryland,2012,13.06
+24,Maryland,2013,12.82
+24,Maryland,2014,13.44
+24,Maryland,2015,13.48
+24,Maryland,2016,14.05
+24,Maryland,2017,13.92
+24,Maryland,2018,13.97
+24,Maryland,2019,14.08
+24,Maryland,2020,12.83
+25,Massachusetts,2011,12.48
+25,Massachusetts,2012,12.58
+25,Massachusetts,2013,13.01
+25,Massachusetts,2014,13.01
+25,Massachusetts,2015,13.77
+25,Massachusetts,2016,13.48
+25,Massachusetts,2017,14.04
+25,Massachusetts,2018,13.81
+25,Massachusetts,2019,15.09
+25,Massachusetts,2020,14.57
+26,Michigan,2011,12.6
+26,Michigan,2012,13.73
+26,Michigan,2013,13.49
+26,Michigan,2014,13.26
+26,Michigan,2015,14.23
+26,Michigan,2016,14.42
+26,Michigan,2017,14.38
+26,Michigan,2018,13.91
+26,Michigan,2019,14.47
+26,Michigan,2020,13.98
+27,Minnesota,2011,11.64
+27,Minnesota,2012,12.62
+27,Minnesota,2013,12.08
+27,Minnesota,2014,13.01
+27,Minnesota,2015,13.99
+27,Minnesota,2016,14.16
+27,Minnesota,2017,13.66
+27,Minnesota,2018,14.43
+27,Minnesota,2019,14.53
+27,Minnesota,2020,14.22
+28,Mississippi,2011,14.02
+28,Mississippi,2012,14.37
+28,Mississippi,2013,13.42
+28,Mississippi,2014,15.7
+28,Mississippi,2015,14.87
+28,Mississippi,2016,14.52
+28,Mississippi,2017,14.0
+28,Mississippi,2018,13.31
+28,Mississippi,2019,13.68
+28,Mississippi,2020,13.43
+29,Missouri,2011,12.92
+29,Missouri,2012,11.63
+29,Missouri,2013,12.63
+29,Missouri,2014,13.14
+29,Missouri,2015,12.19
+29,Missouri,2016,11.84
+29,Missouri,2017,13.41
+29,Missouri,2018,13.91
+29,Missouri,2019,13.6
+29,Missouri,2020,12.72
+30,Montana,2011,10.88
+30,Montana,2012,11.01
+30,Montana,2013,12.07
+30,Montana,2014,11.12
+30,Montana,2015,13.01
+30,Montana,2016,13.62
+30,Montana,2017,11.72
+30,Montana,2018,12.13
+30,Montana,2019,12.48
+30,Montana,2020,12.14
+31,Nebraska,2011,11.28
+31,Nebraska,2012,13.03
+31,Nebraska,2013,12.26
+31,Nebraska,2014,12.56
+31,Nebraska,2015,13.28
+31,Nebraska,2016,14.75
+31,Nebraska,2017,12.54
+31,Nebraska,2018,12.09
+31,Nebraska,2019,13.22
+31,Nebraska,2020,13.47
+32,Nevada,2011,12.7
+32,Nevada,2012,10.81
+32,Nevada,2013,12.35
+32,Nevada,2014,10.66
+32,Nevada,2015,11.69
+32,Nevada,2016,12.22
+32,Nevada,2017,13.45
+32,Nevada,2018,11.3
+32,Nevada,2019,12.62
+33,New Hampshire,2011,11.62
+33,New Hampshire,2012,13.18
+33,New Hampshire,2013,12.28
+33,New Hampshire,2014,11.88
+33,New Hampshire,2015,11.62
+33,New Hampshire,2016,13.16
+33,New Hampshire,2017,13.59
+33,New Hampshire,2018,13.71
+33,New Hampshire,2019,13.68
+33,New Hampshire,2020,14.3
+34,New Jersey,2011,14.16
+34,New Jersey,2012,13.52
+34,New Jersey,2013,14.48
+34,New Jersey,2014,14.33
+34,New Jersey,2015,14.25
+34,New Jersey,2016,13.86
+34,New Jersey,2017,15.55
+34,New Jersey,2018,14.71
+34,New Jersey,2019,15.47
+34,New Jersey,2020,14.98
+35,New Mexico,2011,10.1
+35,New Mexico,2012,11.01
+35,New Mexico,2013,12.31
+35,New Mexico,2014,9.99
+35,New Mexico,2015,12.15
+35,New Mexico,2016,12.21
+35,New Mexico,2017,11.19
+35,New Mexico,2018,11.76
+35,New Mexico,2019,13.0
+35,New Mexico,2020,11.11
+36,New York,2011,14.03
+36,New York,2012,13.93
+36,New York,2013,13.91
+36,New York,2014,14.16
+36,New York,2015,14.03
+36,New York,2016,14.37
+36,New York,2017,14.86
+36,New York,2018,14.46
+36,New York,2019,14.68
+36,New York,2020,14.04
+37,North Carolina,2011,12.07
+37,North Carolina,2012,12.07
+37,North Carolina,2013,13.3
+37,North Carolina,2014,12.98
+37,North Carolina,2015,13.08
+37,North Carolina,2016,13.14
+37,North Carolina,2017,13.44
+37,North Carolina,2018,13.83
+37,North Carolina,2019,13.46
+37,North Carolina,2020,12.95
+38,North Dakota,2011,12.09
+38,North Dakota,2012,12.01
+38,North Dakota,2013,11.66
+38,North Dakota,2014,12.04
+38,North Dakota,2015,12.4
+38,North Dakota,2016,13.3
+38,North Dakota,2017,11.64
+38,North Dakota,2018,12.32
+38,North Dakota,2019,10.81
+38,North Dakota,2020,11.15
+39,Ohio,2011,12.09
+39,Ohio,2012,12.89
+39,Ohio,2013,12.73
+39,Ohio,2014,13.11
+39,Ohio,2015,13.68
+39,Ohio,2016,12.83
+39,Ohio,2017,13.52
+39,Ohio,2018,14.99
+39,Ohio,2019,14.19
+39,Ohio,2020,13.72
+40,Oklahoma,2011,12.24
+40,Oklahoma,2012,12.84
+40,Oklahoma,2013,11.2
+40,Oklahoma,2014,12.24
+40,Oklahoma,2015,11.89
+40,Oklahoma,2016,10.98
+40,Oklahoma,2017,11.95
+40,Oklahoma,2018,12.38
+40,Oklahoma,2019,12.47
+40,Oklahoma,2020,12.58
+41,Oregon,2011,12.21
+41,Oregon,2012,11.93
+41,Oregon,2013,12.85
+41,Oregon,2014,13.96
+41,Oregon,2015,13.96
+41,Oregon,2016,12.72
+41,Oregon,2017,13.97
+41,Oregon,2018,12.67
+41,Oregon,2019,12.05
+41,Oregon,2020,13.2
+42,Pennsylvania,2011,13.88
+42,Pennsylvania,2012,13.32
+42,Pennsylvania,2013,13.52
+42,Pennsylvania,2014,14.14
+42,Pennsylvania,2015,15.0
+42,Pennsylvania,2016,14.43
+42,Pennsylvania,2017,14.81
+42,Pennsylvania,2018,14.58
+42,Pennsylvania,2019,14.69
+42,Pennsylvania,2020,14.41
+44,Rhode Island,2011,11.03
+44,Rhode Island,2012,12.85
+44,Rhode Island,2013,13.56
+44,Rhode Island,2014,12.85
+44,Rhode Island,2015,11.68
+44,Rhode Island,2016,14.85
+44,Rhode Island,2017,12.67
+44,Rhode Island,2018,12.4
+44,Rhode Island,2019,14.47
+44,Rhode Island,2020,13.94
+45,South Carolina,2011,13.54
+45,South Carolina,2012,12.7
+45,South Carolina,2013,13.27
+45,South Carolina,2014,13.17
+45,South Carolina,2015,13.37
+45,South Carolina,2016,14.43
+45,South Carolina,2017,13.85
+45,South Carolina,2018,13.95
+45,South Carolina,2019,12.86
+45,South Carolina,2020,12.99
+46,South Dakota,2011,11.01
+46,South Dakota,2012,13.64
+46,South Dakota,2013,10.92
+46,South Dakota,2014,13.19
+46,South Dakota,2015,11.73
+46,South Dakota,2016,14.48
+46,South Dakota,2017,12.91
+46,South Dakota,2018,13.72
+46,South Dakota,2019,12.23
+46,South Dakota,2020,13.3
+47,Tennessee,2011,11.77
+47,Tennessee,2012,11.82
+47,Tennessee,2013,12.52
+47,Tennessee,2014,12.41
+47,Tennessee,2015,12.55
+47,Tennessee,2016,12.8
+47,Tennessee,2017,12.81
+47,Tennessee,2018,12.91
+47,Tennessee,2019,12.06
+47,Tennessee,2020,13.38
+48,Texas,2011,11.85
+48,Texas,2012,12.3
+48,Texas,2013,12.0
+48,Texas,2014,12.19
+48,Texas,2015,12.65
+48,Texas,2016,12.91
+48,Texas,2017,12.91
+48,Texas,2018,13.38
+48,Texas,2019,13.21
+48,Texas,2020,12.82
+49,Utah,2011,11.12
+49,Utah,2012,13.24
+49,Utah,2013,10.31
+49,Utah,2014,10.87
+49,Utah,2015,11.6
+49,Utah,2016,10.13
+49,Utah,2017,11.31
+49,Utah,2018,12.03
+49,Utah,2019,11.91
+49,Utah,2020,12.0
+50,Vermont,2011,12.4
+50,Vermont,2012,16.06
+50,Vermont,2013,11.89
+50,Vermont,2014,11.77
+50,Vermont,2015,10.35
+50,Vermont,2016,12.38
+50,Vermont,2017,13.94
+50,Vermont,2018,12.11
+50,Vermont,2019,14.33
+50,Vermont,2020,11.49
+51,Virginia,2011,12.56
+51,Virginia,2012,12.43
+51,Virginia,2013,12.49
+51,Virginia,2014,11.89
+51,Virginia,2015,12.42
+51,Virginia,2016,12.59
+51,Virginia,2017,12.17
+51,Virginia,2018,12.69
+51,Virginia,2019,13.46
+51,Virginia,2020,12.67
+53,Washington,2011,12.82
+53,Washington,2012,13.03
+53,Washington,2013,12.7
+53,Washington,2014,12.67
+53,Washington,2015,12.6
+53,Washington,2016,13.19
+53,Washington,2017,13.22
+53,Washington,2018,14.14
+53,Washington,2019,13.59
+53,Washington,2020,13.15
+54,West Virginia,2011,11.84
+54,West Virginia,2012,12.37
+54,West Virginia,2013,11.51
+54,West Virginia,2014,12.8
+54,West Virginia,2015,11.06
+54,West Virginia,2016,12.27
+54,West Virginia,2017,13.14
+54,West Virginia,2018,13.65
+54,West Virginia,2019,13.02
+54,West Virginia,2020,13.94
+55,Wisconsin,2011,13.67
+55,Wisconsin,2012,13.27
+55,Wisconsin,2013,12.57
+55,Wisconsin,2014,14.16
+55,Wisconsin,2015,14.13
+55,Wisconsin,2016,13.27
+55,Wisconsin,2017,13.8
+55,Wisconsin,2018,13.68
+55,Wisconsin,2019,14.68
+55,Wisconsin,2020,15.07
+56,Wyoming,2011,9.83
+56,Wyoming,2012,8.89
+56,Wyoming,2013,9.7
+56,Wyoming,2014,9.92
+56,Wyoming,2015,11.88
+56,Wyoming,2016,10.74
+56,Wyoming,2017,11.75
+56,Wyoming,2018,10.31
+56,Wyoming,2019,10.11
+56,Wyoming,2020,13.64
+72,Puerto Rico,2011,
+72,Puerto Rico,2012,
+72,Puerto Rico,2013,
+72,Puerto Rico,2014,
+72,Puerto Rico,2015,
+72,Puerto Rico,2016,
+72,Puerto Rico,2017,
+72,Puerto Rico,2018,
+72,Puerto Rico,2019,
+72,Puerto Rico,2020,
