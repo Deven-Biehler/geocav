@@ -89,21 +89,12 @@
     </div>
 
     <div>
-      <label style="display:block;font-weight:600;margin-bottom:4px;">Search & add gene</label>
-      <input id="geneSearchInput" type="text" placeholder="Type gene (e.g., TP53)" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
-      <div id="geneSearchResults" style="max-height:140px;overflow:auto;border:1px solid #e5e7eb;border-radius:6px;background:#fff;"></div>
-      <div style="font-size:12px;color:#6b7280;margin-top:4px;">
-        Uses current Variant Class + Impact filters.
-      </div>
-    </div>
-
-    <div>
       <label style="display:block;font-weight:600;margin-bottom:4px;">
         Variant Classification
       </label>
       <select id="varClassSelect" class="genes-box" multiple></select>
       <div style="font-size:12px;color:#6b7280;margin-top:4px;">
-        Leave unselected = include all variant classes.
+        Unselected = include all variant classes.
       </div>
     </div>
 
@@ -114,6 +105,15 @@
       <select id="impactSelect" class="genes-box" multiple></select>
       <div style="font-size:12px;color:#6b7280;margin-top:4px;">
         Unselected = include all impacts.
+      </div>
+    </div>
+
+    <div>
+      <label style="display:block;font-weight:600;margin-bottom:4px;">Search & add gene</label>
+      <input id="geneSearchInput" type="text" placeholder="Type gene (e.g., TP53)" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
+      <div id="geneSearchResults" style="max-height:140px;overflow:auto;border:1px solid #e5e7eb;border-radius:6px;background:#fff;"></div>
+      <div style="font-size:12px;color:#6b7280;margin-top:4px;">
+        Uses current Variant Class + Impact filters.
       </div>
     </div>
 
@@ -140,29 +140,29 @@
     </div>
 
     <div class="panel">
-      <h3>Top Genes × Race</h3>
+      <h3>Selected Genes × Race</h3>
       <div id="raceHeatmap" class="panel-inner"></div>
     </div>
 
     <div class="panel">
-      <h3>Top Genes × Ethnicity</h3>
+      <h3>Selected Genes × Ethnicity</h3>
       <div id="ethHeatmap" class="panel-inner"></div>
     </div>
 
     <div class="panel">
-      <h3>Top Genes × Gender</h3>
+      <h3>Selected Genes × Gender</h3>
       <div id="genderHeatmap" class="panel-inner"></div>
     </div>
 
     <div class="panel">
-      <h3>Top Genes × Age Group</h3>
+      <h3>Selected Genes × Age Group</h3>
       <div id="agebinHeatmap" class="panel-inner"></div>
     </div>
   </div>
 
   <div id="sharedGeneLegend"
       style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
-    <div style="font-weight:600;margin-bottom:8px;">Legend for Top Genes</div>
+    <div style="font-weight:600;margin-bottom:8px;">Legend for Selected Genes</div>
     <div id="sharedGeneLegendItems"
         style="display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;"></div>
   </div>
@@ -185,6 +185,17 @@
   // <input id="geneSearchInput" ...> and <div id="geneSearchResults"></div>
   const geneSearchInput   = document.getElementById("geneSearchInput");
   const geneSearchResults = document.getElementById("geneSearchResults");
+
+  const HIGH_RES_CONFIG = {
+    responsive: true,
+    toImageButtonOptions: {
+      format: "png",        // png for slides, svg/pdf for papers
+      filename: "plot",
+      width: 1000,          // ⬅️ key
+      height: 700,         // ⬅️ key
+      scale: 3              // ⬅️ key (acts like DPI multiplier)
+    }
+  };
 
   let lastPayload = null;
 
@@ -638,7 +649,7 @@
         height: 260
       };
 
-      Plotly.newPlot("ageMutPlot", [trace], layout, {responsive:true});
+      Plotly.newPlot("ageMutPlot", [trace], layout, HIGH_RES_CONFIG);
 
     } catch (e) {
       console.error("renderAgeMut failed:", e);
@@ -677,21 +688,125 @@
       boxmode: "group"
     };
 
-    Plotly.newPlot("genderBurdenPlot", traces, layout, {responsive:true});
+    Plotly.newPlot("genderBurdenPlot", traces, layout, HIGH_RES_CONFIG);
+  }
+
+  function makeHiResConfig(filenameBase) {
+    return {
+      responsive: true,
+      displaylogo: false,
+
+      // remove the default built-in download button
+      modeBarButtonsToRemove: ["toImage"],
+
+      // add our own download button (same icon + same name)
+      modeBarButtonsToAdd: [{
+        name: "Download plot as png",
+        icon: Plotly.Icons.camera,
+        click: async function (gd) {
+          // --- capture current font sizes (so we can restore) ---
+          const full = gd._fullLayout || {};
+          const baseFont = (full.font && full.font.size) ? full.font.size : 12;
+
+          // Helper to safely read axis tick font size
+          const axFontSize = (ax) => (ax && ax.tickfont && ax.tickfont.size) ? ax.tickfont.size : baseFont;
+
+          const old = {
+            baseFont,
+            xTick: axFontSize(full.xaxis),
+            yTick: axFontSize(full.yaxis),
+            legend: (full.legend && full.legend.font && full.legend.font.size) ? full.legend.font.size : baseFont,
+            title: (full.title && full.title.font && full.title.font.size) ? full.title.font.size : baseFont + 2
+          };
+
+          // --- export-only font bump ---
+          // Tune these multipliers as needed (these are good manuscript defaults)
+          const bump = {
+            base: Math.max(16, Math.round(old.baseFont * 1.6)),
+            tick: Math.max(14, Math.round(old.xTick * 1.6)),
+            legend: Math.max(14, Math.round(old.legend * 1.6)),
+            title: Math.max(18, Math.round(old.title * 2.5))
+          };
+
+          // --- export size: scale up the PNG dimensions ---
+          const w0 = gd.clientWidth || 900;
+          const h0 = gd.clientHeight || 500;
+          const SCALE = 3; // 3x is typically crisp for manuscripts
+
+          const exportWidth = Math.round(w0 * SCALE);
+          const exportHeight = Math.round(h0 * SCALE);
+
+          try {
+            // Apply temporary layout changes (doesn't re-render data, just styles)
+            await Plotly.relayout(gd, {
+              "font.size": bump.base,
+              "title.font.size": bump.title,
+
+              // common axes
+              "xaxis.tickfont.size": bump.tick,
+              "yaxis.tickfont.size": bump.tick,
+
+              // if you have xaxis2/yaxis2 etc in some plots, these are harmless if absent
+              "xaxis2.tickfont.size": bump.tick,
+              "yaxis2.tickfont.size": bump.tick,
+
+              "legend.font.size": bump.legend
+            });
+
+            // Download high-res PNG
+            await Plotly.downloadImage(gd, {
+              format: "png",
+              filename: filenameBase || "plot",
+              width: exportWidth,
+              height: exportHeight,
+              scale: 1 // IMPORTANT: we already scale via width/height
+            });
+
+          } finally {
+            // Restore original on-page font sizes
+            await Plotly.relayout(gd, {
+              "font.size": old.baseFont,
+              "title.font.size": old.title,
+              "xaxis.tickfont.size": old.xTick,
+              "yaxis.tickfont.size": old.yTick,
+              "xaxis2.tickfont.size": old.xTick,
+              "yaxis2.tickfont.size": old.yTick,
+              "legend.font.size": old.legend
+            });
+          }
+        }
+      }]
+    };
+  }
+
+
+  function getPlotlyLegendColorForTrace(divId, traceIndex){
+    try {
+      const gd = document.getElementById(divId);
+      // After Plotly.newPlot, trace styles exist in gd.data
+      const t = gd?.data?.[traceIndex];
+      // For bar traces, Plotly stores marker.color if assigned; otherwise it may be undefined.
+      // In that case we fall back to CSS color dot without exact match.
+      return t?.marker?.color || null;
+    } catch (e){
+      return null;
+    }
   }
 
   function renderGeneGroupedBars(divId, obj, title){
+    // Pick a filename from the divId (or from title if you prefer)
+    const cfg = makeHiResConfig(`demographics_${divId}`);
+
     if (!obj || !obj.groups || !obj.genes || !obj.fractions){
-      return Plotly.newPlot(divId, [], {title, height: 260}, {responsive:true});
+      return Plotly.newPlot(divId, [], { title, height: 260 }, cfg);
     }
 
     const groups = obj.groups || [];
-    function toTitleCase(s){
-      return String(s ?? "")
-        .toLowerCase()
-        .replace(/\b\w/g, c => c.toUpperCase());
-    }
-    const tickText = groups.map(g => wrapTickLabel(toTitleCase(g), 12, 3));
+
+    // IMPORTANT: you said you don’t want forced capitalization anymore
+    // So remove toTitleCase and use original group text.
+    const tickText = groups.map(g => wrapTickLabel(String(g ?? ""), 12, 3));
+
     const genes  = obj.genes  || [];
     const fracs  = obj.fractions || [];
     const counts = obj.counts || [];
@@ -714,40 +829,28 @@
         text,
         textposition: "auto",
         hovertemplate: `<b>${g}</b><br>%{x}<br>%{text}<extra></extra>`,
-        showlegend: false  //hide per-plot legend
+        showlegend: false
       };
     });
 
     const layout = {
-      title: {text: title, font: {size: 12}},
+      title: { text: title, font: { size: 12 } },
       xaxis: {
         tickmode: "array",
         tickvals: groups,
         ticktext: tickText,
-        tickangle: 0,        
+        tickangle: 0,
         automargin: true
       },
-      margin: {t: 30, r: 10, b: 60, l: 60},
+      margin: { t: 60, r: 10, b: 60, l: 60 },
       barmode: "group",
-      yaxis: {title: "Fraction mutated", range: [0, 1]},
+      yaxis: { title: "Fraction mutated", range: [0, 1] },
       height: 260
     };
 
-    return Plotly.newPlot(divId, traces, layout, {responsive:true});
+    return Plotly.newPlot(divId, traces, layout, cfg);
   }
 
-  function getPlotlyLegendColorForTrace(divId, traceIndex){
-    try {
-      const gd = document.getElementById(divId);
-      // After Plotly.newPlot, trace styles exist in gd.data
-      const t = gd?.data?.[traceIndex];
-      // For bar traces, Plotly stores marker.color if assigned; otherwise it may be undefined.
-      // In that case we fall back to CSS color dot without exact match.
-      return t?.marker?.color || null;
-    } catch (e){
-      return null;
-    }
-  }
 
   function renderSharedGeneLegend(genes){
     const wrap = document.getElementById("sharedGeneLegend");
