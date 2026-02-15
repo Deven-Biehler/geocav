@@ -135,7 +135,7 @@
     </div>
 
     <div class="panel">
-      <h3>Mutation Burden by Gender</h3>
+      <h3>Mutation Burden by Sex</h3>
       <div id="genderBurdenPlot" class="panel-inner"></div>
     </div>
 
@@ -150,7 +150,7 @@
     </div>
 
     <div class="panel">
-      <h3>Selected Genes × Gender</h3>
+      <h3>Selected Genes × Sex</h3>
       <div id="genderHeatmap" class="panel-inner"></div>
     </div>
 
@@ -457,7 +457,7 @@
     Promise.all([
       renderGeneGroupedBars("raceHeatmap", data.gene_by_race, "Gene mutation frequency by Race"),
       renderGeneGroupedBars("ethHeatmap", data.gene_by_ethnicity, "Gene mutation frequency by Ethnicity"),
-      renderGeneGroupedBars("genderHeatmap", data.gene_by_gender, "Gene mutation frequency by Gender"),
+      renderGeneGroupedBars("genderHeatmap", data.gene_by_gender, "Gene mutation frequency by Sex"),
       renderGeneGroupedBars("agebinHeatmap", data.gene_by_agebin, "Gene mutation frequency by Age Group"),
     ]).then(() => {
       // build legend from one rendered plot (colors now resolved)
