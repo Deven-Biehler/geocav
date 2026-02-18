@@ -22,10 +22,6 @@
       <a class="nav-link {% if request.resolver_match.url_name == 'dashboard_view' %}active{% endif %}"
          href="{% url 'dashboard_view' %}">Geospatial Dashboard</a>
 
-      <!-- Network Analysis -->
-      <a class="nav-link {% if request.resolver_match.url_name == 'network_analysis' %}active{% endif %}"
-         href="{% url 'network_analysis' %}">Network Analysis</a>
-
       <!-- Molecular Analysis (Collapsible, same style as main links) -->
       <a href="{% url 'molecular_landscape' %}"
         id="molToggle"
@@ -58,6 +54,10 @@
         </a>
 
       </div>
+
+      <!-- Network Analysis -->
+      <a class="nav-link {% if request.resolver_match.url_name == 'network_analysis' %}active{% endif %}"
+         href="{% url 'network_analysis' %}">Network Analysis</a>
 
 
     </nav>

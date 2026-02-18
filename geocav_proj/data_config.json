@@ -16,7 +16,7 @@
     }
   },
   "cancer_types": [
-    "Pancreatic", "Skin", "Lung", "Liver", "Breast", "Kidney", "Prostate", "Esophageal", "Ovarian", "Stomach"
+    "Pancreatic", "Skin", "Lung", "Liver", "Breast", "Kidney", "Prostate", "Esophageal", "Ovarian", "Stomach", "Cervical", "Colorectal", "Lymphoma", "Thyroid"
   ],
 
   "factors": {
@@ -329,6 +329,26 @@
       "label": "Stomach Cancer",
       "maf": "media/molecular/stomach/maf.csv",
       "clinical": "media/molecular/stomach/clinical.csv"
+    },
+    "cervical": {
+      "label": "Cervical Cancer",
+      "maf": "media/molecular/cervical/maf.csv",
+      "clinical": "media/molecular/cervical/clinical.csv"
+    },
+    "colorectal": {
+      "label": "Colorectal Cancer",
+      "maf": "media/molecular/colorectal/maf.csv",
+      "clinical": "media/molecular/colorectal/clinical.csv"
+    },
+    "lymphoma": {
+      "label": "Lymphoma Cancer",
+      "maf": "media/molecular/lymphoma/maf.csv",
+      "clinical": "media/molecular/lymphoma/clinical.csv"
+    },
+    "thyroid": {
+      "label": "Thyroid Cancer",
+      "maf": "media/molecular/thyroid/maf.csv",
+      "clinical": "media/molecular/thyroid/clinical.csv"
     }
   }
 }
