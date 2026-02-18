@@ -19,12 +19,30 @@ export class MapRenderer {
     }
 
     initializeBaseMap() {
-        this.map = L.map('map').setView(DEFAULT_LEAFLET_CONFIG.DEFAULT_CENTER, DEFAULT_LEAFLET_CONFIG.DEFAULT_ZOOM);
+        // Define or import your wide bounds (includes AK/HI loosely)
+        const usBounds = L.latLngBounds(
+            [-7, -219],     // SW: ~ -7.4, -219
+            [98, -15]       // NE: ~ 97.7, -15
+        );
 
+        // Create map WITH the restriction options
+        this.map = L.map('map', {
+            // You can still use setView(...) afterward if you prefer
+            center: DEFAULT_LEAFLET_CONFIG.DEFAULT_CENTER,
+            zoom: DEFAULT_LEAFLET_CONFIG.DEFAULT_ZOOM,
+            
+            zoomDelta: 0.5,          // or 0.05 for tiny steps
+            zoomSnap: 0.5,           // or 0 for fully continuous
+            wheelPxPerZoomLevel: 1000, // Make zooming smoother
+            maxBounds: usBounds,
+            maxBoundsViscosity: 1.0,     // 1.0 = hard wall, no dragging beyond bounds
+            minZoom: 4                   // ← prevents zooming out to tiny world view
+        });
         L.tileLayer(DEFAULT_LEAFLET_CONFIG.TILE_LAYER.url, {
             maxZoom: DEFAULT_LEAFLET_CONFIG.TILE_LAYER.options.maxZoom,
-            attribution: DEFAULT_LEAFLET_CONFIG.TILE_LAYER.options.attribution
+            attribution: DEFAULT_LEAFLET_CONFIG.TILE_LAYER.options.attribution,
         }).addTo(this.map);
+        this.map.fitBounds(usBounds, { padding: [20, 20] });
     }
 
 
