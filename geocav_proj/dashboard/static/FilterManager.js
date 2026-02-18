@@ -283,18 +283,20 @@ export class FilterManager {
 
         // Update cancer years
         let availableCancerYears = this.dataManager.cancer_years[this.selectedFilters.level][this.selectedFilters.cancer_type] || [];
-
-        // Ensure current cancer year is valid
-        if (!availableCancerYears.includes(this.selectedFilters.cancer_year)) {
-             if (availableCancerYears.length > 0) {
-                 this.selectedFilters.cancer_year = availableCancerYears[0];
-             }
+        let endYears = null;
+        if (availableCancerYears['end']) {
+            endYears = availableCancerYears['end'];
+            availableCancerYears = availableCancerYears['start'];
         }
 
-        availableCancerYears.forEach(year => {
+        availableCancerYears.forEach((year, i) => {
             const option = document.createElement('option');
             option.value = parseInt(year);
-            option.textContent = year;
+            if (endYears) {
+                option.textContent = `${year} - ${endYears[i]}`;
+            } else {
+                option.textContent = year;
+            }
             if (year == this.selectedFilters.cancer_year) option.selected = true;
             this.cancerSlider.appendChild(option);
         });
@@ -302,6 +304,10 @@ export class FilterManager {
         // Update factor years
         const firstFactor = Array.isArray(this.selectedFilters.factor) ? this.selectedFilters.factor[0] : this.selectedFilters.factor;
         let availableFactorYears = this.dataManager.factor_years[this.selectedFilters.level][firstFactor] || [];
+        if (availableFactorYears['end']) {
+            endYears = availableFactorYears['end'];
+            availableFactorYears = availableFactorYears['start'];
+        }
 
         // Ensure current factor year is valid
         if (!availableFactorYears.includes(this.selectedFilters.factor_year)) {
@@ -313,7 +319,12 @@ export class FilterManager {
         availableFactorYears.forEach(year => {
             const option = document.createElement('option');
             option.value = parseInt(year);
-            option.textContent = year;
+            if (endYears) {
+                const endYear = endYears[availableFactorYears.indexOf(year)];
+                option.textContent = `${year} - ${endYear}`;
+            } else {
+                option.textContent = year;
+            }
             if (year == this.selectedFilters.factor_year) option.selected = true;
             this.factorSlider.appendChild(option);
         });

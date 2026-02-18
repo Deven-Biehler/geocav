@@ -76,12 +76,22 @@ def get_static_info(request):
             cancer_dict['state'][ct] = state_years
             
         # County years
-        county_years = sorted(list(CancerIncidence.objects.filter(
+        county_start_years = sorted(list(CancerIncidence.objects.filter(
             cancer_type__name=ct, 
             geographic_level__iexact='County'
         ).values_list('start_year', flat=True).distinct()))
-        if county_years:
-            cancer_dict['county'][ct] = county_years
+        if county_start_years:
+            if ct not in cancer_dict['county']:
+                cancer_dict['county'][ct] = {}
+            cancer_dict['county'][ct]['start'] = county_start_years
+        county_end_years = sorted(list(CancerIncidence.objects.filter(
+            cancer_type__name=ct, 
+            geographic_level__iexact='County'
+        ).values_list('end_year', flat=True).distinct()))
+        if county_end_years:
+            if ct not in cancer_dict['county']:
+                cancer_dict['county'][ct] = {}
+            cancer_dict['county'][ct]['end'] = county_end_years
 
     # 2. Build Factor Dictionary: { 'level': { 'FactorName': [years] } }
     factor_dict = {
@@ -101,12 +111,22 @@ def get_static_info(request):
             factor_dict['state'][ft] = state_years
             
         # County years
-        county_years = sorted(list(FactorMeasurement.objects.filter(
+        county_start_years = sorted(list(FactorMeasurement.objects.filter(
             factor__name=ft, 
             geographic_level__iexact='County'
         ).values_list('start_year', flat=True).distinct()))
-        if county_years:
-            factor_dict['county'][ft] = county_years
+        if county_start_years:
+            if ft not in factor_dict['county']:
+                factor_dict['county'][ft] = {}
+            factor_dict['county'][ft]['start']= county_start_years
+        county_end_years = sorted(list(FactorMeasurement.objects.filter(
+            factor__name=ft,
+            geographic_level__iexact='County'
+        ).values_list('end_year', flat=True).distinct()))
+        if county_end_years:
+            if ft not in factor_dict['county']:
+                factor_dict['county'][ft] = {}
+            factor_dict['county'][ft]['end'] = county_end_years
 
     # 3. Get list of all states
     states = list(CancerIncidence.objects.values_list('state', flat=True).distinct().order_by('state'))
