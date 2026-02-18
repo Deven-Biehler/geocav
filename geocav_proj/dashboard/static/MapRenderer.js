@@ -6,6 +6,7 @@ import {ChoroplethMap} from './maps/ChoroplethMap.js';
 import {PieMap} from './maps/PieMap.js';
 import { DotDensityMap } from './maps/DotDensityMap.js';
 import { RegressionPlot } from './RegressionPlot.js';
+
 import { DataManager } from './DataManager.js';
 
 const MAP_TYPE = 'choropleth'; // Change to 'pie', 'choropleth', or 'dotDensity' as needed

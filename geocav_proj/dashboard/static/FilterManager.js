@@ -248,6 +248,7 @@ export class FilterManager {
         // Determine which filter list to use
         const filterList = Object.keys(this.dataManager.factor_years[this.selectedFilters.level] || {})
         
+        
         // Populate options
         filterList.forEach(factor => {
             const option = document.createElement('option');
