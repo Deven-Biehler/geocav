@@ -1,3 +1,7 @@
+const usBounds = L.latLngBounds(
+    [18.9, -168],   // Roughly covers Hawaii + some Pacific buffer
+    [71.4, -66]     // Up to northern Alaska
+);
 export const DEFAULT_LEAFLET_CONFIG = {
     DEFAULT_CENTER: [39.8283, -98.5795],
     DEFAULT_ZOOM: 4,
@@ -7,7 +11,8 @@ export const DEFAULT_LEAFLET_CONFIG = {
             maxZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
         }
-    }
+    },
+    MAX_BOUNDS: usBounds
 };
 
 
@@ -125,6 +130,15 @@ export const STATE_CANCER_AVAILABLE_YEARS = {
     "Pancreatic": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
     "Prostate": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
     "Skin": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
+    "Bladder": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
+    "BrainCNS": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
+    "Cervical": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
+    "Colorectal": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
+    "Leukemia": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
+    "Lymphoma": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
+    "MyeloidLeukemia": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
+    "Tensiticular": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
+    "Thyroid": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020],
     "None": []
 };
 
@@ -137,6 +151,10 @@ export const COUNTY_CANCER_AVAILABLE_YEARS = {
     "Pancreatic": [2011, 2016],
     "Prostate": [2011, 2016],
     "Skin": [2011, 2016],
+    "Bladder": [2011, 2016],
+    "BrainCNS": [2011, 2016],
+    "Cervical": [2011, 2016],
+    
     "None": []
 };
 
@@ -202,7 +220,7 @@ export const COUNTY_FACTORS_AVAILABLE_YEARS = {
     "Smoking": [2016],
 
     "SVI_Score": [2014, 2016, 2018, 2020, 2022],
-    'Opioid_Dispensing_Rate': [2019, 2020],
+    'Opioid_Dispensing_Rate': [2016, 2021],
 
     "None": []
 };

@@ -78,7 +78,7 @@
     <label style="margin-left:10px;"><strong>Mutation burden filter:</strong></label>
     <select id="groupBySelect">
       <option value="none">None (overall)</option>
-      <option value="gender">Gender</option>
+      <option value="gender">Sex</option>
       <option value="stage">Pathologic stage</option>
       <option value="vital_status">Vital status</option>
       <option value="pharma_treatment">Pharma treatment</option>
@@ -128,6 +128,17 @@
   const impactSelect  = document.getElementById("impactSelect");
   const showOutliersToggle = document.getElementById("showOutliersToggle");
   const metaText      = document.getElementById("metaText");
+
+  const HIGH_RES_CONFIG = {
+    responsive: true,
+    toImageButtonOptions: {
+      format: "png",        // png for slides, svg/pdf for papers
+      filename: "plot",
+      width: 700,          // ⬅️ key
+      height: 400,         // ⬅️ key
+      scale: 3              // ⬅️ key (acts like DPI multiplier)
+    }
+  };
 
   function selectedImpacts(){
     if (!impactSelect) return [];
@@ -223,7 +234,7 @@
       height: 260
     };
 
-    Plotly.newPlot("variantPlot", [trace], layout, {responsive:true});
+    Plotly.newPlot("variantPlot", [trace], layout, HIGH_RES_CONFIG);
   }
 
   // Top genes: horizontal bar; reverse y-axis for descending display
@@ -245,7 +256,7 @@
       height: 260
     };
 
-    Plotly.newPlot("topGenesPlot", [trace], layout, {responsive:true});
+    Plotly.newPlot("topGenesPlot", [trace], layout, HIGH_RES_CONFIG);
   }
 
   function removeOutliersIQR(values) {
@@ -291,7 +302,7 @@
       xaxis: {tickangle: -25},
       height: 260,
       boxmode: "group"
-    }, {responsive:true});
+    }, HIGH_RES_CONFIG);
 
     // ---- unique genes per sample ----
     const genesByGroup = bbox.genes || [];
@@ -310,7 +321,7 @@
       xaxis: {tickangle: -25},
       height: 260,
       boxmode: "group"
-    }, {responsive:true});
+    }, HIGH_RES_CONFIG);
   }
 
 

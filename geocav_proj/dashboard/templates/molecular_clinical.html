@@ -108,6 +108,17 @@
   const cancerSelect = document.getElementById("cancerSelect");
   const metaText     = document.getElementById("metaText");
 
+  const HIGH_RES_CONFIG = {
+    responsive: true,
+    toImageButtonOptions: {
+      format: "png",        // png for slides, svg/pdf for papers
+      filename: "plot",
+      width: 700,          // ⬅️ key
+      height: 400,         // ⬅️ key
+      scale: 3              // ⬅️ key (acts like DPI multiplier)
+    }
+  };
+
   async function fetchClinical(){
     const cancer = cancerSelect.value;
     let url = "{% url 'molecular_clinical_json' cancer_name='__C__' %}";
@@ -139,11 +150,11 @@
     const values = ageData.values || [];
     if (!values.length) {
       Plotly.newPlot("agePlot", [], {
-        margin: {t: 10, r: 10, b: 40, l: 50},
+        margin: {t: 30, r: 10, b: 40, l: 50},
         xaxis: {title: "Age (years)", range: [0, 100]},
         yaxis: {title: "Number of patients"},
         height: 260
-      }, {responsive:true});
+      }, HIGH_RES_CONFIG);
       return;
     }
 
@@ -162,7 +173,7 @@
     };
 
     const layout = {
-      margin: {t: 10, r: 10, b: 40, l: 50},
+      margin: {t: 30, r: 10, b: 40, l: 50},
       xaxis: {
         title: "Age (years)",
         range: [0, 100]   // 🔹 fixed scale across cancers
@@ -198,7 +209,7 @@
       ]
     };
 
-    Plotly.newPlot("agePlot", [trace], layout, {responsive:true});
+    Plotly.newPlot("agePlot", [trace], layout, HIGH_RES_CONFIG);
   }
 
   function renderStage(stageData){
@@ -215,7 +226,7 @@
       yaxis: {title: "Number of patients"},
       height: 260
     };
-    Plotly.newPlot("stagePlot", [trace], layout, {responsive:true});
+    Plotly.newPlot("stagePlot", [trace], layout, HIGH_RES_CONFIG);
   }
 
   function renderTreatment(tData){
@@ -232,7 +243,7 @@
       yaxis: {title: "Number of patients"},
       height: 260
     };
-    Plotly.newPlot("treatPlot", [trace], layout, {responsive:true});
+    Plotly.newPlot("treatPlot", [trace], layout, HIGH_RES_CONFIG);
   }
 
   function renderVital(vData){
@@ -249,7 +260,7 @@
       yaxis: {title: "Number of patients"},
       height: 260
     };
-    Plotly.newPlot("vitalPlot", [trace], layout, {responsive:true});
+    Plotly.newPlot("vitalPlot", [trace], layout, HIGH_RES_CONFIG);
   }
 
   cancerSelect.addEventListener("change", fetchClinical);

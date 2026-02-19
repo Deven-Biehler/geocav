@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Home | GeoCAV{% endblock %}
+{% block title %}Home | GMCAV{% endblock %}
 
 {% block content %}
-<h1 style="margin-bottom: 1rem;">Welcome to GeoCAV</h1>
+<h1 style="margin-bottom: 1rem;">Welcome to GMCAV</h1>
 <p style="color:#6c757d; margin-bottom: 1.5rem;">
   Explore cancer data through geospatial insights, network structures, and molecular patterns.
 </p>
@@ -29,23 +29,7 @@
     </div>
   </article>
 
-  <!-- Network Analysis -->
-  <article class="feature-card">
-    <div class="feature-media">
-      <img src="{% static 'img/network.jpg' %}" alt="Network analysis preview" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-      <div class="fallback">
-        <span>🕸️</span>
-      </div>
-    </div>
-    <div class="feature-body">
-      <h2>Network Analysis</h2>
-      <p>
-        Visualize gene/sequence interaction networks. Select cancer types, render large graphs fast, and prepare
-        for metadata-driven coloring and filters.
-      </p>
-      <a href="{% url 'network_analysis' %}" class="btn-primary">Network Analysis</a>
-    </div>
-  </article>
+  
 
   <!-- Molecular Analysis -->
   <article class="feature-card">
@@ -62,6 +46,24 @@
         with patient outcomes.
       </p>
       <a href="{% url 'molecular_landscape' %}" class="btn-primary">Molecular Analysis</a>
+    </div>
+  </article>
+
+  <!-- Network Analysis -->
+  <article class="feature-card">
+    <div class="feature-media">
+      <img src="{% static 'img/network.jpg' %}" alt="Network analysis preview" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+      <div class="fallback">
+        <span>🕸️</span>
+      </div>
+    </div>
+    <div class="feature-body">
+      <h2>Network Analysis</h2>
+      <p>
+        Visualize gene/sequence interaction networks. Select cancer types, render large graphs fast, and prepare
+        for metadata-driven coloring and filters.
+      </p>
+      <a href="{% url 'network_analysis' %}" class="btn-primary">Network Analysis</a>
     </div>
   </article>
 </div>

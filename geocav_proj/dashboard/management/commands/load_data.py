@@ -24,100 +24,175 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Successfully loaded all data'))
 
     def load_data(self):
-        # self.clear_existing_data()
+        self.clear_existing_data()
         self.load_factors()
         self.load_cancer_incidence()
 
     def load_factors(self):
-        """Load environmental factor data into database"""
-        factors_path = os.path.join(settings.BASE_DIR, 'data/factors.csv')
-        df = pd.read_csv(factors_path)
+        self.factor_folder = os.path.join(settings.BASE_DIR, 'data', 'Factors')
+        
+        # Ensure default Gender and Race exist
+        all_gender, _ = Gender.objects.get_or_create(name='All')
+        all_race, _ = Race.objects.get_or_create(name='All')
 
-        # Pre-create lookups
-        factors_dict = {name: Factor.objects.get_or_create(name=name)[0] 
-                    for name in df['Factor'].unique()}
-        gender_all = Gender.objects.get_or_create(name='All')[0]
-        race_all = Race.objects.get_or_create(name='ALL')[0]
+        # Load county-level factors
+        # Assumes files are named like "County_Level/FactorName.csv" with columns: StateFIPS,State,CountyFIPS,County,Value,Start Year,End Year
+        county_factors_folder = os.path.join(self.factor_folder, 'County_Level')
+        for filename in os.listdir(county_factors_folder):
+            if filename.endswith('.csv'):
+                filepath = os.path.join(county_factors_folder, filename)
+                self.stdout.write(f'Loading factors from {filepath}...')
+                df = pd.read_csv(filepath)
+                for _, row in df.iterrows():
+                    factor_name = filename.replace('.csv', '')
+                    value = row['Value']
+                    county = row['County']
+                    state = row['State']
+                    start_year = row['Start Year']
+                    end_year = row['End Year']
+                    # Get or create the Factor
+                    factor, _ = Factor.objects.get_or_create(name=factor_name)
+                    
+                    # Create the FactorMeasurement
+                    FactorMeasurement.objects.create(
+                        factor=factor,
+                        geographic_level=GeographicLevel.COUNTY,
+                        state=state,
+                        county=county,
+                        statefp=row['StateFIPS'],
+                        countyfp=row['CountyFIPS'],
+                        factor_value=value,
+                        start_year=start_year,
+                        end_year=end_year,
+                        gender=all_gender,
+                        race=all_race
+                    )
         
-        # Add geo_level and factor_id columns
-        df['geo_level'] = df['County'].apply(
-            lambda x: GeographicLevel.STATE if x == 'All' else GeographicLevel.COUNTY
-        )
-        df['factor_id'] = df['Factor'].map(lambda x: factors_dict[x].id)
+        # Load state-level factors
+        # Assumes files are named like "State_Level/FactorName.csv" with columns: StateFIPS,State,Year,Value
+        state_factors_folder = os.path.join(self.factor_folder, 'State_Level')
+        for filename in os.listdir(state_factors_folder):
+            if filename.endswith('.csv'):
+                filepath = os.path.join(state_factors_folder, filename)
+                self.stdout.write(f'Loading factors from {filepath}...')
+                df = pd.read_csv(filepath)
+                for _, row in df.iterrows():
+                    factor_name = filename.replace('.csv', '')
+                    value = row['Value']
+                    state = row['State']
+                    year = row['Year']
+                    # Get or create the Factor
+                    factor, _ = Factor.objects.get_or_create(name=factor_name)
+                    
+                    # Create the FactorMeasurement
+                    FactorMeasurement.objects.create(
+                        factor=factor,
+                        geographic_level=GeographicLevel.STATE,
+                        state=state,
+                        statefp=row['StateFIPS'],
+                        factor_value=value,
+                        start_year=year,
+                        end_year=year,
+                        gender=all_gender,
+                        race=all_race
+                    )
         
-        # Convert to list of dicts for bulk_create
-        measurements = [
-            FactorMeasurement(
-                geographic_level=row['geo_level'],
-                state=row['State'],
-                statefp=row['StateFIPS'],
-                county=row['County'],
-                countyfp=row['CountyFIPS'],
-                factor_id=row['factor_id'],
-                start_year=int(row['Start Year']),
-                end_year=int(row['End Year']),
-                factor_value=float(row['Value']),
-                gender=gender_all, # default to 'All'
-                race=race_all # default to 'ALL'
-            )
-            for _, row in df.iterrows()
-        ]
-        
-        # Bulk insert
-        FactorMeasurement.objects.bulk_create(measurements, batch_size=10000)
 
     def load_cancer_incidence(self):
-        """Load cancer incidence data into database"""
-        cancer_path = os.path.join(settings.BASE_DIR, 'data/cancer_incidence.csv')
-        df = pd.read_csv(cancer_path)
-        
-        self.stdout.write(f"Loading {len(df)} cancer incidence records...")
-        
-        # Pre-create all lookup objects
-        cancer_types_dict = {}
-        for cancer_name in df['Cancer Type'].unique():
-            cancer_type, _ = CancerType.objects.get_or_create(name=cancer_name)
-            cancer_types_dict[cancer_name] = cancer_type
-        
-        genders_dict = {name: Gender.objects.get_or_create(name=name)[0] 
-                        for name in df['Sex'].unique()}
-        gender_all, _ = Gender.objects.get_or_create(name='All')
-        genders_dict['All'] = gender_all
-        
-        races_dict = {}
-        for race_name in df['Race Ethnicity'].unique():
-            race, _ = Race.objects.get_or_create(name=race_name)
-            races_dict[race_name] = race
-        
-        # Build list of objects to bulk create
-        incidences = []
-        for idx, row in df.iterrows():
-            if idx % 10000 == 0:
-                self.stdout.write(f"  Prepared {idx} records...")
-            
-            geo_level = GeographicLevel.STATE if row['County'] == 'All' else GeographicLevel.COUNTY
-            statefp = row['StateFIPS']
-            countyfp = row['CountyFIPS']
-            
-            incidences.append(CancerIncidence(
-                geographic_level=geo_level,
-                state=row['State'],
-                statefp=statefp,
-                county=row['County'],
-                countyfp=countyfp,
-                cancer_type=cancer_types_dict[row['Cancer Type']],
-                gender=genders_dict[row['Sex']],
-                race=races_dict[row['Race Ethnicity']],
-                start_year=int(row['Start Year']),
-                end_year=int(row['End Year']),
-                incidence_rate=float(row['Incidence'])
-            ))
-        
-        # Bulk create in batches
-        with transaction.atomic():
-            CancerIncidence.objects.bulk_create(incidences, batch_size=10000)
-        
-        self.stdout.write(self.style.SUCCESS(f"Loaded {len(incidences)} cancer incidence records"))
+        # Load county cancer incidence data
+        # Assumes file is 
+        # named "CancerIncidence.csv" in folder "geocav_proj/data/Cancer/county_level/county" with columns: StateFIPS,State,CountyFIPS,County,Start Year,End Year,Value
+        # or named "CancerIncidence.csv" in folder "geocav_proj/data/Cancer/county_level/county_gender" with columns: StateFIPS,State,CountyFIPS,County,Start Year,End Year,Sex,Value
+        # or named "CancerIncidence.csv" in folder "geocav_proj/data/Cancer/county_level/county_race" with columns: StateFIPS,State,CountyFIPS,County,Start Year,End Year,Race Ethnicity,Value
+        cancer_incidence_folder = os.path.join(settings.BASE_DIR, 'data', 'Cancer', 'county_level')
+        for subfolder in ['county', 'county_gender', 'county_race']:
+            folder_path = os.path.join(cancer_incidence_folder, subfolder)
+            for filename in os.listdir(folder_path):
+                if filename.endswith('.csv'):
+                    filepath = os.path.join(folder_path, filename)
+                    self.stdout.write(f'Loading cancer incidence data from {filepath}...')
+                    df = pd.read_csv(filepath)
+                    for _, row in df.iterrows():
+                        state = row['State']
+                        county = row['County']
+                        start_year = row['Start Year']
+                        end_year = row['End Year']
+                        value = row['Value']
+                        # Get or create the CancerType
+                        cancer_type_name = filename.replace('.csv', '')
+                        cancer_type, _ = CancerType.objects.get_or_create(name=cancer_type_name)
+                        
+                        # Get or create the Race and Gender if applicable
+                        if subfolder == 'county_gender':
+                            gender_obj = Gender.objects.get_or_create(name=row['Sex'])[0]
+                        else:
+                            gender_obj = Gender.objects.get_or_create(name='All')[0]
+                        if subfolder == 'county_race':
+                            race_obj = Race.objects.get_or_create(name=row['Race Ethnicity'])[0]
+                        else:
+                            race_obj = Race.objects.get_or_create(name='All')[0]
+                        
+                        # Create the CancerIncidence record
+                        CancerIncidence.objects.create(
+                            cancer_type=cancer_type,
+                            geographic_level=GeographicLevel.COUNTY,
+                            state=state,
+                            county=county,
+                            statefp=row['StateFIPS'],
+                            countyfp=row['CountyFIPS'],
+                            gender=gender_obj,
+                            race=race_obj,
+                            incidence_rate=value,
+                            start_year=start_year,
+                            end_year=end_year
+                        )
+
+        # Load state cancer incidence data
+        # Assumes file is named "CancerIncidence.csv" in folder "geocav_proj/data/Cancer/state_level" with columns: StateFIPS,State,Year,Value
+        # or named "CancerIncidence.csv" in folder "geocav_proj/data/Cancer/state_level/state_gender" with columns: StateFIPS,State,Year,Sex,Value
+        # or named "CancerIncidence.csv" in folder "geocav_proj/data/Cancer/state_level/state_race" with columns: StateFIPS,State,Year,Race Ethnicity,Value
+        state_cancer_incidence_folder = os.path.join(settings.BASE_DIR, 'data', 'Cancer', 'state_level')
+        if os.path.exists(state_cancer_incidence_folder):
+            for subfolder in ['state', 'state_gender', 'state_race']:
+                folder_path = os.path.join(state_cancer_incidence_folder, subfolder)
+                if not os.path.exists(folder_path): continue
+                
+                for filename in os.listdir(folder_path):
+                    if filename.endswith('.csv'):
+                        filepath = os.path.join(folder_path, filename)
+                        self.stdout.write(f'Loading cancer incidence data from {filepath}...')
+                        df = pd.read_csv(filepath)
+                        for _, row in df.iterrows():
+                            state = row['State']
+                            year = row['Year']
+                            value = row['Value']
+                            # Get or create the CancerType
+                            cancer_type_name = filename.replace('.csv', '')
+                            cancer_type, _ = CancerType.objects.get_or_create(name=cancer_type_name)
+                            
+                            # Get or create the Race and Gender if applicable
+                            if subfolder == 'state_gender':
+                                gender_obj = Gender.objects.get_or_create(name=row['Sex'])[0]
+                            else:
+                                gender_obj = Gender.objects.get_or_create(name='All')[0]
+                            if subfolder == 'state_race':
+                                race_obj = Race.objects.get_or_create(name=row['Race Ethnicity'])[0]
+                            else:
+                                race_obj = Race.objects.get_or_create(name='All')[0]
+                            
+                            # Create the CancerIncidence record
+                            CancerIncidence.objects.create(
+                                cancer_type=cancer_type,
+                                geographic_level=GeographicLevel.STATE,
+                                state=state,
+                                statefp=row['StateFIPS'],
+                                gender=gender_obj,
+                                race=race_obj,
+                                incidence_rate=value,
+                                start_year=year,
+                                end_year=year,
+                            )
+
 
     def clear_existing_data(self):
         """Clear all existing data from the database"""

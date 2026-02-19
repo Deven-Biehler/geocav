@@ -105,6 +105,7 @@ export class ChoroplethMap {
     }
 
     async renderMap(map, data) {
+        
         console.log('[Choropleth Map] Rendering choropleth map with filters:', this.selectedFilters, 'and level:', this.selectedFilters.level);
         console.log('[Choropleth Map] Data received for rendering:', data);
 
