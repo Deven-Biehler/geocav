@@ -30,7 +30,8 @@ DEBUG = False
 
 ALLOWED_HOSTS = [
     'geocav.eecs.wsu.edu',
-    '127.0.0.1'
+    '127.0.0.1',
+    'localhost'
 ]
 
 
