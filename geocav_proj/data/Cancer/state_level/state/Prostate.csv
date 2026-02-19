@@ -1,0 +1,508 @@
+StateFIPS,State,Year,Value
+1,Alabama,2011,146.5
+1,Alabama,2012,127.65
+1,Alabama,2013,121.03
+1,Alabama,2014,109.41
+1,Alabama,2015,121.93
+1,Alabama,2016,125.1
+1,Alabama,2017,131.57
+1,Alabama,2018,123.99
+1,Alabama,2019,120.34
+1,Alabama,2020,105.23
+2,Alaska,2011,101.22
+2,Alaska,2012,94.29
+2,Alaska,2013,81.91
+2,Alaska,2014,82.1
+2,Alaska,2015,70.94
+2,Alaska,2016,98.28
+2,Alaska,2017,96.82
+2,Alaska,2018,105.21
+2,Alaska,2019,106.69
+2,Alaska,2020,94.59
+4,Arizona,2011,90.16
+4,Arizona,2012,77.98
+4,Arizona,2013,79.25
+4,Arizona,2014,87.07
+4,Arizona,2015,85.69
+4,Arizona,2016,79.8
+4,Arizona,2017,86.38
+4,Arizona,2018,81.99
+4,Arizona,2019,83.42
+4,Arizona,2020,68.92
+5,Arkansas,2011,126.54
+5,Arkansas,2012,106.99
+5,Arkansas,2013,96.41
+5,Arkansas,2014,100.13
+5,Arkansas,2015,111.27
+5,Arkansas,2016,105.23
+5,Arkansas,2017,114.25
+5,Arkansas,2018,116.07
+5,Arkansas,2019,118.78
+5,Arkansas,2020,80.09
+6,California,2011,129.3
+6,California,2012,108.61
+6,California,2013,102.54
+6,California,2014,90.17
+6,California,2015,92.75
+6,California,2016,92.98
+6,California,2017,99.67
+6,California,2018,96.14
+6,California,2019,102.16
+6,California,2020,90.83
+8,Colorado,2011,127.52
+8,Colorado,2012,107.82
+8,Colorado,2013,104.95
+8,Colorado,2014,94.97
+8,Colorado,2015,87.26
+8,Colorado,2016,90.17
+8,Colorado,2017,95.26
+8,Colorado,2018,101.41
+8,Colorado,2019,107.33
+8,Colorado,2020,103.27
+9,Connecticut,2011,137.14
+9,Connecticut,2012,113.72
+9,Connecticut,2013,108.44
+9,Connecticut,2014,103.54
+9,Connecticut,2015,113.61
+9,Connecticut,2016,117.71
+9,Connecticut,2017,126.1
+9,Connecticut,2018,126.12
+9,Connecticut,2019,134.41
+9,Connecticut,2020,112.49
+10,Delaware,2011,159.04
+10,Delaware,2012,147.99
+10,Delaware,2013,133.85
+10,Delaware,2014,121.43
+10,Delaware,2015,126.78
+10,Delaware,2016,123.4
+10,Delaware,2017,126.56
+10,Delaware,2018,126.24
+10,Delaware,2019,140.18
+10,Delaware,2020,133.7
+11,District of Columbia,2011,203.74
+11,District of Columbia,2012,168.62
+11,District of Columbia,2013,127.27
+11,District of Columbia,2014,126.88
+11,District of Columbia,2015,117.47
+11,District of Columbia,2016,126.68
+11,District of Columbia,2017,146.92
+11,District of Columbia,2018,137.27
+11,District of Columbia,2019,135.63
+11,District of Columbia,2020,114.24
+12,Florida,2011,130.71
+12,Florida,2012,112.27
+12,Florida,2013,115.77
+12,Florida,2014,110.33
+12,Florida,2015,107.04
+12,Florida,2016,106.07
+12,Florida,2017,100.1
+12,Florida,2018,105.54
+12,Florida,2019,103.72
+12,Florida,2020,91.31
+13,Georgia,2011,148.58
+13,Georgia,2012,127.22
+13,Georgia,2013,122.59
+13,Georgia,2014,113.16
+13,Georgia,2015,121.88
+13,Georgia,2016,135.0
+13,Georgia,2017,134.7
+13,Georgia,2018,135.16
+13,Georgia,2019,143.9
+13,Georgia,2020,128.66
+15,Hawaii,2011,104.5
+15,Hawaii,2012,84.1
+15,Hawaii,2013,79.3
+15,Hawaii,2014,80.77
+15,Hawaii,2015,88.43
+15,Hawaii,2016,94.75
+15,Hawaii,2017,99.71
+15,Hawaii,2018,114.05
+15,Hawaii,2019,107.12
+15,Hawaii,2020,91.18
+16,Idaho,2011,145.62
+16,Idaho,2012,122.85
+16,Idaho,2013,106.36
+16,Idaho,2014,99.43
+16,Idaho,2015,103.46
+16,Idaho,2016,110.33
+16,Idaho,2017,120.86
+16,Idaho,2018,119.27
+16,Idaho,2019,129.73
+16,Idaho,2020,118.78
+17,Illinois,2011,138.7
+17,Illinois,2012,118.61
+17,Illinois,2013,112.14
+17,Illinois,2014,109.24
+17,Illinois,2015,112.83
+17,Illinois,2016,112.39
+17,Illinois,2017,119.31
+17,Illinois,2018,120.52
+17,Illinois,2019,119.9
+17,Illinois,2020,109.95
+18,Indiana,2011,111.84
+18,Indiana,2012,98.76
+18,Indiana,2013,96.33
+18,Indiana,2014,93.76
+18,Indiana,2015,94.0
+18,Indiana,2017,111.05
+18,Indiana,2018,106.18
+18,Indiana,2019,105.01
+19,Iowa,2011,130.46
+19,Iowa,2012,108.1
+19,Iowa,2013,101.8
+19,Iowa,2014,104.68
+19,Iowa,2015,110.42
+19,Iowa,2016,112.31
+19,Iowa,2017,122.91
+19,Iowa,2018,125.34
+19,Iowa,2019,134.69
+19,Iowa,2020,116.63
+21,Kentucky,2011,126.05
+21,Kentucky,2012,116.81
+21,Kentucky,2013,106.76
+21,Kentucky,2014,100.61
+21,Kentucky,2015,103.39
+21,Kentucky,2016,105.39
+21,Kentucky,2017,112.26
+21,Kentucky,2018,113.95
+21,Kentucky,2019,118.09
+21,Kentucky,2020,105.38
+22,Louisiana,2011,164.86
+22,Louisiana,2012,142.08
+22,Louisiana,2013,133.28
+22,Louisiana,2014,129.11
+22,Louisiana,2015,127.55
+22,Louisiana,2016,133.93
+22,Louisiana,2017,136.91
+22,Louisiana,2018,151.8
+22,Louisiana,2019,149.36
+22,Louisiana,2020,122.13
+23,Maine,2011,119.85
+23,Maine,2012,97.7
+23,Maine,2013,84.01
+23,Maine,2014,89.64
+23,Maine,2015,92.38
+23,Maine,2016,84.78
+23,Maine,2017,101.28
+23,Maine,2018,102.57
+23,Maine,2019,110.42
+23,Maine,2020,98.21
+24,Maryland,2011,144.13
+24,Maryland,2012,121.74
+24,Maryland,2013,126.48
+24,Maryland,2014,122.25
+24,Maryland,2015,124.17
+24,Maryland,2016,128.74
+24,Maryland,2017,133.58
+24,Maryland,2018,138.49
+24,Maryland,2019,155.15
+24,Maryland,2020,125.69
+25,Massachusetts,2011,139.55
+25,Massachusetts,2012,108.69
+25,Massachusetts,2013,100.71
+25,Massachusetts,2014,97.07
+25,Massachusetts,2015,107.92
+25,Massachusetts,2016,112.79
+25,Massachusetts,2017,118.24
+25,Massachusetts,2018,116.19
+25,Massachusetts,2019,123.99
+25,Massachusetts,2020,107.08
+26,Michigan,2011,161.9
+26,Michigan,2012,123.06
+26,Michigan,2013,110.28
+26,Michigan,2014,104.21
+26,Michigan,2015,110.39
+26,Michigan,2016,111.99
+26,Michigan,2017,113.31
+26,Michigan,2018,113.41
+26,Michigan,2019,123.04
+26,Michigan,2020,112.57
+27,Minnesota,2011,144.06
+27,Minnesota,2012,114.12
+27,Minnesota,2013,106.64
+27,Minnesota,2014,101.5
+27,Minnesota,2015,114.88
+27,Minnesota,2016,106.5
+27,Minnesota,2017,125.09
+27,Minnesota,2018,116.97
+27,Minnesota,2019,118.61
+27,Minnesota,2020,104.78
+28,Mississippi,2011,153.79
+28,Mississippi,2012,128.92
+28,Mississippi,2013,131.32
+28,Mississippi,2014,125.7
+28,Mississippi,2015,135.59
+28,Mississippi,2016,128.49
+28,Mississippi,2017,134.8
+28,Mississippi,2018,142.56
+28,Mississippi,2019,145.29
+28,Mississippi,2020,113.04
+29,Missouri,2011,120.34
+29,Missouri,2012,100.79
+29,Missouri,2013,86.74
+29,Missouri,2014,88.67
+29,Missouri,2015,91.16
+29,Missouri,2016,92.18
+29,Missouri,2017,96.02
+29,Missouri,2018,100.98
+29,Missouri,2019,99.91
+29,Missouri,2020,90.5
+30,Montana,2011,137.47
+30,Montana,2012,108.34
+30,Montana,2013,113.34
+30,Montana,2014,104.46
+30,Montana,2015,119.29
+30,Montana,2016,130.4
+30,Montana,2017,137.54
+30,Montana,2018,139.41
+30,Montana,2019,136.22
+30,Montana,2020,118.54
+31,Nebraska,2011,133.62
+31,Nebraska,2012,114.98
+31,Nebraska,2013,112.9
+31,Nebraska,2014,108.03
+31,Nebraska,2015,112.92
+31,Nebraska,2016,119.38
+31,Nebraska,2017,135.13
+31,Nebraska,2018,142.85
+31,Nebraska,2019,137.2
+31,Nebraska,2020,100.03
+32,Nevada,2011,126.79
+32,Nevada,2012,106.1
+32,Nevada,2013,92.6
+32,Nevada,2014,84.66
+32,Nevada,2015,79.13
+32,Nevada,2016,85.49
+32,Nevada,2017,101.22
+32,Nevada,2018,94.89
+32,Nevada,2019,86.34
+33,New Hampshire,2011,152.59
+33,New Hampshire,2012,116.23
+33,New Hampshire,2013,122.8
+33,New Hampshire,2014,102.64
+33,New Hampshire,2015,103.51
+33,New Hampshire,2016,110.79
+33,New Hampshire,2017,117.7
+33,New Hampshire,2018,120.81
+33,New Hampshire,2019,124.23
+33,New Hampshire,2020,104.42
+34,New Jersey,2011,170.17
+34,New Jersey,2012,137.71
+34,New Jersey,2013,130.41
+34,New Jersey,2014,122.3
+34,New Jersey,2015,131.31
+34,New Jersey,2016,139.97
+34,New Jersey,2017,143.78
+34,New Jersey,2018,145.18
+34,New Jersey,2019,155.03
+34,New Jersey,2020,139.03
+35,New Mexico,2011,101.56
+35,New Mexico,2012,77.5
+35,New Mexico,2013,86.27
+35,New Mexico,2014,85.02
+35,New Mexico,2015,82.09
+35,New Mexico,2016,86.99
+35,New Mexico,2017,87.58
+35,New Mexico,2018,84.64
+35,New Mexico,2019,91.19
+35,New Mexico,2020,83.17
+36,New York,2011,158.68
+36,New York,2012,133.62
+36,New York,2013,129.72
+36,New York,2014,121.3
+36,New York,2015,123.79
+36,New York,2016,126.34
+36,New York,2017,131.59
+36,New York,2018,136.1
+36,New York,2019,142.36
+36,New York,2020,121.09
+37,North Carolina,2011,152.03
+37,North Carolina,2012,120.71
+37,North Carolina,2013,120.09
+37,North Carolina,2014,118.29
+37,North Carolina,2015,118.97
+37,North Carolina,2016,117.58
+37,North Carolina,2017,126.23
+37,North Carolina,2018,127.89
+37,North Carolina,2019,135.66
+37,North Carolina,2020,116.8
+38,North Dakota,2011,146.45
+38,North Dakota,2012,125.73
+38,North Dakota,2013,104.62
+38,North Dakota,2014,111.13
+38,North Dakota,2015,127.91
+38,North Dakota,2016,116.56
+38,North Dakota,2017,113.54
+38,North Dakota,2018,128.93
+38,North Dakota,2019,129.29
+38,North Dakota,2020,123.27
+39,Ohio,2011,134.42
+39,Ohio,2012,110.55
+39,Ohio,2013,106.05
+39,Ohio,2014,101.14
+39,Ohio,2015,105.52
+39,Ohio,2016,105.45
+39,Ohio,2017,115.97
+39,Ohio,2018,120.79
+39,Ohio,2019,123.05
+39,Ohio,2020,110.9
+40,Oklahoma,2011,132.05
+40,Oklahoma,2012,102.5
+40,Oklahoma,2013,98.68
+40,Oklahoma,2014,89.75
+40,Oklahoma,2015,99.4
+40,Oklahoma,2016,97.23
+40,Oklahoma,2017,97.67
+40,Oklahoma,2018,105.31
+40,Oklahoma,2019,109.75
+40,Oklahoma,2020,96.83
+41,Oregon,2011,126.11
+41,Oregon,2012,92.97
+41,Oregon,2013,95.37
+41,Oregon,2014,93.35
+41,Oregon,2015,98.75
+41,Oregon,2016,94.1
+41,Oregon,2017,100.43
+41,Oregon,2018,96.65
+41,Oregon,2019,107.22
+41,Oregon,2020,88.85
+42,Pennsylvania,2011,143.76
+42,Pennsylvania,2012,112.36
+42,Pennsylvania,2013,108.24
+42,Pennsylvania,2014,96.67
+42,Pennsylvania,2015,108.45
+42,Pennsylvania,2016,110.85
+42,Pennsylvania,2017,107.85
+42,Pennsylvania,2018,110.98
+42,Pennsylvania,2019,121.31
+42,Pennsylvania,2020,101.28
+44,Rhode Island,2011,140.67
+44,Rhode Island,2012,114.71
+44,Rhode Island,2013,100.14
+44,Rhode Island,2014,100.94
+44,Rhode Island,2015,104.13
+44,Rhode Island,2016,107.7
+44,Rhode Island,2017,120.26
+44,Rhode Island,2018,123.41
+44,Rhode Island,2019,133.42
+44,Rhode Island,2020,107.0
+45,South Carolina,2011,145.67
+45,South Carolina,2012,120.57
+45,South Carolina,2013,115.84
+45,South Carolina,2014,111.06
+45,South Carolina,2015,125.74
+45,South Carolina,2016,117.67
+45,South Carolina,2017,113.45
+45,South Carolina,2018,106.03
+45,South Carolina,2019,116.12
+45,South Carolina,2020,103.64
+46,South Dakota,2011,137.5
+46,South Dakota,2012,110.43
+46,South Dakota,2013,110.22
+46,South Dakota,2014,113.99
+46,South Dakota,2015,119.94
+46,South Dakota,2016,119.58
+46,South Dakota,2017,119.92
+46,South Dakota,2018,123.83
+46,South Dakota,2019,133.92
+46,South Dakota,2020,123.71
+47,Tennessee,2011,140.0
+47,Tennessee,2012,118.69
+47,Tennessee,2013,111.0
+47,Tennessee,2014,103.61
+47,Tennessee,2015,113.11
+47,Tennessee,2016,115.82
+47,Tennessee,2017,123.34
+47,Tennessee,2018,120.44
+47,Tennessee,2019,122.85
+47,Tennessee,2020,106.2
+48,Texas,2011,114.82
+48,Texas,2012,100.99
+48,Texas,2013,96.85
+48,Texas,2014,93.24
+48,Texas,2015,95.81
+48,Texas,2016,99.29
+48,Texas,2017,107.21
+48,Texas,2018,114.43
+48,Texas,2019,113.25
+48,Texas,2020,96.21
+49,Utah,2011,159.56
+49,Utah,2012,117.0
+49,Utah,2013,115.55
+49,Utah,2014,108.24
+49,Utah,2015,116.81
+49,Utah,2016,114.89
+49,Utah,2017,116.78
+49,Utah,2018,124.32
+49,Utah,2019,118.45
+49,Utah,2020,114.6
+50,Vermont,2011,129.42
+50,Vermont,2012,90.4
+50,Vermont,2013,86.2
+50,Vermont,2014,80.61
+50,Vermont,2015,85.54
+50,Vermont,2016,87.5
+50,Vermont,2017,102.9
+50,Vermont,2018,110.46
+50,Vermont,2019,112.38
+50,Vermont,2020,102.36
+51,Virginia,2011,126.97
+51,Virginia,2012,98.85
+51,Virginia,2013,106.42
+51,Virginia,2014,97.26
+51,Virginia,2015,99.99
+51,Virginia,2016,103.51
+51,Virginia,2017,108.28
+51,Virginia,2018,106.56
+51,Virginia,2019,114.96
+51,Virginia,2020,98.35
+53,Washington,2011,136.12
+53,Washington,2012,111.31
+53,Washington,2013,109.55
+53,Washington,2014,98.53
+53,Washington,2015,96.65
+53,Washington,2016,100.83
+53,Washington,2017,103.8
+53,Washington,2018,106.49
+53,Washington,2019,105.24
+53,Washington,2020,95.83
+54,West Virginia,2011,118.22
+54,West Virginia,2012,95.71
+54,West Virginia,2013,94.71
+54,West Virginia,2014,85.26
+54,West Virginia,2015,92.23
+54,West Virginia,2016,97.66
+54,West Virginia,2017,98.58
+54,West Virginia,2018,106.55
+54,West Virginia,2019,102.53
+54,West Virginia,2020,87.42
+55,Wisconsin,2011,135.65
+55,Wisconsin,2012,111.23
+55,Wisconsin,2013,110.65
+55,Wisconsin,2014,104.03
+55,Wisconsin,2015,113.14
+55,Wisconsin,2016,115.25
+55,Wisconsin,2017,119.65
+55,Wisconsin,2018,121.99
+55,Wisconsin,2019,131.2
+55,Wisconsin,2020,110.66
+56,Wyoming,2011,127.89
+56,Wyoming,2012,90.05
+56,Wyoming,2013,100.68
+56,Wyoming,2014,100.87
+56,Wyoming,2015,98.87
+56,Wyoming,2016,111.99
+56,Wyoming,2017,126.35
+56,Wyoming,2018,119.34
+56,Wyoming,2019,114.08
+56,Wyoming,2020,99.4
+72,Puerto Rico,2011,
+72,Puerto Rico,2012,
+72,Puerto Rico,2013,
+72,Puerto Rico,2014,
+72,Puerto Rico,2015,
+72,Puerto Rico,2016,
+72,Puerto Rico,2017,
+72,Puerto Rico,2018,
+72,Puerto Rico,2019,
+72,Puerto Rico,2020,

@@ -52,6 +52,116 @@ def get_geojson(request):
     geojson = load_geojson(level)
     return JsonResponse(geojson)
 
+@require_http_methods(["GET"])
+@handle_errors
+def get_static_info(request):
+    '''For each cancer type and factor, return available years for dropdowns.'''
+    
+    # 1. Build Cancer Dictionary: { 'level': { 'CancerName': [years] } }
+    cancer_dict = {
+        'state': {},
+        'county': {}
+    }
+    
+    # Get all cancer types
+    all_cancers = list(CancerIncidence.objects.values_list('cancer_type__name', flat=True).distinct().order_by('cancer_type__name'))
+    
+    for ct in all_cancers:
+        # State years
+        state_years = sorted(list(CancerIncidence.objects.filter(
+            cancer_type__name=ct, 
+            geographic_level__iexact='State'
+        ).values_list('start_year', flat=True).distinct()))
+        if state_years:
+            cancer_dict['state'][ct] = state_years
+            
+        # County years
+        county_start_years = sorted(list(CancerIncidence.objects.filter(
+            cancer_type__name=ct, 
+            geographic_level__iexact='County'
+        ).values_list('start_year', flat=True).distinct()))
+        if county_start_years:
+            if ct not in cancer_dict['county']:
+                cancer_dict['county'][ct] = {}
+            cancer_dict['county'][ct]['start'] = county_start_years
+        county_end_years = sorted(list(CancerIncidence.objects.filter(
+            cancer_type__name=ct, 
+            geographic_level__iexact='County'
+        ).values_list('end_year', flat=True).distinct()))
+        if county_end_years:
+            if ct not in cancer_dict['county']:
+                cancer_dict['county'][ct] = {}
+            cancer_dict['county'][ct]['end'] = county_end_years
+
+    # 2. Build Factor Dictionary: { 'level': { 'FactorName': [years] } }
+    factor_dict = {
+        'state': {},
+        'county': {}
+    }
+    
+    all_factors = list(FactorMeasurement.objects.values_list('factor__name', flat=True).distinct().order_by('factor__name'))
+    
+    for ft in all_factors:
+        # State years
+        state_years = sorted(list(FactorMeasurement.objects.filter(
+            factor__name=ft, 
+            geographic_level__iexact='State'
+        ).values_list('start_year', flat=True).distinct()))
+        if state_years:
+            factor_dict['state'][ft] = state_years
+            
+        # County years
+        county_start_years = sorted(list(FactorMeasurement.objects.filter(
+            factor__name=ft, 
+            geographic_level__iexact='County'
+        ).values_list('start_year', flat=True).distinct()))
+        if county_start_years:
+            if ft not in factor_dict['county']:
+                factor_dict['county'][ft] = {}
+            factor_dict['county'][ft]['start']= county_start_years
+        county_end_years = sorted(list(FactorMeasurement.objects.filter(
+            factor__name=ft,
+            geographic_level__iexact='County'
+        ).values_list('end_year', flat=True).distinct()))
+        if county_end_years:
+            if ft not in factor_dict['county']:
+                factor_dict['county'][ft] = {}
+            factor_dict['county'][ft]['end'] = county_end_years
+
+    # 3. Get list of all states
+    states = list(CancerIncidence.objects.values_list('state', flat=True).distinct().order_by('state'))
+
+    # 4. Get counties mapping: { 'StateName': ['County1', 'County2', ...] }
+    counties_qs = CancerIncidence.objects.filter(geographic_level='County').values('state', 'county').distinct().order_by('state', 'county')
+    counties_dict = {}
+    for item in counties_qs:
+        s = item['state']
+        c = item['county']
+        if s not in counties_dict:
+            counties_dict[s] = []
+        counties_dict[s].append(c)
+
+    return JsonResponse({
+        'cancer_types': cancer_dict, 
+        'factor_types': factor_dict,
+        'states': states,
+        'counties': counties_dict
+    })
+
+
+def get_cancer_types(geographic_level):
+    if geographic_level:
+        qs = CancerIncidence.objects.filter(geographic_level__iexact=geographic_level)
+        return list(qs.values_list('cancer_type__name', flat=True).distinct().order_by('cancer_type__name'))
+    return list(CancerType.objects.values_list('name', flat=True).order_by('name'))
+
+
+def get_factors(geographic_level):
+    if geographic_level:
+        qs = FactorMeasurement.objects.filter(geographic_level__iexact=geographic_level)
+        return list(qs.values_list('factor__name', flat=True).distinct().order_by('factor__name'))
+    return list(Factor.objects.values_list('name', flat=True).order_by('name'))
+
 
 @require_http_methods(["GET"])
 def get_data(request):
@@ -75,14 +185,14 @@ def get_data(request):
             cancer_queryset = cancer_queryset.filter(gender=gender)
         else:
             # Filter for aggregated data when 'All' genders are selected
-            cancer_queryset = cancer_queryset.filter(gender__name='ALL')
+            cancer_queryset = cancer_queryset.filter(gender__name='All')
         
         if race_name.lower() != 'all':
             race = get_model_instance(Race, 'name', race_name)
             cancer_queryset = cancer_queryset.filter(race=race)
         else:
-            # Filter for aggregated data when 'ALL' races are selected
-            cancer_queryset = cancer_queryset.filter(race__name='ALL')
+            # Filter for aggregated data when 'All' races are selected
+            cancer_queryset = cancer_queryset.filter(race__name='All')
         
         cancer_queryset = apply_geographic_filter(cancer_queryset, level)
         cancer_queryset = apply_year_filter(cancer_queryset, cancer_year)

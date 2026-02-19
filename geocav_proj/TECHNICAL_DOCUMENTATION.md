@@ -2,6 +2,14 @@
 
 This document details the technical implementation of the geospatial dashboard, focusing on the algorithms, data structures, and visualization logic used to render maps and plots.
 
+## 0. Environment Setup
+To run the django dashboard, we first need to create a virtual environment. This assumes you are on a windows machine.
+
+### 1.1 Virtual Environment
+`python -m venv geocav_venv`
+`./geocav_venv/Script/activate`
+`pip install django numpy pandas igraph leidenalg scikit-learn scipy networkx`
+
 ## 1. Data Architecture & Flow
 
 The dashboard relies on a decoupled architecture where the frontend `DataManager` orchestrates data retrieval and preparation for the visualization components.

@@ -1,15 +1,10 @@
-import {DEFAULT_LEAFLET_CONFIG, DEFAULT_FILTERS, COUNTY_FACTOR_FILTERS, STATE_FACTOR_FILTERS, 
-    STATE_CANCER_AVAILABLE_YEARS, COUNTY_CANCER_AVAILABLE_YEARS,
-    COUNTY_FACTORS_AVAILABLE_YEARS, STATE_FACTORS_AVAILABLE_YEARS,
-    CANCER_TYPES_CONFIG
-} from './config.js';
-
-import {PieMap} from './maps/PieMap.js';
+import {DEFAULT_FILTERS} from './config.js';
 
 export class FilterManager {
-    constructor(mapRenderer, regressionPlot, tableRenderer, pcaPlot) {
+    constructor(dataManager, mapRenderer, regressionPlot, tableRenderer, pcaPlot) {
         console.log('[FilterManager] Initializing FilterManager');
         this.selectedFilters = DEFAULT_FILTERS;
+        this.dataManager = dataManager;
         this.mapRenderer = mapRenderer;
         this.regressionPlot = regressionPlot;
         this.tableRenderer = tableRenderer;
@@ -196,18 +191,8 @@ export class FilterManager {
         const gender = this.selectedFilters.gender;
         
         // Define available cancers
-        let availableCancers = [...CANCER_TYPES_CONFIG.COMMON];
+        let availableCancers =  Object.keys(this.dataManager.cancer_years[this.selectedFilters.level]) || [];
         
-        if (gender === 'Female') {
-            availableCancers.push(...CANCER_TYPES_CONFIG.FEMALE_ONLY);
-        }
-        if (gender === 'Male') {
-            availableCancers.push(...CANCER_TYPES_CONFIG.MALE_ONLY);
-        }
-        
-        const order = CANCER_TYPES_CONFIG.ORDER;
-        availableCancers.sort((a, b) => order.indexOf(a) - order.indexOf(b));
-
         // Rebuild options
         this.cancerSelect.innerHTML = '';
         availableCancers.forEach(cancer => {
@@ -261,9 +246,8 @@ export class FilterManager {
         this.factorSelect.innerHTML = ''; // Clear existing options
         
         // Determine which filter list to use
-        const filterList = this.selectedFilters.level === 'state' 
-            ? STATE_FACTOR_FILTERS 
-            : COUNTY_FACTOR_FILTERS;
+        const filterList = Object.keys(this.dataManager.factor_years[this.selectedFilters.level] || {})
+        
         
         // Populate options
         filterList.forEach(factor => {
@@ -298,30 +282,32 @@ export class FilterManager {
         this.factorSlider.innerHTML = '';
 
         // Update cancer years
-        let availableCancerYears = this.selectedFilters.level === 'state'
-            ? STATE_CANCER_AVAILABLE_YEARS[this.selectedFilters.cancer_type]
-            : COUNTY_CANCER_AVAILABLE_YEARS[this.selectedFilters.cancer_type];
-
-        // Ensure current cancer year is valid
-        if (!availableCancerYears.includes(this.selectedFilters.cancer_year)) {
-             if (availableCancerYears.length > 0) {
-                 this.selectedFilters.cancer_year = availableCancerYears[0];
-             }
+        let availableCancerYears = this.dataManager.cancer_years[this.selectedFilters.level][this.selectedFilters.cancer_type] || [];
+        let endYears = null;
+        if (availableCancerYears['end']) {
+            endYears = availableCancerYears['end'];
+            availableCancerYears = availableCancerYears['start'];
         }
 
-        availableCancerYears.forEach(year => {
+        availableCancerYears.forEach((year, i) => {
             const option = document.createElement('option');
             option.value = parseInt(year);
-            option.textContent = year;
+            if (endYears) {
+                option.textContent = `${year} - ${endYears[i]}`;
+            } else {
+                option.textContent = year;
+            }
             if (year == this.selectedFilters.cancer_year) option.selected = true;
             this.cancerSlider.appendChild(option);
         });
 
         // Update factor years
         const firstFactor = Array.isArray(this.selectedFilters.factor) ? this.selectedFilters.factor[0] : this.selectedFilters.factor;
-        let availableFactorYears = this.selectedFilters.level === 'state'
-            ? STATE_FACTORS_AVAILABLE_YEARS[firstFactor]
-            : COUNTY_FACTORS_AVAILABLE_YEARS[firstFactor];
+        let availableFactorYears = this.dataManager.factor_years[this.selectedFilters.level][firstFactor] || [];
+        if (availableFactorYears['end']) {
+            endYears = availableFactorYears['end'];
+            availableFactorYears = availableFactorYears['start'];
+        }
 
         // Ensure current factor year is valid
         if (!availableFactorYears.includes(this.selectedFilters.factor_year)) {
@@ -333,7 +319,12 @@ export class FilterManager {
         availableFactorYears.forEach(year => {
             const option = document.createElement('option');
             option.value = parseInt(year);
-            option.textContent = year;
+            if (endYears) {
+                const endYear = endYears[availableFactorYears.indexOf(year)];
+                option.textContent = `${year} - ${endYear}`;
+            } else {
+                option.textContent = year;
+            }
             if (year == this.selectedFilters.factor_year) option.selected = true;
             this.factorSlider.appendChild(option);
         });
