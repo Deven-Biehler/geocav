@@ -126,7 +126,7 @@ export class PieMap {
         }
         console.log('[PieMap] Generating pie chart data for feature:', feature);
 
-        let filteredRates = [];
+        let filteredRates = {};
         let pieData = [];
 
         // Filter only selected cancer types
@@ -143,21 +143,21 @@ export class PieMap {
         // Build correct data dict:
         Object.entries(filteredRates).forEach(([cancer_type, rates]) => {
             console.log('[PieMap] Processing rates for cancer type:', cancer_type, 'with rates:', rates);
-            if (rates.MALE) { // Check for existence
+            if (rates.Male !== undefined) { // Check for existence
                 pieData.push({ // push male rates
                 cancer_type, // cancer type
                 gender: "Male", // label for sex
-                value: rates.MALE // value to plot
+                value: rates.Male // value to plot
                 });
-                console.log('[PieMap] Adding pie data for', cancer_type, 'Male:', rates.MALE);
+                console.log('[PieMap] Adding pie data for', cancer_type, 'Male:', rates.Male);
             }
-            if (rates.FEMALE) { // Check for existence
+            if (rates.Female !== undefined) { // Check for existence
                 pieData.push({ // push female rates
                 cancer_type, // cancer type
                 gender: "Female", // label for sex
-                value: rates.FEMALE // value to plot
+                value: rates.Female // value to plot
                 });
-                console.log('[PieMap] Adding pie data for', cancer_type, 'Female:', rates.FEMALE);
+                console.log('[PieMap] Adding pie data for', cancer_type, 'Female:', rates.Female);
             }
         });
 
@@ -176,11 +176,22 @@ export class PieMap {
         const name = county_name ? `${county_name}, ${state_name}` : state_name || (feature.id || '');
         var tooltipContent = `<strong>${name}</strong><br/>`;
 
-        const rates = feature.cancer_rate;
+        const rates = feature.rate || {};
 
         const typesToShow = this.selectedFilters.selectedCancerTypes && this.selectedFilters.selectedCancerTypes.length > 0
             ? this.selectedFilters.selectedCancerTypes
             : ['Kidney'];
+
+        typesToShow.forEach(type => {
+            if (rates[type]) {
+                tooltipContent += `<strong>${type}</strong><br/>`;
+                if (rates[type].Male !== undefined) tooltipContent += `Male: ${rates[type].Male}<br/>`;
+                if (rates[type].Female !== undefined) tooltipContent += `Female: ${rates[type].Female}<br/>`;
+                if (rates[type].All !== undefined) tooltipContent += `All: ${rates[type].All}<br/>`;
+            } else {
+                tooltipContent += `<strong>${type}</strong>: No data<br/>`;
+            }
+        });
 
         return tooltipContent;
     }
