@@ -248,13 +248,103 @@ export class FilterManager {
         // Determine which filter list to use
         const filterList = Object.keys(this.dataManager.factor_years[this.selectedFilters.level] || {})
         
-        
-        // Populate options
+        const FACTOR_CATEGORIES = {
+            'Environmental': {
+                'Air Pollution': [
+                    'Air_Quality', '1,3-butadiene', 'Acetaldehyde', 'Benzene', 
+                    'Carbon tetrachloride', 'Diesel Particulate Matter', 
+                    'Ethylene oxide', 'Formaldehyde', 'Napthalene'
+                ],
+                '': ['Annual_Sunlight_Exposure', 'Annual_UV_DailyDose', 'Radon_Levels_Pre_Mitigation_10Y', 'Pesticide_Exposure']
+            },
+            'Health': {
+                '': [
+                    'Coronary_Heart_Disease', 'Depression', 'Diabetes', 'Heart_Stroke', 
+                    'High_Blood_Pressure', 'High_Cholesterol', 'Hospitalization_Gender', 
+                    'Hospitalization', 'No_Health_Insurance', 'CO_Poisoning_Hospitalization'
+                ]
+            },
+            'Lifestyle': {
+                '': [
+                    'Binge_Drinking', 'No_Physical_Activity', 'Obesity', 'Short_Sleep', 'Smoking'
+                ]
+            },
+            'Indices & Other': {
+                '': [
+                    'SVI_RPL_THEMES', 'Opioid_Dispensing_Rate'
+                ]
+            }
+        };
+
+        // Group available factors
+        const groupedFactors = {};
         filterList.forEach(factor => {
+            if (factor === 'None') return; // Handle None separately
+            let category = 'Indices & Other';
+            let subcategory = '';
+            
+            let found = false;
+            for (const [cat, subcats] of Object.entries(FACTOR_CATEGORIES)) {
+                for (const [subcat, factors] of Object.entries(subcats)) {
+                    if (factors.includes(factor)) {
+                        category = cat;
+                        subcategory = subcat;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) break;
+            }
+            
+            if (!groupedFactors[category]) {
+                groupedFactors[category] = {};
+            }
+            if (!groupedFactors[category][subcategory]) {
+                groupedFactors[category][subcategory] = [];
+            }
+            groupedFactors[category][subcategory].push(factor);
+        });
+
+        // Add 'None' option at the top if it exists
+        if (filterList.includes('None')) {
             const option = document.createElement('option');
-            option.value = factor;
-            option.text = factor.replace(/_/g, ' ');
+            option.value = 'None';
+            option.text = 'None';
             this.factorSelect.appendChild(option);
+        }
+
+        // Populate options with optgroups
+        const categoryOrder = ['Environmental', 'Health', 'Lifestyle', 'Indices & Other'];
+        categoryOrder.forEach(category => {
+            if (groupedFactors[category] && Object.keys(groupedFactors[category]).length > 0) {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = category;
+                
+                // Sort subcategories so that named ones come first
+                const subcats = Object.keys(groupedFactors[category]).sort((a, b) => {
+                    if (a === '') return 1;
+                    if (b === '') return -1;
+                    return a.localeCompare(b);
+                });
+                
+                subcats.forEach(subcat => {
+                    if (subcat !== '') {
+                        const subHeader = document.createElement('option');
+                        subHeader.disabled = true;
+                        subHeader.text = `── ${subcat} ──`;
+                        optgroup.appendChild(subHeader);
+                    }
+                    
+                    groupedFactors[category][subcat].forEach(factor => {
+                        const option = document.createElement('option');
+                        option.value = factor;
+                        option.innerHTML = (subcat !== '' ? '&nbsp;&nbsp;' : '') + factor.replace(/_/g, ' ');
+                        optgroup.appendChild(option);
+                    });
+                });
+                
+                this.factorSelect.appendChild(optgroup);
+            }
         });
         
         // Handle factor selection (array or string)
