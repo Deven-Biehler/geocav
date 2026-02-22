@@ -9,9 +9,23 @@ export class RegressionPlot {
         
         // Set up margins and dimensions
         this.margin = {top: 20, right: 30, bottom: 40, left: 50};
-        this.width = 300;
-        this.height = 280;
+        this.width = 300;   // default; overridden at render time
+        this.height = 280;  // default; overridden at render time
         this.colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+    }
+
+    _measureContainer() {
+        /* Read the regression-box container size and update this.width / this.height */
+        const container = document.querySelector('.regression-box');
+        if (container) {
+            const style = getComputedStyle(container);
+            const padH = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+            const padV = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+            const availW = container.clientWidth - padH - this.margin.left - this.margin.right;
+            const availH = container.clientHeight - padV - this.margin.top - this.margin.bottom;
+            this.width  = Math.max(100, availW);
+            this.height = Math.max(80,  availH);
+        }
     }
 
     async renderPlot(selectedFilters, pcData = null) {
@@ -24,11 +38,17 @@ export class RegressionPlot {
                 data = this.computePCForRegression(data, pcData);
             }
             
+            this._measureContainer(); // Update dimensions from current container size
+
             d3.select('#regression-plot').selectAll('*').remove(); // Clear any existing plot
+            const totalW = this.width  + this.margin.left + this.margin.right;
+            const totalH = this.height + this.margin.top  + this.margin.bottom;
             const svg = d3.select('#regression-plot') // Create SVG container
                 .append("svg")
-                    .attr('width', this.width + this.margin.left + this.margin.right)
-                    .attr('height', this.height + this.margin.top + this.margin.bottom)
+                    .attr('viewBox', `0 0 ${totalW} ${totalH}`)
+                    .attr('preserveAspectRatio', 'xMidYMid meet')
+                    .style('width',  '100%')
+                    .style('height', '100%')
                 .append("g")
                     .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
 
