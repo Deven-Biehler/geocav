@@ -105,14 +105,165 @@ For state-level data, more granular race filters may be available depending on t
 *   **County Level:** Data is aggregated into 5-year periods (e.g., 2016-2021) to ensure stability. For county, years are labled by their starting year and are assumed to include the following 5 years.
 Due to the inconsistant data availibility, details on how 5-year periods were generated are included in the Chapter 5.
 
-## Chapter 3: Principle Component Analysis
+## Chapter 3: Principal Component Analysis
 
+Principal Component Analysis (PCA) is a dimensionality reduction technique that transforms a set of correlated factors into a smaller set of uncorrelated variables called **Principal Components (PCs)**. This is useful when you want to understand the combined effect of many factors on cancer incidence rates without running separate regressions for each one.
+
+### Running PCA
+1. Select **two or more factors** from the Factor multi-select list in the filter box (hold Ctrl and click to select multiple).
+2. Set your desired Geographic Level, Cancer Type, Sex, Race, and Year filters.
+3. Click the **"Run PCA"** button. The dashboard will compute PCA on the standardized (zero-mean, unit-variance) factor values across all geographic units for the selected year.
+4. Once complete, the **Loadings Heatmap** and **BiPlot** will appear in the bottom-right panel.
+
+### Loadings Heatmap
+The Loadings Heatmap displays the contribution (loading) of each original factor to each principal component. Each cell in the grid shows how strongly a factor is associated with a given PC:
+- A **high positive value** (dark warm color) means the factor increases along that PC direction.
+- A **high negative value** (dark cool color) means the factor decreases along that PC direction.
+- A **value near zero** means the factor contributes little to that PC.
+
+Use the heatmap to interpret what each PC represents conceptually. For example, if PC1 has high loadings for Obesity, Diabetes, and No Physical Activity, it likely captures an overall "metabolic health" axis.
+
+### BiPlot
+The BiPlot overlays the PC scores for each geographic unit (points) with loading vectors (arrows) for each original factor, in a 2D space defined by two selected PCs.
+
+- **Points** represent individual states or counties. Their position reflects their score on the two selected PCs.
+- **Arrows** represent the original factors. Their direction and length indicate how much each factor contributes to the two PCs and whether factors are correlated (arrows pointing in similar directions are positively correlated).
+- **Hovering** over a point shows the geographic unit's name and cancer rate.
+
+To change the BiPlot axes:
+1. Use the **BiPlot Axes** selectors in the filter box to choose the X and Y principal components.
+2. The BiPlot will update automatically.
+
+### Visualizing Regression with a Principal Component
+After running PCA, you can use any PC as the independent variable in the regression choropleth map:
+1. Select one PCs from the **Principal Components** selector that appears in the filter box after running PCA.
+2. Click **"Visualize"**.
+3. The choropleth map will color regions by their PC score, and the regression plot will show the relationship between the PC score and the cancer incidence rate, including the R² value and correlation coefficient.
+---
 
 ## Chapter 4: Tabular View
 
+The **Tabular View** appears at the bottom-left of the dashboard and displays the underlying data used to generate the current map and regression plot in a structured, sortable table.
+
+### What the Table Shows
+After clicking **"Visualize"**, the table is populated with the same merged dataset used by the map and regression plot. The columns displayed depend on the current filter selections:
+
+| Column | Description |
+|---|---|
+| **State** | The state name for each geographic unit. |
+| **County** | The county name (County level only). |
+| **[Cancer Type] Rate** | The cancer incidence rate per 100,000 population for the selected cancer type, sex, race, and year. |
+| **[Factor Name(s)]** | One column per selected factor, showing the factor value for that geographic unit and year. |
+
+All numeric values are formatted to two decimal places. Missing values are displayed as `N/A`.
+
+### Sorting
+The table supports sorting by any column:
+- Click a **column header** to sort by that column in ascending order.
+- Click the **same header again** to reverse to descending order.
+- The active sort column is indicated by an arrow icon (↑ for ascending, ↓ for descending). All other columns show a neutral icon (↕) to indicate they are sortable.
+
+### Record Count
+The table header shows the total number of records currently displayed, e.g. `(Showing 51 records)` for state-level data or up to ~3,000 records for county-level data.
+
+### Relationship to Other Views
+The table always reflects the same filter state as the map and regression plot. Changing filters and clicking **"Visualize"** again will refresh the table alongside the other visualizations.
+
 
 ## Chapter 5: Advanced
-### Data Merging
-### Modularity
+
+### Data Pipeline Overview
+
+Data is loaded into the Django database using the `load_data` management command:
+
+```bash
+python manage.py load_data
+```
+
+---
+
+### Data Ingestion (`load_data` management command)
+
+This command is defined in `dashboard/management/commands/load_data.py` and performs the following steps in order:
+
+#### 1. Clear Existing Data
+All existing records are deleted from the database before reloading to prevent duplicates. This includes `CancerIncidence`, `FactorMeasurement`, `Race`, `Gender`, `Factor`, and `CancerType` records.
+
+#### 2. Load Factor Measurements
+The command scans two directories:
+- `data/Factors/County_Level/` — Each `.csv` file represents one factor. The filename (minus `.csv`) becomes the factor name. Each row creates a `FactorMeasurement` record with `geographic_level = County`, `state`, `county`, `statefp`, `countyfp`, `factor_value`, `start_year`, and `end_year`. All county-level factor records default to `gender = All` and `race = All`.
+- `data/Factors/State_Level/` — Same structure, but with a single `Year` column. Records are stored with `start_year = Year` and `end_year = Year` and `geographic_level = State`.
+
+#### 3. Load Cancer Incidence
+The command scans six sub-folders under `data/Cancer/`:
+
+| Sub-folder | Geographic Level | Stratification |
+|---|---|---|
+| `county_level/county/` | County | All (no sex/race breakdown) |
+| `county_level/county_gender/` | County | By Sex (column: `Sex`) |
+| `county_level/county_race/` | County | By Race (column: `Race Ethnicity`) |
+| `state_level/state/` | State | All |
+| `state_level/state_gender/` | State | By Sex |
+| `state_level/state_race/` | State | By Race |
+
+Each `.csv` filename (minus `.csv`) is used as the cancer type name. `CancerType`, `Gender`, and `Race` objects are created via `get_or_create` as needed.
+
+#### Database Models
+
+| Model | Description |
+|---|---|
+| `CancerType` | Lookup table for cancer type names |
+| `Factor` | Lookup table for factor names |
+| `Gender` | Lookup table for gender values (`All`, `Male`, `Female`) |
+| `Race` | Lookup table for race/ethnicity values |
+| `CancerIncidence` | One record per geographic unit × cancer type × gender × race × year period |
+| `FactorMeasurement` | One record per geographic unit × factor × year period |
+
+### Adding New Data
+
+#### Adding a New Factor
+1. Prepare a CSV file in the correct schema (see Stage 1 output format above).
+   - **County-level:** Columns `StateFIPS, State, CountyFIPS, County, Value, Start Year, End Year`
+   - **State-level:** Columns `StateFIPS, State, Year, Value`
+2. Place the file in the appropriate directory:
+   - `geocav_proj/data/Factors/County_Level/<FactorName>.csv`
+   - `geocav_proj/data/Factors/State_Level/<FactorName>.csv`
+3. (Optional) Register the factor in `data_config.json` under `factors.county` or `factors.state` with a display name, slug, and category.
+4. Re-run the ingestion command: `python manage.py load_data`
+
+The factor will automatically appear in the Factor dropdown on the dashboard.
+
+#### Adding a New Cancer Type
+1. Prepare a CSV file for each applicable stratification (all, gender, race) in the correct schema:
+   - **County-level (all):** `StateFIPS, State, CountyFIPS, County, Start Year, End Year, Value`
+   - **County-level (gender):** same + `Sex`
+   - **County-level (race):** same + `Race Ethnicity`
+   - **State-level (all):** `StateFIPS, State, Year, Value`
+   - **State-level (gender):** same + `Sex`
+   - **State-level (race):** same + `Race Ethnicity`
+2. Name the file `<CancerTypeName>.csv` (the filename becomes the display name in the dashboard).
+3. Place the file in the appropriate sub-folder under `geocav_proj/data/Cancer/`.
+4. Re-run: `python manage.py load_data`
+
+The new cancer type will automatically populate in the Cancer Type dropdown.
+
+---
+
 ### Code Base
-### New Data
+
+The project is a **Django** web application with a JavaScript front-end. The key components are:
+
+| Component | Location | Description |
+|---|---|---|
+| Django Views / API | `dashboard/views.py` | Serves all data API endpoints (GeoJSON, regression data, PCA, static info) |
+| Django Models | `dashboard/models.py` | Defines `CancerIncidence`, `FactorMeasurement`, and supporting lookup tables |
+| Data Ingestion | `dashboard/management/commands/load_data.py` | Management command to populate the database from CSVs |
+| Pre-processing | `pre-process.py` | Aggregates raw source data into the standardized format |
+| Data Config | `geocav_proj/data_config.json` | Central registry of factors, cancer types, and file paths |
+| Map Rendering | `static/MapRenderer.js` | Leaflet-based choropleth, pie, and heat map rendering |
+| Regression Plot | `static/RegressionPlot.js` | D3-based scatter plot and regression line |
+| PCA / BiPlot | `static/PcaHeatmap.js` | D3-based loadings heatmap and biplot |
+| Table Rendering | `static/TableRenderer.js` | Sortable data table rendered from API response |
+| Data Manager | `static/DataManager.js` | Client-side data fetching and caching layer |
+| Filter Manager | `static/FilterManager.js` | Manages filter state and UI interactions |
+| Templates | `dashboard/templates/` | Django HTML templates for each page |
