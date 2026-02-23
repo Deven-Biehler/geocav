@@ -2,7 +2,7 @@
 
 This document details the technical implementation of the molecular analysis and network analysis modules.
 
-##Overview
+## Overview
 
 The Molecular and Network Analysis modules allow users to explore mutation-level data across cancer types. These tools provide interactive visualizations for:
 * Mutational landscape
@@ -17,13 +17,13 @@ Common Features Across All Pages
 * Plots are interactive (hover, zoom, pan)
 * Each plot includes a Download as PNG option from the plot toolbar
 
-##Mutational Landscape Page
+## Mutational Landscape Page
 
-###Purpose
+### Purpose
 
 Provides an overview of mutation distribution and gene-level mutation frequency across samples.
 
-###Quick Start
+### Quick Start
 
 1. Select a Cancer Type.
 2. Choose optional filters:
@@ -32,16 +32,16 @@ Provides an overview of mutation distribution and gene-level mutation frequency 
 3. Click Apply Filters (if available).
 4. Explore updated plots.
 
-###Visualizations
+### Visualizations
 
 1. Variant type distribution
 2. Top mutated genes
 3. Mutation burden (mutations per sample)
 4. Mutated gene count (unique genes per sample)
 
-##Gene Co-occurrence Page
+## Gene Co-occurrence Page
 
-###Purpose
+### Purpose
 
 Identifies gene pairs that co-occur or show mutual exclusivity within samples.
 
@@ -49,7 +49,7 @@ Includes:
 * Raw co-occurrence frequency
 * Fisher’s Exact Test–based significance
 
-###Quick Start
+### Quick Start
 
 1. Select a Cancer Type.
 2. Choose up to 20 genes (optional).
@@ -58,9 +58,9 @@ Includes:
 4. Select Raw co-occurence or Fisher OR (sig) for heatmap
 5. Click Compute Heatmap.
 
-##Clinical Distributions
+## Clinical Distributions
 
-###Purpose
+### Purpose
 
 Provides data distribution of clinical attributes:
 * Age at diagnosis
@@ -68,13 +68,13 @@ Provides data distribution of clinical attributes:
 * Treatment combination
 * Vital status
 
-###Quick Start
+### Quick Start
 
 1. Select a Cancer Type.
 
-##Demographic Associations Page
+## Demographic Associations Page
 
-###Purpose
+### Purpose
 
 This page explores how mutation burden and gene mutation frequencies vary across:
 * Age
@@ -83,7 +83,7 @@ This page explores how mutation burden and gene mutation frequencies vary across
 * Ethnicity
 It combines mutation burden summaries with gene-level prevalence across demographic groups.
 
-###Quick Start
+### Quick Start
 
 1. Select a Cancer Type from the dropdown.
 2. Choose optional filters:
@@ -94,7 +94,7 @@ It combines mutation burden summaries with gene-level prevalence across demograp
 4. Click Apply Filters.
 5. Use Reset Filters to return to default top genes.
 
-Visualizations
+### Visualizations
 1. Age vs Mutation Burden
 * Displays median mutation count across age bins.
 2. Mutation Burden by Gender
@@ -106,13 +106,13 @@ Grouped bar plots showing mutation frequency across:
 * Gender
 * Age Group
 
-##Network Analysis Page
+## Network Analysis Page
 
-###Purpose
+### Purpose
 
 Visualizes a sequence similarity network for each cancer type. The nodes represent the tumor sample and the edges represent the distance between them in terms of edit distance. The network is computed using a Nearest Neighbor model variant called DiWANN - Directed Weighted All Nearest Neighbors.
 
-###Quick Start
+### Quick Start
 
 1. Select a Cancer Type.
 2. Click Display Network to visualize the network.
@@ -120,7 +120,7 @@ Visualizes a sequence similarity network for each cancer type. The nodes represe
 4. Interact with the network visualization and see detailed node information on hover.
 5. Click on Download PNG to download the network image.
 
-##Molecular Data Source
+## Molecular Data Source
 
 Patient-level somatic mutation data (mutation annotation format) and associated clinical data is downloaded from the Cancer Genome Atlas (TCGA) database using the R package 'TCGAbiolinks'.
 
@@ -138,16 +138,16 @@ The TCGA cancer projects include:
 * Skin - TCGA-SKCM
 * Thyroid - TCGA-THCA
 
-##Data Load and Preprocessing Commands
+## Data Load and Preprocessing Commands
 
-###Load Molecular Data
+### Load Molecular Data
 
 The preprocess_from_config function does the required preprocessing and loads the maf data file into the webtool database.
 
 An example on how to use the command:
 python manage.py preprocess_from_config --cancer lung --truncate
 
-###Load Network Metadata
+### Load Network Metadata
 
 The load_network_node_meta command loads the network meta data, seen on hovering over nodes on the network analysis page.
 
