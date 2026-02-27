@@ -258,7 +258,6 @@ The project is a **Django** web application with a JavaScript front-end. The key
 | Django Views / API | `dashboard/views.py` | Serves all data API endpoints (GeoJSON, regression data, PCA, static info) |
 | Django Models | `dashboard/models.py` | Defines `CancerIncidence`, `FactorMeasurement`, and supporting lookup tables |
 | Data Ingestion | `dashboard/management/commands/load_data.py` | Management command to populate the database from CSVs |
-| Pre-processing | `pre-process.py` | Aggregates raw source data into the standardized format |
 | Data Config | `geocav_proj/data_config.json` | Central registry of factors, cancer types, and file paths |
 | Map Rendering | `static/MapRenderer.js` | Leaflet-based choropleth, pie, and heat map rendering |
 | Regression Plot | `static/RegressionPlot.js` | D3-based scatter plot and regression line |

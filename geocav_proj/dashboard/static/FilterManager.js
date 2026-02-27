@@ -190,20 +190,21 @@ export class FilterManager {
     updateCancerOptions() {
         const gender = this.selectedFilters.gender;
         
-        // Define available cancers
-        let availableCancers =  Object.keys(this.dataManager.cancer_years[this.selectedFilters.level]) || [];
+        // Define available cancers; always prepend 'None'
+        let availableCancers = Object.keys(this.dataManager.cancer_years[this.selectedFilters.level]) || [];
+        const allCancerOptions = ['None', ...availableCancers];
         
         // Rebuild options
         this.cancerSelect.innerHTML = '';
-        availableCancers.forEach(cancer => {
+        allCancerOptions.forEach(cancer => {
             const option = document.createElement('option');
             option.value = cancer;
             option.textContent = cancer === 'None' ? 'None' : cancer + ' Cancer';
             this.cancerSelect.appendChild(option);
         });
 
-        // Validate and update selected filters
-        if (!availableCancers.includes(this.selectedFilters.cancer_type)) {
+        // Validate and update selected filters ('None' is always valid)
+        if (this.selectedFilters.cancer_type !== 'None' && !availableCancers.includes(this.selectedFilters.cancer_type)) {
              const newSelection = availableCancers.includes('Pancreatic') ? 'Pancreatic' : availableCancers[0];
              this.selectedFilters.cancer_type = newSelection;
         }
@@ -214,7 +215,7 @@ export class FilterManager {
                 this.selectedFilters.selectedCancerTypes = [this.selectedFilters.selectedCancerTypes];
             }
             
-            this.selectedFilters.selectedCancerTypes = this.selectedFilters.selectedCancerTypes.filter(c => availableCancers.includes(c));
+            this.selectedFilters.selectedCancerTypes = this.selectedFilters.selectedCancerTypes.filter(c => c === 'None' || availableCancers.includes(c));
             if (this.selectedFilters.selectedCancerTypes.length === 0) {
                 this.selectedFilters.selectedCancerTypes = [this.selectedFilters.cancer_type];
             }
@@ -305,13 +306,11 @@ export class FilterManager {
             groupedFactors[category][subcategory].push(factor);
         });
 
-        // Add 'None' option at the top if it exists
-        if (filterList.includes('None')) {
-            const option = document.createElement('option');
-            option.value = 'None';
-            option.text = 'None';
-            this.factorSelect.appendChild(option);
-        }
+        // Always add 'None' option at the top
+        const noneOption = document.createElement('option');
+        noneOption.value = 'None';
+        noneOption.text = 'None';
+        this.factorSelect.appendChild(noneOption);
 
         // Populate options with optgroups
         const categoryOrder = ['Environmental', 'Health', 'Lifestyle', 'Indices & Other'];
@@ -352,8 +351,8 @@ export class FilterManager {
             ? this.selectedFilters.factor 
             : [this.selectedFilters.factor];
 
-        // Filter out invalid factors
-        currentFactors = currentFactors.filter(f => filterList.includes(f));
+        // Filter out invalid factors (keep 'None' which is always valid)
+        currentFactors = currentFactors.filter(f => f === 'None' || filterList.includes(f));
 
         // If no valid factors, default to first one
         if (currentFactors.length === 0) {
@@ -372,52 +371,75 @@ export class FilterManager {
         this.factorSlider.innerHTML = '';
 
         // Update cancer years
-        let availableCancerYears = this.dataManager.cancer_years[this.selectedFilters.level][this.selectedFilters.cancer_type] || [];
         let endYears = null;
-        if (availableCancerYears['end']) {
-            endYears = availableCancerYears['end'];
-            availableCancerYears = availableCancerYears['start'];
-        }
-
-        availableCancerYears.forEach((year, i) => {
-            const option = document.createElement('option');
-            option.value = parseInt(year);
-            if (endYears) {
-                option.textContent = `${year} - ${endYears[i]}`;
-            } else {
-                option.textContent = year;
+        if (this.selectedFilters.cancer_type === 'None') {
+            // No cancer selected — show N/A placeholder and disable the slider
+            const naOption = document.createElement('option');
+            naOption.value = '';
+            naOption.textContent = 'N/A';
+            naOption.selected = true;
+            this.cancerSlider.appendChild(naOption);
+            this.cancerSlider.disabled = true;
+        } else {
+            this.cancerSlider.disabled = false;
+            let availableCancerYears = this.dataManager.cancer_years[this.selectedFilters.level][this.selectedFilters.cancer_type] || [];
+            if (availableCancerYears['end']) {
+                endYears = availableCancerYears['end'];
+                availableCancerYears = availableCancerYears['start'];
             }
-            if (year == this.selectedFilters.cancer_year) option.selected = true;
-            this.cancerSlider.appendChild(option);
-        });
+
+            availableCancerYears.forEach((year, i) => {
+                const option = document.createElement('option');
+                option.value = parseInt(year);
+                if (endYears) {
+                    option.textContent = `${year} - ${endYears[i]}`;
+                } else {
+                    option.textContent = year;
+                }
+                if (year == this.selectedFilters.cancer_year) option.selected = true;
+                this.cancerSlider.appendChild(option);
+            });
+        }
 
         // Update factor years
         const firstFactor = Array.isArray(this.selectedFilters.factor) ? this.selectedFilters.factor[0] : this.selectedFilters.factor;
-        let availableFactorYears = this.dataManager.factor_years[this.selectedFilters.level][firstFactor] || [];
-        if (availableFactorYears['end']) {
-            endYears = availableFactorYears['end'];
-            availableFactorYears = availableFactorYears['start'];
-        }
 
-        // Ensure current factor year is valid
-        if (!availableFactorYears.includes(this.selectedFilters.factor_year)) {
-             if (availableFactorYears.length > 0) {
-                 this.selectedFilters.factor_year = availableFactorYears[0];
-             }
-        }
-
-        availableFactorYears.forEach(year => {
-            const option = document.createElement('option');
-            option.value = parseInt(year);
-            if (endYears) {
-                const endYear = endYears[availableFactorYears.indexOf(year)];
-                option.textContent = `${year} - ${endYear}`;
-            } else {
-                option.textContent = year;
+        if (firstFactor === 'None') {
+            // No factor selected — show N/A placeholder and disable the slider
+            const naOption = document.createElement('option');
+            naOption.value = '';
+            naOption.textContent = 'N/A';
+            naOption.selected = true;
+            this.factorSlider.appendChild(naOption);
+            this.factorSlider.disabled = true;
+        } else {
+            this.factorSlider.disabled = false;
+            let availableFactorYears = this.dataManager.factor_years[this.selectedFilters.level][firstFactor] || [];
+            if (availableFactorYears['end']) {
+                endYears = availableFactorYears['end'];
+                availableFactorYears = availableFactorYears['start'];
             }
-            if (year == this.selectedFilters.factor_year) option.selected = true;
-            this.factorSlider.appendChild(option);
-        });
+
+            // Ensure current factor year is valid
+            if (!availableFactorYears.includes(this.selectedFilters.factor_year)) {
+                 if (availableFactorYears.length > 0) {
+                     this.selectedFilters.factor_year = availableFactorYears[0];
+                 }
+            }
+
+            availableFactorYears.forEach(year => {
+                const option = document.createElement('option');
+                option.value = parseInt(year);
+                if (endYears) {
+                    const endYear = endYears[availableFactorYears.indexOf(year)];
+                    option.textContent = `${year} - ${endYear}`;
+                } else {
+                    option.textContent = year;
+                }
+                if (year == this.selectedFilters.factor_year) option.selected = true;
+                this.factorSlider.appendChild(option);
+            });
+        }
     }
 
     checkMultiSelect() {

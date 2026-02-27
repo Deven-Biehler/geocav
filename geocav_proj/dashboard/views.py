@@ -568,11 +568,19 @@ def network_node_meta(request, cancer: str, node_id: str):
         f"{key.title()} Cancer",   
     ]
 
+    # Prefer whichever matching CancerType actually has NetworkNodeMeta rows,
+    # since load_data may create short-name duplicates (e.g. "Breast") alongside
+    # the molecular ones (e.g. "Breast Cancer") that hold the metadata.
     cancer_obj = None
     for nm in candidates:
-        cancer_obj = CancerType.objects.filter(name__iexact=nm).first()
-        if cancer_obj:
+        candidate = CancerType.objects.filter(name__iexact=nm).first()
+        if candidate is None:
+            continue
+        if NetworkNodeMeta.objects.filter(cancer=candidate).exists():
+            cancer_obj = candidate
             break
+        if cancer_obj is None:
+            cancer_obj = candidate  # fallback: first match even without metadata
 
     if cancer_obj is None:
         return JsonResponse(

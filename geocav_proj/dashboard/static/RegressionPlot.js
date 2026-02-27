@@ -30,6 +30,23 @@ export class RegressionPlot {
 
     async renderPlot(selectedFilters, pcData = null) {
         /* Render regression plot based on selected filters */
+
+        // If cancer type is None, no regression is possible — show placeholder immediately
+        if (!pcData && selectedFilters.cancer_type === 'None') {
+            d3.select('#regression-plot').selectAll('*').remove();
+            d3.select('#regression-plot')
+                .append('div')
+                .style('color', '#888')
+                .style('text-align', 'center')
+                .style('padding', '20px')
+                .style('height', '100%')
+                .style('display', 'flex')
+                .style('align-items', 'center')
+                .style('justify-content', 'center')
+                .text('Select a cancer type to view regression analysis.');
+            return;
+        }
+
         try {
             let data = await this.dataManager.fetchRegressionData(selectedFilters); // Fetch data based on filters
             
@@ -55,6 +72,20 @@ export class RegressionPlot {
             if (pcData && pcData.isPCA) {
                 // For PCA, always render single regression with PC score
                 this.renderSingleRegression(svg, data, 'PC_score', selectedFilters, pcData);
+            } else if (selectedFilters.factor.length === 1 && selectedFilters.factor[0] === 'None') {
+                // No factor selected — show a placeholder message
+                d3.select('#regression-plot').selectAll('*').remove();
+                d3.select('#regression-plot')
+                    .append('div')
+                    .style('color', '#888')
+                    .style('text-align', 'center')
+                    .style('padding', '20px')
+                    .style('height', '100%')
+                    .style('display', 'flex')
+                    .style('align-items', 'center')
+                    .style('justify-content', 'center')
+                    .text('Select a factor to view regression analysis.');
+                return;
             } else if (selectedFilters.factor.length > 1) {
                 this.renderMultipleRegression(svg, data, selectedFilters.factor, selectedFilters);
             } else {
