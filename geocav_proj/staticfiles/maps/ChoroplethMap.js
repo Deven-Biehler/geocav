@@ -13,20 +13,35 @@ export class ChoroplethMap {
     async getDataStats(data) {
         console.log('[Choropleth Map] Calculating data statistics for choropleth rendering...');
         /* Calculate necessary statistics for choropleth rendering */
+
+        const cancerIsNone = this.selectedFilters.cancer_type === 'None';
+        const factorIsNone = this.selectedFilters.factor.length === 1 && this.selectedFilters.factor[0] === 'None';
         
-        // Calculate min/max for normalization (using all data for single view)
-        const allValues = data.features.map(f => f.cancer_rate).filter(v => v != null); // Filter out nulls
-        const nC = allValues.length; // Number of valid cancer rate values
-        this.dataMean = allValues.reduce((a, b) => a + b, 0) / nC; // Mean of all cancer rate values
-        this.dataStd = Math.sqrt(allValues.reduce((a, b) => a + Math.pow(b - this.dataMean, 2), 0) / (nC - 1)); // Std Dev
+        // Calculate cancer stats only when a cancer type is selected
+        if (!cancerIsNone) {
+            const allValues = data.features.map(f => f.cancer_rate).filter(v => v != null);
+            const nC = allValues.length;
+            this.dataMean = allValues.reduce((a, b) => a + b, 0) / nC;
+            this.dataStd = Math.sqrt(allValues.reduce((a, b) => a + Math.pow(b - this.dataMean, 2), 0) / (nC - 1));
+        } else {
+            this.dataMean = 0;
+            this.dataStd = 1;
+        }
         
-        // Calculate factor stats if single factor selected
-        if (this.selectedFilters.factor.length === 1) {
-            const factorName = this.selectedFilters.factor[0]; // Single factor (bc length == 1)
-            const allFactorValues = data.features.map(f => f[factorName]).filter(v => v != null); // Filter out nulls
-            const nF = allFactorValues.length; // Number of valid factor values
-            this.factorMean = allFactorValues.reduce((a, b) => a + b, 0) / nF; // Mean of all factor values
-            this.factorStd = Math.sqrt(allFactorValues.reduce((a, b) => a + Math.pow(b - this.factorMean, 2), 0) / (nF - 1)); // Std Dev
+        // Calculate factor stats if a single real factor is selected
+        if (!factorIsNone && this.selectedFilters.factor.length === 1) {
+            const factorName = this.selectedFilters.factor[0];
+            const allFactorValues = data.features.map(f => f[factorName]).filter(v => v != null);
+            const nF = allFactorValues.length;
+            this.factorMean = allFactorValues.reduce((a, b) => a + b, 0) / nF;
+            this.factorStd = Math.sqrt(allFactorValues.reduce((a, b) => a + Math.pow(b - this.factorMean, 2), 0) / (nF - 1));
+        }
+
+        // Skip regression when either selection is None
+        if (cancerIsNone || factorIsNone) {
+            this.stats = { beta: [] };
+            this.maxAbsResidual = 1;
+            return;
         }
 
         // Filter for valid paired data (cancer rate and factor values)
@@ -105,6 +120,7 @@ export class ChoroplethMap {
     }
 
     async renderMap(map, data) {
+        
         console.log('[Choropleth Map] Rendering choropleth map with filters:', this.selectedFilters, 'and level:', this.selectedFilters.level);
         console.log('[Choropleth Map] Data received for rendering:', data);
 
@@ -204,6 +220,7 @@ export class ChoroplethMap {
         console.log('[Choropleth Map] States layer data:', data);
         console.log('[Choropleth Map] checking maxAbsResidual:', this.maxAbsResidual);
         
+        // When no factor is selected, validFeatures is all features with a cancer rate
         const layer = L.geoJson(data, {
             style: (feature) => this.getBivariateMapStyle(feature),     // Apply bivariate styling
             onEachFeature: (feature, layer) => {                        // Add interactivity
@@ -237,7 +254,11 @@ export class ChoroplethMap {
     getBivariateMapStyle(feature) {
         const cancerValue = feature.cancer_rate;
         const factors = Array.isArray(this.selectedFilters.factor) ? this.selectedFilters.factor : [this.selectedFilters.factor];
-        const hasFactors = factors.every(f => feature[f] != null);
+        const factorIsNone = factors.length === 1 && factors[0] === 'None';
+        const cancerIsNone = this.selectedFilters.cancer_type === 'None';
+        // When factor is 'None', only cancer data matters; when cancer is 'None', only factor data matters
+        const hasFactors = factorIsNone || factors.every(f => feature[f] != null);
+        const hasCancer = cancerIsNone || cancerValue != null;
         
         // Use imported getCorrelationColor
         const color = getCorrelationColor(
@@ -254,7 +275,7 @@ export class ChoroplethMap {
         return {
             ...DEFAULT_CHOROPLETH_STYLE,
             fillColor: color,
-            fillOpacity: (cancerValue !== null && hasFactors) ? 0.8 : 0.1
+            fillOpacity: (hasCancer && hasFactors) ? 0.8 : 0.1
         };
     }
 

@@ -27,11 +27,8 @@ if not SECRET_KEY:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
 ALLOWED_HOSTS = [
-    'geocav.eecs.wsu.edu',
+    'gmcav.eecs.wsu.edu',
     '127.0.0.1',
     'localhost'
 ]

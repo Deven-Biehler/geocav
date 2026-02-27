@@ -1,3 +1,7 @@
+const usBounds = L.latLngBounds(
+    [18.9, -168],   // Roughly covers Hawaii + some Pacific buffer
+    [71.4, -66]     // Up to northern Alaska
+);
 export const DEFAULT_LEAFLET_CONFIG = {
     DEFAULT_CENTER: [39.8283, -98.5795],
     DEFAULT_ZOOM: 4,
@@ -7,7 +11,8 @@ export const DEFAULT_LEAFLET_CONFIG = {
             maxZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
         }
-    }
+    },
+    MAX_BOUNDS: usBounds
 };
 
 

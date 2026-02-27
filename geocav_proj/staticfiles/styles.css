@@ -33,20 +33,20 @@
     --header-height: 80px;
 
     /* --- Component Dimensions --- */
-    --filter-box-width: 300px;
-    --filter-box-height: 700px;
+    --filter-box-width: clamp(200px, 20%, 300px);
+    --filter-box-height: clamp(300px, 60%, 700px);
     --filter-box-background: var(--color-background-light);
 
-    --regression-box-width: 400px;
-    --regression-box-height: 350px;
+    --regression-box-width: clamp(250px, 25%, 400px);
+    --regression-box-height: clamp(200px, 35%, 350px);
     --regression-box-background: var(--color-background-white);
 
-    --legend-box-width: 400px;
-    --legend-box-height: 350px;
+    --legend-box-width: clamp(250px, 25%, 400px);
+    --legend-box-height: clamp(150px, 30%, 350px);
     --legend-box-background: var(--color-background-white);
 
-    --timeline-box-width: 400px;
-    --timeline-box-height: 200px;
+    --timeline-box-width: clamp(250px, 25%, 400px);
+    --timeline-box-height: clamp(100px, 20%, 200px);
     --timeline-box-background: var(--color-background-white);
 
     --navigation-box-height: 80px;
@@ -72,32 +72,54 @@
 /* ============================================================================
    MAIN LAYOUT COMPONENTS
    ============================================================================ */
-/* --- Navigation Bar --- */
-.navigation {
+
+/* --- Header Container (holds Navigation + Title side by side) --- */
+.header-container {
     position: absolute;
     top: 0;
     left: var(--sidebar-width);
     width: calc(100% - var(--sidebar-width));
     height: var(--navigation-box-height);
-    color: black;
-    padding: var(--spacing-lg);
+    display: flex;
     align-items: center;
+    background-color: var(--color-background-white);
+    border-bottom: 1px solid var(--color-border);
+    z-index: 100;
+}
+
+/* --- Navigation Bar --- */
+.navigation {
+    flex-shrink: 0;
+    padding: 0 var(--spacing-lg);
+    color: black;
+}
+
+.navigation h1 {
+    margin: 0;
+    font-size: clamp(14px, 2vw, 24px);
+    white-space: nowrap;
 }
 
 /* --- Page Title --- */
 .title {
-    position: absolute;
-    top: 0;
-    right: 0;
-    left: var(--sidebar-width);
-    width: calc(100% - var(--sidebar-width));
-    height: var(--title-box-height);
-    background-color: var(--color-background-white);
-    color: black;
+    flex: 1;
+    overflow: hidden;
     padding: 0 var(--spacing-lg);
-    align-items: center;
     display: flex;
-    justify-content: center;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.title h2 {
+    max-width: 100%;
+    margin: 0;
+    font-size: clamp(14px, 2vw, 24px);
+    text-align: center;
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 /* --- Main Content Area --- */
@@ -140,16 +162,22 @@
     overflow-y: auto;
 }
 
+.filter-box h3 {
+    margin: 5px 0 10px 0;
+    font-size: clamp(12px, 1.2vw, 16px);
+}
+
 /* --- Regression Plot Panel (Right, Bottom) --- */
 .regression-box {
     position: absolute;
     width: var(--regression-box-width);
-    height: auto;
-    max-height: 80vh;
+    height: var(--regression-box-height);
     right: var(--spacing-lg);
     bottom: var(--spacing-lg);
     background-color: var(--regression-box-background);
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 /* --- Legend Panel (Right, Top) --- */
@@ -161,6 +189,15 @@
     right: var(--spacing-lg);
     top: var(--spacing-lg);
     background-color: var(--legend-box-background);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+#legend {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 /* --- Timeline / Year Selection Panel (Left, Bottom) --- */
@@ -175,19 +212,32 @@
     background-color: var(--timeline-box-background);
 }
 
+.timeline-box h3 {
+    margin: 5px 0;
+    font-size: clamp(11px, 1.1vw, 14px);
+}
+
+.timeline-box select {
+    width: 100%;
+    padding: 4px;
+    font-size: clamp(10px, 1vw, 12px);
+    margin-bottom: 8px;
+}
+
 /* ============================================================================
    FORM CONTROLS & FILTERS
    ============================================================================ */
 
 /* --- Filter Group Container --- */
 .filter-group {
-    margin-bottom: var(--spacing-md);
+    margin-bottom: 8px;
 }
 
 /* --- Filter Labels --- */
 .filter-group label {
     display: block;
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: 2px;
+    font-size: clamp(10px, 1vw, 13px);
     font-weight: bold;
     color: var(--color-text-dark);
 }
@@ -195,16 +245,16 @@
 /* --- Filter Dropdowns & Select Elements --- */
 .filter-group select {
     width: 100%;
-    padding: 6px;
+    padding: 4px;
     border: 1px solid var(--color-border-light);
     border-radius: var(--border-radius);
-    font-size: 14px;
+    font-size: clamp(10px, 1vw, 12px);
     color: var(--color-text-dark);
 }
 
 /* --- Factor Multi-select (Extended height) --- */
 #factor-select {
-    height: 300px;
+    height: 15vh;
 }
 
 /* --- Filter Group Disabled State --- */
@@ -224,7 +274,7 @@
 }
 
 #pc-select {
-    min-height: 100px;
+    min-height: 10vh;
 }
 
 #biplot-selection-group {
@@ -302,6 +352,16 @@
 /* --- Regression Plot Area --- */
 #regression-plot {
     margin-top: var(--spacing-sm);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+#regression-plot svg {
+    width: 100%;
+    height: 100%;
+    display: block;
 }
 
 /* --- Map Wrapper Container --- */
@@ -523,11 +583,11 @@
 
 /* --- Button Base Styles --- */
 button {
-    padding: 6px 10px;
+    padding: 4px 8px;
     cursor: pointer;
     border: none;
     border-radius: var(--border-radius);
-    font-size: 14px;
+    font-size: clamp(11px, 1vw, 13px);
     font-weight: 500;
     transition: background-color 0.3s ease, opacity 0.3s ease;
 }
