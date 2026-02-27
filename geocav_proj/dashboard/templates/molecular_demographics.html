@@ -455,10 +455,10 @@
     renderGenderBurden(window.lastGenderBurdenData);
 
     Promise.all([
-      renderGeneGroupedBars("raceHeatmap", data.gene_by_race, "Gene mutation frequency by Race"),
-      renderGeneGroupedBars("ethHeatmap", data.gene_by_ethnicity, "Gene mutation frequency by Ethnicity"),
-      renderGeneGroupedBars("genderHeatmap", data.gene_by_gender, "Gene mutation frequency by Sex"),
-      renderGeneGroupedBars("agebinHeatmap", data.gene_by_agebin, "Gene mutation frequency by Age Group"),
+      renderGeneGroupedBars("raceHeatmap", data.gene_by_race, "Gene mutation frequency by Race", "Race"),
+      renderGeneGroupedBars("ethHeatmap", data.gene_by_ethnicity, "Gene mutation frequency by Ethnicity", "Ethnicity"),
+      renderGeneGroupedBars("genderHeatmap", data.gene_by_gender, "Gene mutation frequency by Sex", "Sex"),
+      renderGeneGroupedBars("agebinHeatmap", data.gene_by_agebin, "Gene mutation frequency by Age Group", "Age Group"),
     ]).then(() => {
       // build legend from one rendered plot (colors now resolved)
       renderSharedGeneLegendFromPlot("raceHeatmap");
@@ -711,22 +711,33 @@
           // Helper to safely read axis tick font size
           const axFontSize = (ax) => (ax && ax.tickfont && ax.tickfont.size) ? ax.tickfont.size : baseFont;
 
-          const old = {
-            baseFont,
-            xTick: axFontSize(full.xaxis),
-            yTick: axFontSize(full.yaxis),
-            legend: (full.legend && full.legend.font && full.legend.font.size) ? full.legend.font.size : baseFont,
-            title: (full.title && full.title.font && full.title.font.size) ? full.title.font.size : baseFont + 2
-          };
+          const axTitleFontSize = (ax) =>
+          (ax && ax.title && ax.title.font && ax.title.font.size)
+            ? ax.title.font.size
+            : baseFont;
 
-          // --- export-only font bump ---
-          // Tune these multipliers as needed (these are good manuscript defaults)
-          const bump = {
-            base: Math.max(16, Math.round(old.baseFont * 1.6)),
-            tick: Math.max(14, Math.round(old.xTick * 1.6)),
-            legend: Math.max(14, Math.round(old.legend * 1.6)),
-            title: Math.max(18, Math.round(old.title * 2.5))
-          };
+          const old = {
+          baseFont,
+          xTick: axFontSize(full.xaxis),
+          yTick: axFontSize(full.yaxis),
+          xTitle: axTitleFontSize(full.xaxis),
+          yTitle: axTitleFontSize(full.yaxis),
+          legend: (full.legend && full.legend.font && full.legend.font.size)
+                    ? full.legend.font.size
+                    : baseFont,
+          title: (full.title && full.title.font && full.title.font.size)
+                    ? full.title.font.size
+                    : baseFont + 2
+        };
+
+        // --------- Export-only font bump ---------
+        const bump = {
+          base:   Math.max(16, Math.round(old.baseFont * 2)),
+          tick:   Math.max(14, Math.round(old.xTick * 2)),
+          axis:   Math.max(16, Math.round(old.yTitle * 2.2)),  
+          legend: Math.max(14, Math.round(old.legend * 2)),
+          title:  Math.max(18, Math.round(old.title * 3.5))
+        };
 
           // --- export size: scale up the PNG dimensions ---
           const w0 = gd.clientWidth || 900;
@@ -745,10 +756,13 @@
               // common axes
               "xaxis.tickfont.size": bump.tick,
               "yaxis.tickfont.size": bump.tick,
-
-              // if you have xaxis2/yaxis2 etc in some plots, these are harmless if absent
               "xaxis2.tickfont.size": bump.tick,
               "yaxis2.tickfont.size": bump.tick,
+
+              "xaxis.title.font.size": bump.axis,
+              "yaxis.title.font.size": bump.axis,
+              "xaxis2.title.font.size": bump.axis,
+              "yaxis2.title.font.size": bump.axis,
 
               "legend.font.size": bump.legend
             });
@@ -771,6 +785,10 @@
               "yaxis.tickfont.size": old.yTick,
               "xaxis2.tickfont.size": old.xTick,
               "yaxis2.tickfont.size": old.yTick,
+              "xaxis.title.font.size": old.xTitle,
+              "yaxis.title.font.size": old.yTitle,
+              "xaxis2.title.font.size": old.xTitle,
+              "yaxis2.title.font.size": old.yTitle,
               "legend.font.size": old.legend
             });
           }
@@ -793,7 +811,7 @@
     }
   }
 
-  function renderGeneGroupedBars(divId, obj, title){
+  function renderGeneGroupedBars(divId, obj, title, xLabel){
     // Pick a filename from the divId (or from title if you prefer)
     const cfg = makeHiResConfig(`demographics_${divId}`);
 
@@ -803,8 +821,6 @@
 
     const groups = obj.groups || [];
 
-    // IMPORTANT: you said you don’t want forced capitalization anymore
-    // So remove toTitleCase and use original group text.
     const tickText = groups.map(g => wrapTickLabel(String(g ?? ""), 12, 3));
 
     const genes  = obj.genes  || [];
@@ -836,13 +852,14 @@
     const layout = {
       title: { text: title, font: { size: 12 } },
       xaxis: {
+        title: {text: xLabel || "Group"},
         tickmode: "array",
         tickvals: groups,
         ticktext: tickText,
         tickangle: 0,
         automargin: true
       },
-      margin: { t: 60, r: 10, b: 60, l: 60 },
+      margin: { t: 80, r: 10, b: 80, l: 80 },
       barmode: "group",
       yaxis: { title: "Fraction mutated", range: [0, 1] },
       height: 260

@@ -157,22 +157,27 @@ def clean_for_json(x):
     if isinstance(x, np.generic):
         x = x.item()
 
+    # NEW: numpy arrays -> python lists
+    if isinstance(x, np.ndarray):
+        x = x.tolist()
+
+    # NEW: pandas Series/Index -> python lists
+    if isinstance(x, (pd.Series, pd.Index)):
+        x = x.tolist()
+
     # float NaN
     if isinstance(x, float) and math.isnan(x):
         return None
 
-    # pandas / numpy nan (covers many cases)
     try:
         if pd.isna(x):
             return None
     except Exception:
         pass
 
-    # list / tuple
     if isinstance(x, (list, tuple)):
         return [clean_for_json(v) for v in x]
 
-    # dict
     if isinstance(x, dict):
         return {str(k): clean_for_json(v) for k, v in x.items()}
 
