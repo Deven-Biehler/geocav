@@ -51,32 +51,29 @@ By default, the tool provides incidence rates for Bladder, BrainCNS, Breast, Cer
 ### Factors
 By default, the tool provides various environmental, health, lifestyle, and index factors. view Chapter 5 for details on how to add new factors.
 
-**Environmental**
-Air Quality (AQI)
-Air Toxins Concentration (Micrograms per cubic meter (µg/m³))
-Annual Sunlight Exposure (Hours)
-Annual UV DailyDose (Joules per square meter (J/m²))
-Radon Levels Pre Mitigation 10Y (Picocuries per liter (pCi/L))
-**Health** 
-Coronary Heart disease (Percentage (%))
-Depression (Percentage (%))
-Diabetes (Percentage (%))
-Heart stroke (Percentage (%))
-High Blood Pressure (Percentage (%))
-High Cholesterol (Percentage (%))
-Hospitalization Gender (Hospitalizations per 100,000)
-Hospitalization (Hospitalizations per 100,000)
-No Health Insurance (Percentage (%))
-**Lifestyle**
-Binge Drinking (Percentage (%))
-No Physical Activity (Percentage (%))
-Obesity (Percentage (%))
-Short Sleep (Percentage (%))
-Smoking (Percentage (%))
-Opioid Dispensing Rate (Prescriptions per 100 people)
-
-**Index**
-Social Vulnerability Index (Score (0-1))
+| Category | Factor | Unit |
+|---|---|---|
+| **Environmental** | Air Quality (AQI) | Index |
+| | Air Toxins Concentration | Micrograms per cubic meter (µg/m³) |
+| | Annual Sunlight Exposure | Hours |
+| | Annual UV Daily Dose | Joules per square meter (J/m²) |
+| | Radon Levels Pre Mitigation 10Y | Picocuries per liter (pCi/L) |
+| **Health** | Coronary Heart Disease | Percentage (%) |
+| | Depression | Percentage (%) |
+| | Diabetes | Percentage (%) |
+| | Heart Stroke | Percentage (%) |
+| | High Blood Pressure | Percentage (%) |
+| | High Cholesterol | Percentage (%) |
+| | Hospitalization Gender | Hospitalizations per 100,000 |
+| | Hospitalization | Hospitalizations per 100,000 |
+| | No Health Insurance | Percentage (%) |
+| **Lifestyle** | Binge Drinking | Percentage (%) |
+| | No Physical Activity | Percentage (%) |
+| | Obesity | Percentage (%) |
+| | Short Sleep | Percentage (%) |
+| | Smoking | Percentage (%) |
+| | Opioid Dispensing Rate | Prescriptions per 100 people |
+| **Index** | Social Vulnerability Index | Score (0–1) |
 
 ### Sex
 This allows you to filter the data by sex. Currently, the options are:
@@ -187,7 +184,7 @@ python manage.py load_data
 This command is defined in `dashboard/management/commands/load_data.py` and performs the following steps in order:
 
 #### 1. Clear Existing Data
-All existing records are deleted from the database before reloading to prevent duplicates. This includes `CancerIncidence`, `FactorMeasurement`, `Race`, `Gender`, `Factor`, and `CancerType` records.
+All existing records are deleted from the database before reloading to prevent duplicates.
 
 #### 2. Load Factor Measurements
 The command scans two directories:
@@ -228,8 +225,7 @@ Each `.csv` filename (minus `.csv`) is used as the cancer type name. `CancerType
 2. Place the file in the appropriate directory:
    - `geocav_proj/data/Factors/County_Level/<FactorName>.csv`
    - `geocav_proj/data/Factors/State_Level/<FactorName>.csv`
-3. (Optional) Register the factor in `data_config.json` under `factors.county` or `factors.state` with a display name, slug, and category.
-4. Re-run the ingestion command: `python manage.py load_data`
+3. Re-run the ingestion command: `python manage.py load_data`
 
 The factor will automatically appear in the Factor dropdown on the dashboard.
 
@@ -246,23 +242,3 @@ The factor will automatically appear in the Factor dropdown on the dashboard.
 4. Re-run: `python manage.py load_data`
 
 The new cancer type will automatically populate in the Cancer Type dropdown.
-
----
-
-### Code Base
-
-The project is a **Django** web application with a JavaScript front-end. The key components are:
-
-| Component | Location | Description |
-|---|---|---|
-| Django Views / API | `dashboard/views.py` | Serves all data API endpoints (GeoJSON, regression data, PCA, static info) |
-| Django Models | `dashboard/models.py` | Defines `CancerIncidence`, `FactorMeasurement`, and supporting lookup tables |
-| Data Ingestion | `dashboard/management/commands/load_data.py` | Management command to populate the database from CSVs |
-| Data Config | `geocav_proj/data_config.json` | Central registry of factors, cancer types, and file paths |
-| Map Rendering | `static/MapRenderer.js` | Leaflet-based choropleth, pie, and heat map rendering |
-| Regression Plot | `static/RegressionPlot.js` | D3-based scatter plot and regression line |
-| PCA / BiPlot | `static/PcaHeatmap.js` | D3-based loadings heatmap and biplot |
-| Table Rendering | `static/TableRenderer.js` | Sortable data table rendered from API response |
-| Data Manager | `static/DataManager.js` | Client-side data fetching and caching layer |
-| Filter Manager | `static/FilterManager.js` | Manages filter state and UI interactions |
-| Templates | `dashboard/templates/` | Django HTML templates for each page |
