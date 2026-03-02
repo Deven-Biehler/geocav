@@ -190,20 +190,21 @@ export class FilterManager {
     updateCancerOptions() {
         const gender = this.selectedFilters.gender;
         
-        // Define available cancers
-        let availableCancers =  Object.keys(this.dataManager.cancer_years[this.selectedFilters.level]) || [];
+        // Define available cancers; always prepend 'None'
+        let availableCancers = Object.keys(this.dataManager.cancer_years[this.selectedFilters.level]) || [];
+        const allCancerOptions = ['None', ...availableCancers];
         
         // Rebuild options
         this.cancerSelect.innerHTML = '';
-        availableCancers.forEach(cancer => {
+        allCancerOptions.forEach(cancer => {
             const option = document.createElement('option');
             option.value = cancer;
             option.textContent = cancer === 'None' ? 'None' : cancer + ' Cancer';
             this.cancerSelect.appendChild(option);
         });
 
-        // Validate and update selected filters
-        if (!availableCancers.includes(this.selectedFilters.cancer_type)) {
+        // Validate and update selected filters ('None' is always valid)
+        if (this.selectedFilters.cancer_type !== 'None' && !availableCancers.includes(this.selectedFilters.cancer_type)) {
              const newSelection = availableCancers.includes('Pancreatic') ? 'Pancreatic' : availableCancers[0];
              this.selectedFilters.cancer_type = newSelection;
         }
@@ -214,7 +215,7 @@ export class FilterManager {
                 this.selectedFilters.selectedCancerTypes = [this.selectedFilters.selectedCancerTypes];
             }
             
-            this.selectedFilters.selectedCancerTypes = this.selectedFilters.selectedCancerTypes.filter(c => availableCancers.includes(c));
+            this.selectedFilters.selectedCancerTypes = this.selectedFilters.selectedCancerTypes.filter(c => c === 'None' || availableCancers.includes(c));
             if (this.selectedFilters.selectedCancerTypes.length === 0) {
                 this.selectedFilters.selectedCancerTypes = [this.selectedFilters.cancer_type];
             }
@@ -248,12 +249,101 @@ export class FilterManager {
         // Determine which filter list to use
         const filterList = Object.keys(this.dataManager.factor_years[this.selectedFilters.level] || {})
         
-        // Populate options
+        const FACTOR_CATEGORIES = {
+            'Environmental': {
+                'Air Pollution': [
+                    'Air_Quality', '1,3-butadiene', 'Acetaldehyde', 'Benzene', 
+                    'Carbon tetrachloride', 'Diesel Particulate Matter', 
+                    'Ethylene oxide', 'Formaldehyde', 'Napthalene'
+                ],
+                '': ['Annual_Sunlight_Exposure', 'Annual_UV_DailyDose', 'Radon_Levels_Pre_Mitigation_10Y', 'Pesticide_Exposure']
+            },
+            'Health': {
+                '': [
+                    'Coronary_Heart_Disease', 'Depression', 'Diabetes', 'Heart_Stroke', 
+                    'High_Blood_Pressure', 'High_Cholesterol', 'Hospitalization_Gender', 
+                    'Hospitalization', 'No_Health_Insurance', 'CO_Poisoning_Hospitalization'
+                ]
+            },
+            'Lifestyle': {
+                '': [
+                    'Binge_Drinking', 'No_Physical_Activity', 'Obesity', 'Short_Sleep', 'Smoking'
+                ]
+            },
+            'Indices & Other': {
+                '': [
+                    'SVI_RPL_THEMES', 'Opioid_Dispensing_Rate'
+                ]
+            }
+        };
+
+        // Group available factors
+        const groupedFactors = {};
         filterList.forEach(factor => {
-            const option = document.createElement('option');
-            option.value = factor;
-            option.text = factor.replace(/_/g, ' ');
-            this.factorSelect.appendChild(option);
+            if (factor === 'None') return; // Handle None separately
+            let category = 'Indices & Other';
+            let subcategory = '';
+            
+            let found = false;
+            for (const [cat, subcats] of Object.entries(FACTOR_CATEGORIES)) {
+                for (const [subcat, factors] of Object.entries(subcats)) {
+                    if (factors.includes(factor)) {
+                        category = cat;
+                        subcategory = subcat;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) break;
+            }
+            
+            if (!groupedFactors[category]) {
+                groupedFactors[category] = {};
+            }
+            if (!groupedFactors[category][subcategory]) {
+                groupedFactors[category][subcategory] = [];
+            }
+            groupedFactors[category][subcategory].push(factor);
+        });
+
+        // Always add 'None' option at the top
+        const noneOption = document.createElement('option');
+        noneOption.value = 'None';
+        noneOption.text = 'None';
+        this.factorSelect.appendChild(noneOption);
+
+        // Populate options with optgroups
+        const categoryOrder = ['Environmental', 'Health', 'Lifestyle', 'Indices & Other'];
+        categoryOrder.forEach(category => {
+            if (groupedFactors[category] && Object.keys(groupedFactors[category]).length > 0) {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = category;
+                
+                // Sort subcategories so that named ones come first
+                const subcats = Object.keys(groupedFactors[category]).sort((a, b) => {
+                    if (a === '') return 1;
+                    if (b === '') return -1;
+                    return a.localeCompare(b);
+                });
+                
+                subcats.forEach(subcat => {
+                    if (subcat !== '') {
+                        const subHeader = document.createElement('option');
+                        subHeader.disabled = true;
+                        subHeader.text = `── ${subcat} ──`;
+                        optgroup.appendChild(subHeader);
+                    }
+                    
+                    groupedFactors[category][subcat].forEach(factor => {
+                        const option = document.createElement('option');
+                        option.value = factor;
+                        option.innerHTML = (subcat !== '' ? '&nbsp;&nbsp;' : '') + factor.replace(/_/g, ' ');
+                        optgroup.appendChild(option);
+                    });
+                });
+                
+                this.factorSelect.appendChild(optgroup);
+            }
         });
         
         // Handle factor selection (array or string)
@@ -261,8 +351,8 @@ export class FilterManager {
             ? this.selectedFilters.factor 
             : [this.selectedFilters.factor];
 
-        // Filter out invalid factors
-        currentFactors = currentFactors.filter(f => filterList.includes(f));
+        // Filter out invalid factors (keep 'None' which is always valid)
+        currentFactors = currentFactors.filter(f => f === 'None' || filterList.includes(f));
 
         // If no valid factors, default to first one
         if (currentFactors.length === 0) {
@@ -281,41 +371,75 @@ export class FilterManager {
         this.factorSlider.innerHTML = '';
 
         // Update cancer years
-        let availableCancerYears = this.dataManager.cancer_years[this.selectedFilters.level][this.selectedFilters.cancer_type] || [];
+        let endYears = null;
+        if (this.selectedFilters.cancer_type === 'None') {
+            // No cancer selected — show N/A placeholder and disable the slider
+            const naOption = document.createElement('option');
+            naOption.value = '';
+            naOption.textContent = 'N/A';
+            naOption.selected = true;
+            this.cancerSlider.appendChild(naOption);
+            this.cancerSlider.disabled = true;
+        } else {
+            this.cancerSlider.disabled = false;
+            let availableCancerYears = this.dataManager.cancer_years[this.selectedFilters.level][this.selectedFilters.cancer_type] || [];
+            if (availableCancerYears['end']) {
+                endYears = availableCancerYears['end'];
+                availableCancerYears = availableCancerYears['start'];
+            }
 
-        // Ensure current cancer year is valid
-        if (!availableCancerYears.includes(this.selectedFilters.cancer_year)) {
-             if (availableCancerYears.length > 0) {
-                 this.selectedFilters.cancer_year = availableCancerYears[0];
-             }
+            availableCancerYears.forEach((year, i) => {
+                const option = document.createElement('option');
+                option.value = parseInt(year);
+                if (endYears) {
+                    option.textContent = `${year} - ${endYears[i]}`;
+                } else {
+                    option.textContent = year;
+                }
+                if (year == this.selectedFilters.cancer_year) option.selected = true;
+                this.cancerSlider.appendChild(option);
+            });
         }
-
-        availableCancerYears.forEach(year => {
-            const option = document.createElement('option');
-            option.value = parseInt(year);
-            option.textContent = year;
-            if (year == this.selectedFilters.cancer_year) option.selected = true;
-            this.cancerSlider.appendChild(option);
-        });
 
         // Update factor years
         const firstFactor = Array.isArray(this.selectedFilters.factor) ? this.selectedFilters.factor[0] : this.selectedFilters.factor;
-        let availableFactorYears = this.dataManager.factor_years[this.selectedFilters.level][firstFactor] || [];
 
-        // Ensure current factor year is valid
-        if (!availableFactorYears.includes(this.selectedFilters.factor_year)) {
-             if (availableFactorYears.length > 0) {
-                 this.selectedFilters.factor_year = availableFactorYears[0];
-             }
+        if (firstFactor === 'None') {
+            // No factor selected — show N/A placeholder and disable the slider
+            const naOption = document.createElement('option');
+            naOption.value = '';
+            naOption.textContent = 'N/A';
+            naOption.selected = true;
+            this.factorSlider.appendChild(naOption);
+            this.factorSlider.disabled = true;
+        } else {
+            this.factorSlider.disabled = false;
+            let availableFactorYears = this.dataManager.factor_years[this.selectedFilters.level][firstFactor] || [];
+            if (availableFactorYears['end']) {
+                endYears = availableFactorYears['end'];
+                availableFactorYears = availableFactorYears['start'];
+            }
+
+            // Ensure current factor year is valid
+            if (!availableFactorYears.includes(this.selectedFilters.factor_year)) {
+                 if (availableFactorYears.length > 0) {
+                     this.selectedFilters.factor_year = availableFactorYears[0];
+                 }
+            }
+
+            availableFactorYears.forEach(year => {
+                const option = document.createElement('option');
+                option.value = parseInt(year);
+                if (endYears) {
+                    const endYear = endYears[availableFactorYears.indexOf(year)];
+                    option.textContent = `${year} - ${endYear}`;
+                } else {
+                    option.textContent = year;
+                }
+                if (year == this.selectedFilters.factor_year) option.selected = true;
+                this.factorSlider.appendChild(option);
+            });
         }
-
-        availableFactorYears.forEach(year => {
-            const option = document.createElement('option');
-            option.value = parseInt(year);
-            option.textContent = year;
-            if (year == this.selectedFilters.factor_year) option.selected = true;
-            this.factorSlider.appendChild(option);
-        });
     }
 
     checkMultiSelect() {

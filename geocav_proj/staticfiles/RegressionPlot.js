@@ -9,13 +9,44 @@ export class RegressionPlot {
         
         // Set up margins and dimensions
         this.margin = {top: 20, right: 30, bottom: 40, left: 50};
-        this.width = 300;
-        this.height = 280;
+        this.width = 300;   // default; overridden at render time
+        this.height = 280;  // default; overridden at render time
         this.colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+    }
+
+    _measureContainer() {
+        /* Read the regression-box container size and update this.width / this.height */
+        const container = document.querySelector('.regression-box');
+        if (container) {
+            const style = getComputedStyle(container);
+            const padH = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+            const padV = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+            const availW = container.clientWidth - padH - this.margin.left - this.margin.right;
+            const availH = container.clientHeight - padV - this.margin.top - this.margin.bottom;
+            this.width  = Math.max(100, availW);
+            this.height = Math.max(80,  availH);
+        }
     }
 
     async renderPlot(selectedFilters, pcData = null) {
         /* Render regression plot based on selected filters */
+
+        // If cancer type is None, no regression is possible — show placeholder immediately
+        if (!pcData && selectedFilters.cancer_type === 'None') {
+            d3.select('#regression-plot').selectAll('*').remove();
+            d3.select('#regression-plot')
+                .append('div')
+                .style('color', '#888')
+                .style('text-align', 'center')
+                .style('padding', '20px')
+                .style('height', '100%')
+                .style('display', 'flex')
+                .style('align-items', 'center')
+                .style('justify-content', 'center')
+                .text('Select a cancer type to view regression analysis.');
+            return;
+        }
+
         try {
             let data = await this.dataManager.fetchRegressionData(selectedFilters); // Fetch data based on filters
             
@@ -24,17 +55,37 @@ export class RegressionPlot {
                 data = this.computePCForRegression(data, pcData);
             }
             
+            this._measureContainer(); // Update dimensions from current container size
+
             d3.select('#regression-plot').selectAll('*').remove(); // Clear any existing plot
+            const totalW = this.width  + this.margin.left + this.margin.right;
+            const totalH = this.height + this.margin.top  + this.margin.bottom;
             const svg = d3.select('#regression-plot') // Create SVG container
                 .append("svg")
-                    .attr('width', this.width + this.margin.left + this.margin.right)
-                    .attr('height', this.height + this.margin.top + this.margin.bottom)
+                    .attr('viewBox', `0 0 ${totalW} ${totalH}`)
+                    .attr('preserveAspectRatio', 'xMidYMid meet')
+                    .style('width',  '100%')
+                    .style('height', '100%')
                 .append("g")
                     .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
 
             if (pcData && pcData.isPCA) {
                 // For PCA, always render single regression with PC score
                 this.renderSingleRegression(svg, data, 'PC_score', selectedFilters, pcData);
+            } else if (selectedFilters.factor.length === 1 && selectedFilters.factor[0] === 'None') {
+                // No factor selected — show a placeholder message
+                d3.select('#regression-plot').selectAll('*').remove();
+                d3.select('#regression-plot')
+                    .append('div')
+                    .style('color', '#888')
+                    .style('text-align', 'center')
+                    .style('padding', '20px')
+                    .style('height', '100%')
+                    .style('display', 'flex')
+                    .style('align-items', 'center')
+                    .style('justify-content', 'center')
+                    .text('Select a factor to view regression analysis.');
+                return;
             } else if (selectedFilters.factor.length > 1) {
                 this.renderMultipleRegression(svg, data, selectedFilters.factor, selectedFilters);
             } else {
