@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}Guides & Tutorials{% endblock %}
+
+{% block content %}
+
+<style>
+  .guides-wrap {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .guides-header {
+    margin-bottom: 28px;
+  }
+
+  .guides-header h1 {
+    margin-bottom: 8px;
+  }
+
+  .guides-header p {
+    color: #6b7280;
+    max-width: 760px;
+    line-height: 1.6;
+  }
+
+  .tutorial-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 30px;
+  }
+
+  .tutorial-card h2 {
+    margin-top: 0;
+    margin-bottom: 8px;
+  }
+
+  .tutorial-card p {
+    color: #6b7280;
+    line-height: 1.6;
+    margin-bottom: 18px;
+  }
+
+  .video-button {
+    display: inline-block;
+    padding: 10px 18px;
+    background: #111827;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 7px;
+    font-weight: 600;
+  }
+
+  .video-button:hover {
+    opacity: 0.9;
+    color: #fff;
+  }
+
+  .guide-section-title {
+    margin-bottom: 16px;
+  }
+
+  .guide-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .guide-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 190px;
+  }
+
+  .guide-card h3 {
+    margin: 0 0 10px 0;
+    font-size: 18px;
+  }
+
+  .guide-card p {
+    color: #6b7280;
+    line-height: 1.55;
+    flex-grow: 1;
+  }
+
+  .guide-link {
+    font-weight: 600;
+    text-decoration: none;
+    margin-top: 12px;
+  }
+
+  @media (max-width: 900px) {
+    .guide-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+
+<div class="guides-wrap">
+
+  <div class="guides-header">
+    <h1>Guides & Tutorials</h1>
+    <p>
+      New to GMCAV? Start with the video tutorial or explore the written
+      guides below for step-by-step instructions on using the analysis modules.
+    </p>
+  </div>
+
+
+  <!-- Video Tutorial -->
+  <section class="tutorial-card">
+
+    <h2>Getting Started Video Tutorial</h2>
+
+    <p>
+      Watch a walkthrough of GMCAV covering navigation, cancer selection,
+      major analysis modules, filters, interactive visualizations, and
+      figure downloads.
+    </p>
+
+    <a
+      href="{{ video_url }}"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="video-button"
+    >
+      ▶ Watch Video Tutorial
+    </a>
+
+  </section>
+
+
+  <!-- Written Guides -->
+  <section>
+
+    <h2 class="guide-section-title">Written Guides</h2>
+
+    <div class="guide-grid">
+
+      {% for guide in guides %}
+
+        <article class="guide-card">
+
+          <h3>{{ guide.title }}</h3>
+
+          <p>
+            {{ guide.description }}
+          </p>
+
+          <a
+            class="guide-link"
+            href="{% url 'guide_detail' guide.slug %}"
+          >
+            View Guide →
+          </a>
+
+        </article>
+
+      {% endfor %}
+
+    </div>
+
+  </section>
+
+</div>
+
+{% endblock %}
