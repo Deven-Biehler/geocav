@@ -188,3 +188,8 @@ The table header shows the total number of records currently displayed, e.g. `(S
 ### Relationship to Other Views
 The table always reflects the same filter state as the map and regression plot. Changing filters and clicking **"Visualize"** again will refresh the table alongside the other visualizations.
 
+## Geospatial Data Sources
+
+Data for geospatial analysis, including cancer incidence, environmental, lifestyle, socioeconomic, and health status data at state and county levels are obtained from the U.S. Center for Disease Control and Prevention’s (CDC) National Environmental Public Health Tracking Network.  
+
+ The data is already suppressed and smoothed by CDC when required as per their guidelines. The rates provided by CDC have a 95% confidence interval.
