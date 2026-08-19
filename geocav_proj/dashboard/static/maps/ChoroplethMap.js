@@ -252,14 +252,6 @@ export class ChoroplethMap {
     }
 
     getBivariateMapStyle(feature) {
-        const cancerValue = feature.cancer_rate;
-        const factors = Array.isArray(this.selectedFilters.factor) ? this.selectedFilters.factor : [this.selectedFilters.factor];
-        const factorIsNone = factors.length === 1 && factors[0] === 'None';
-        const cancerIsNone = this.selectedFilters.cancer_type === 'None';
-        // When factor is 'None', only cancer data matters; when cancer is 'None', only factor data matters
-        const hasFactors = factorIsNone || factors.every(f => feature[f] != null);
-        const hasCancer = cancerIsNone || cancerValue != null;
-        
         // Use imported getCorrelationColor
         const color = getCorrelationColor(
             feature, 
@@ -275,7 +267,7 @@ export class ChoroplethMap {
         return {
             ...DEFAULT_CHOROPLETH_STYLE,
             fillColor: color,
-            fillOpacity: (hasCancer && hasFactors) ? 0.8 : 0.1
+            fillOpacity: 0.8
         };
     }
 

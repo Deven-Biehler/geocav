@@ -1,3 +1,13 @@
+import { LEGEND_STYLES } from '../plotUtils.js';
+
+// Stops shared between the L.heatLayer gradient and the legend's gradient bar
+const HEAT_GRADIENT = {
+    0.0: '#0000ff',
+    0.33: '#00c04b',
+    0.66: '#ffe600',
+    1.0: '#ff0000'
+};
+
 export class DotDensityMap {
     constructor (selectedFilters) {
         this.selectedFilters = selectedFilters;
@@ -69,13 +79,7 @@ export class DotDensityMap {
                 blur: 15,
                 maxZoom: 17,
                 max: 0.1,
-                gradient: {
-                    0.0: 'blue',
-                    0.3: 'cyan',
-                    0.5: 'lime',
-                    0.7: 'yellow',
-                    1.0: 'red'
-                }
+                gradient: HEAT_GRADIENT
             }).addTo(this.map);
     }
 
@@ -166,8 +170,24 @@ export class DotDensityMap {
 
     createLegend() {
         const legend = document.getElementById('legend');
+
+        const gradientCss = Object.entries(HEAT_GRADIENT)
+            .sort(([a], [b]) => Number(a) - Number(b))
+            .map(([stop, color]) => `${color} ${Number(stop) * 100}%`)
+            .join(', ');
+
         legend.innerHTML = `
             <h4>Heat Map</h4>
+            <div style="${LEGEND_STYLES.container}">
+                Color intensity relates to <strong>${this.selectedFilters.cancer_type} incidence</strong>.<br>
+                <span style="${LEGEND_STYLES.subText}">Blue areas indicate lower values; red areas indicate higher values.</span>
+            </div>
+            <div style="height: 14px; border-radius: 3px; border: 1px solid #999; background: linear-gradient(to right, ${gradientCss});"></div>
+            <div style="display: flex; justify-content: space-between; font-size: 10px; color: #666; margin-bottom: 10px;">
+                <span>Low</span>
+                <span>High</span>
+            </div>
+
             <div style="margin-top: 10px;">
                 <label for="percentSlider">Top Cases of ${this.selectedFilters.cancer_type}: <span id="percentValue">${(this.percent * 100).toFixed(0)}%</span></label>
                 <input type="range" id="percentSlider" min="5" max="100" value="${this.percent * 100}" step="5" style="width: 100%; margin-top: 5px;">

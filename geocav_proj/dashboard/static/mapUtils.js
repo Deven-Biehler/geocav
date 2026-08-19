@@ -152,6 +152,10 @@ export function getDeviationLegendContent(legendTitle, r2, rangeVal, correlation
             <div style="${LEGEND_STYLES.colorBox('#0000ff')}"></div>
             <span>< -${rangeVal} (Lower Rate)</span>
         </div>
+        <div style="${LEGEND_STYLES.flexRow}">
+            <div style="${LEGEND_STYLES.colorBox('#cccccc')}"></div>
+            <span>Suppressed / No Data</span>
+        </div>
     </div>
     `;
 }
@@ -174,6 +178,10 @@ export function getStandardLegendContent(title, lowVal, highVal, meanVal) {
             <div style="${LEGEND_STYLES.flexRow}">
                 <div style="${LEGEND_STYLES.colorBox('#0000ff')}"></div>
                 <span>< ${lowVal} (Low)</span>
+            </div>
+            <div style="${LEGEND_STYLES.flexRow}">
+                <div style="${LEGEND_STYLES.colorBox('#cccccc')}"></div>
+                <span>Suppressed / No Data</span>
             </div>
         </div>
     `;
