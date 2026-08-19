@@ -1,5 +1,5 @@
 # User Manual
-The purpose of this guide is to show an example use-case on the geospatial dashboard which can be replicated to distill further insights.
+The purpose of this guide is to show an example use-case on the geospatial dashboard which can be replicated to distill further insights. Please note, the results generated using the tool are only for hypothesis generation and not for causal inference.
 
 ## Quick-Start Guide
 This will get you quickly started with any of the map views. For further explination, look for the relevant section below.

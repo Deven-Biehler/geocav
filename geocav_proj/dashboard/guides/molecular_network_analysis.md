@@ -1,6 +1,6 @@
 # User Manual for Molecular and Network Analysis
 
-This document details the technical implementation of the molecular analysis and network analysis modules.
+This document details the technical implementation of the molecular analysis and network analysis modules. Please note, the results generated using the tool are only for hypothesis generation and not for causal inference.
 
 ## Overview
 
