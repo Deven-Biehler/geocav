@@ -119,6 +119,29 @@
   const cyDiv   = document.getElementById('cy');
   const metaEl  = document.getElementById('netMeta');
 
+  const CLUSTER_COLORS = [
+    "#4477AA", // blue
+    "#EE6677", // coral
+    "#CCBB44", // mustard
+    "#66CCEE", // cyan
+    "#AA3377", // purple
+    "#BBBBBB", // gray
+    "#332288", // indigo
+    "#EEAA33", // orange
+    "#44AA99", // teal
+    "#6699CC", // light blue
+    "#AA4466", // mauve
+    "#999933", // olive
+    "#882255", // wine
+    "#88CCEE", // sky blue
+    "#DDCC77", // sand
+    "#CC6677", // muted rose
+    "#AA4499", // magenta-purple
+    "#999999", // dark gray
+    "#661100", // brown
+    "#117777"  // dark cyan/teal
+  ];
+
   let cy = null;
 
   function showError(html) {
@@ -282,10 +305,27 @@
       tip.style.top  = `${p.y + 14}px`;
     }
 
-    function clusterColor(c){
-      if (c === null || c === undefined || c < 0) return "#0d6efd";
-      const hue = (Number(c) * 47) % 360;
-      return `hsl(${hue}, 65%, 50%)`;
+    function clusterColor(clusterId) {
+      if (clusterId === null || clusterId === undefined || clusterId === "") {
+        return "#9ca3af";
+      }
+
+      const n = Number(clusterId);
+
+      if (Number.isFinite(n)) {
+        return CLUSTER_COLORS[Math.abs(Math.floor(n)) % CLUSTER_COLORS.length];
+      }
+
+      // Fallback for non-numeric cluster IDs
+      let hash = 0;
+      const s = String(clusterId);
+
+      for (let i = 0; i < s.length; i++) {
+        hash = ((hash << 5) - hash) + s.charCodeAt(i);
+        hash |= 0;
+      }
+
+      return CLUSTER_COLORS[Math.abs(hash) % CLUSTER_COLORS.length];
     }
 
     async function fetchNodeMeta(cancerSlug, nodeId){

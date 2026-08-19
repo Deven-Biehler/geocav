@@ -186,6 +186,29 @@
   const geneSearchInput   = document.getElementById("geneSearchInput");
   const geneSearchResults = document.getElementById("geneSearchResults");
 
+  const GENE_COLORS = [
+    "#4477AA", // blue
+    "#EE6677", // coral
+    "#228833", // green
+    "#CCBB44", // mustard
+    "#66CCEE", // cyan
+    "#AA3377", // purple
+    "#BBBBBB", // gray
+    "#332288", // indigo
+    "#EEAA33", // orange
+    "#44AA99", // teal
+    "#6699CC", // light blue
+    "#AA4466", // mauve
+    "#999933", // olive
+    "#882255", // wine
+    "#88CCEE", // sky blue
+    "#DDCC77", // sand
+    "#117733", // dark teal-green
+    "#CC6677", // muted rose
+    "#AA4499", // magenta-purple
+    "#999999"  // dark gray
+  ];
+
   const HIGH_RES_CONFIG = {
     responsive: true,
     toImageButtonOptions: {
@@ -798,18 +821,6 @@
   }
 
 
-  function getPlotlyLegendColorForTrace(divId, traceIndex){
-    try {
-      const gd = document.getElementById(divId);
-      // After Plotly.newPlot, trace styles exist in gd.data
-      const t = gd?.data?.[traceIndex];
-      // For bar traces, Plotly stores marker.color if assigned; otherwise it may be undefined.
-      // In that case we fall back to CSS color dot without exact match.
-      return t?.marker?.color || null;
-    } catch (e){
-      return null;
-    }
-  }
 
   function renderGeneGroupedBars(divId, obj, title, xLabel){
     // Pick a filename from the divId (or from title if you prefer)
@@ -839,10 +850,16 @@
 
       return {
         x: groups,
-        y,
+        y: y,
         type: "bar",
         name: g,
-        text,
+
+        // Color for this gene
+        marker: {
+          color: GENE_COLORS[gi % GENE_COLORS.length]
+        },
+
+        text: text,
         textposition: "auto",
         hovertemplate: `<b>${g}</b><br>%{x}<br>%{text}<extra></extra>`,
         showlegend: false
@@ -872,24 +889,23 @@
   function renderSharedGeneLegend(genes){
     const wrap = document.getElementById("sharedGeneLegend");
     const items = document.getElementById("sharedGeneLegendItems");
+
     if (!wrap || !items) return;
 
     items.innerHTML = "";
 
-    // Try to read actual colors from one plot after it’s drawn (raceHeatmap is fine)
-    const sampleDivId = "raceHeatmap";
-
-    genes.forEach((g, idx) => {
+    (genes || []).forEach((g, idx) => {
       const dot = document.createElement("span");
+
       dot.style.display = "inline-block";
       dot.style.width = "10px";
       dot.style.height = "10px";
       dot.style.borderRadius = "999px";
       dot.style.border = "1px solid #d1d5db";
 
-      const c = getPlotlyLegendColorForTrace(sampleDivId, idx);
-      if (c) dot.style.background = c;   // best case: matches Plotly colors
-      else dot.style.background = "#9ca3af"; // fallback neutral if Plotly doesn't expose
+      // Use the exact same color assignment as the bars
+      dot.style.background =
+        GENE_COLORS[idx % GENE_COLORS.length];
 
       const label = document.createElement("span");
       label.textContent = g;
@@ -903,10 +919,12 @@
 
       item.appendChild(dot);
       item.appendChild(label);
+
       items.appendChild(item);
     });
 
-    wrap.style.display = genes.length ? "block" : "none";
+    wrap.style.display =
+      (genes && genes.length) ? "block" : "none";
   }
 
   function getTraceColor(gd, i){
