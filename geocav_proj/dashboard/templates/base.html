@@ -60,6 +60,13 @@
       <a class="nav-link {% if request.resolver_match.url_name == 'network_analysis' %}active{% endif %}"
          href="{% url 'network_analysis' %}">Network Analysis</a>
 
+      <a
+          href="{% url 'guides' %}"
+          class="nav-link {% if request.resolver_match.url_name == 'guides' or request.resolver_match.url_name == 'guide_detail' %}active{% endif %}"
+          >
+            Guides
+          </a>
+
 
     </nav>
   </aside>

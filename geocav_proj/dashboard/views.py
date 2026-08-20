@@ -2,7 +2,9 @@ from django.shortcuts import render
 from django.http import JsonResponse, Http404
 from collections import Counter
 from itertools import zip_longest
+from django.conf import settings
 import numpy as np
+import markdown
 import os
 import ast
 from pathlib import Path
@@ -1735,3 +1737,81 @@ def molecular_gene_search_json(request, cancer_name):
     # return top matches (most common first)
     genes_out = [g for g, _ in counter.most_common(30)]
     return JsonResponse({"genes": genes_out})
+
+def guides(request):
+    """
+    Main Guides & Tutorials landing page.
+    """
+
+    guides_list = [
+        {
+            "slug": "geospatial-analysis",
+            "title": "Geospatial Analysis Guide",
+            "description": "Learn how to explore cancer incidence, geographic factors, maps, and regression analyses.",
+        },
+        {
+            "slug": "molecular-network-analysis",
+            "title": "Molecular & Network Analysis Guide",
+            "description": "Learn how to use the mutational landscape, co-occurrence, demographic, clinical, and network analysis pages.",
+        },
+    ]
+
+    context = {
+        "guides": guides_list,
+
+        # Replace with your actual PUBLIC Google Drive URL
+        "video_url": "https://drive.google.com/file/d/12cdgkHEs9pLEERbgWJYQxfMAT90YsvPN/view?usp=sharing",
+    }
+
+    return render(request, "guides.html", context)
+
+
+def guide_detail(request, guide_slug):
+    """
+    Render a Markdown guide as an HTML page.
+    """
+
+    guide_files = {
+        "geospatial-analysis": {
+            "title": "Geospatial Analysis Guide",
+            "file": "geospatial_analysis.md",
+        },
+        "molecular-network-analysis": {
+            "title": "Molecular & Network Analysis Guide",
+            "file": "molecular_network_analysis.md",
+        },
+    }
+
+    guide = guide_files.get(guide_slug)
+
+    if not guide:
+        raise Http404("Guide not found")
+
+    guide_path = (
+        Path(settings.BASE_DIR)
+        / "dashboard"
+        / "guides"
+        / guide["file"]
+    )
+
+    if not guide_path.exists():
+        raise Http404("Guide file not found")
+
+    markdown_text = guide_path.read_text(encoding="utf-8")
+
+    html_content = markdown.markdown(
+        markdown_text,
+        extensions=[
+            "extra",
+            "tables",
+            "fenced_code",
+            "toc",
+        ],
+    )
+
+    context = {
+        "guide_title": guide["title"],
+        "guide_content": html_content,
+    }
+
+    return render(request, "guide_detail.html", context)
