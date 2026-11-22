@@ -1,6 +1,6 @@
 import { FACTORS_UNITS } from './config.js';
 import { calculateMultipleLinearRegression, calculateLinearRegression } from './mathUtils.js';
-import { addRegressionAxes, addRegressionLabels, addRegressionTitle, addLinearRegressionLine, addPredictionIdentityLine, addDataPoints, addRSquaredLabel } from './plotUtils.js';
+import { addRegressionAxes, addRegressionLabels, addRegressionTitle, addLinearRegressionLine, addPredictionIdentityLine, addDataPoints, addRSquaredLabel, addColorNote } from './plotUtils.js';
 
 export class RegressionPlot {
     constructor(dataManager) {
@@ -249,6 +249,9 @@ export class RegressionPlot {
         // Add R-squared label
         addRSquaredLabel(svg, regressionLine.rSquared, this.width, regressionLine.correlation);
 
+        // Note: point colors are keyed to state
+        addColorNote(svg, this.width);
+
         this.addTooltip(svg, factor);
     }
 
@@ -311,6 +314,7 @@ export class RegressionPlot {
 
         addDataPoints(svg, plotData, x, y, "predicted", "actual", this.colorScale);
         addRSquaredLabel(svg, adjustedRSquared);
+        addColorNote(svg, this.width);
 
         // Tooltip for multiple regression
         const tooltip = d3.select("body").append("div")

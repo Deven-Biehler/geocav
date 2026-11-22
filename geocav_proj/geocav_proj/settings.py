@@ -24,6 +24,10 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
     raise RuntimeError("DJANGO_SECRET_KEY is not set")
 
+# Free key required by CARTO for basemap tile requests (see TECHNICAL_DOCUMENTATION.md,
+# "Basemap Tiles & the CARTO API Key"). Get one at https://carto.com/basemaps/apikey/.
+CARTO_API_KEY = os.environ.get("CARTO_API_KEY", "")
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 

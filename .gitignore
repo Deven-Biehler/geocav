@@ -1,4 +1,5 @@
 geocav_env/
+geocav_venv/
 .venv/
 CDC Data/
 geocav_proj/db.sqlite3
