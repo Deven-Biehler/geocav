@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.http import JsonResponse, Http404
+from django.conf import settings
 from collections import Counter
 from itertools import zip_longest
 from django.conf import settings
@@ -25,7 +26,7 @@ NETWORKS_DIR = APP_DIR / "static" / "data" / "networks"
 
 def dashboard_view(request):
     """View function for the dashboard homepage."""
-    return render(request, 'geospatial_dashboard.html')
+    return render(request, 'geospatial_dashboard.html', {'carto_api_key': settings.CARTO_API_KEY})
 
 def organize_data(cancer_queryset, factor_queryset, level):
     '''Organize cancer and factor data into dictionaries by geographic identifiers.'''

@@ -66,6 +66,16 @@ export function addDataPoints(svg, data, x, y, xKey, yKey, colorScale) {
             .style('fill', (d) => colorScale(d.state));
 }
 
+export function addColorNote(svg, width) {
+    svg.append("text")
+        .attr("x", width)
+        .attr("y", 20)
+        .style("text-anchor", "end")
+        .style("font-size", "10px")
+        .style("fill", "#666")
+        .text("Point color represents state");
+}
+
 export function addRSquaredLabel(svg, rSquared, width, correlation = null) {
     svg.append("text")
         .attr("x", 10)

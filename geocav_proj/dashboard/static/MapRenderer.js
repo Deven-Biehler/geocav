@@ -41,6 +41,7 @@ export class MapRenderer {
         L.tileLayer(DEFAULT_LEAFLET_CONFIG.TILE_LAYER.url, {
             maxZoom: DEFAULT_LEAFLET_CONFIG.TILE_LAYER.options.maxZoom,
             attribution: DEFAULT_LEAFLET_CONFIG.TILE_LAYER.options.attribution,
+            key: DEFAULT_LEAFLET_CONFIG.TILE_LAYER.options.key,
         }).addTo(this.map);
         this.map.fitBounds(usBounds, { padding: [20, 20] });
     }

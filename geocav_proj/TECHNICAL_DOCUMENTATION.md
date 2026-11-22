@@ -10,6 +10,13 @@ To run the django dashboard, we first need to create a virtual environment. This
 `./geocav_venv/Script/activate`
 `pip install django numpy pandas igraph leidenalg scikit-learn scipy networkx`
 
+### 1.2 Basemap Tiles & the CARTO API Key
+The Leaflet map's base tiles (`light_all`) are served by CARTO over `basemaps.cartocdn.com`. As of September 2026, CARTO requires a free API key on every tile request — without it, the basemap renders with an "API KEY REQUIRED" watermark instead of the real map.
+
+*   **Getting a key**: Request one at https://carto.com/basemaps/apikey/ (no account needed, sent by email). The free tier covers 5M tile requests/month for non-commercial use (1M for commercial).
+*   **Configuring it**: Set the `CARTO_API_KEY` environment variable (e.g. in `uwsgi_geocav.ini` via `env = CARTO_API_KEY=...`, the same way `DJANGO_SECRET_KEY` is configured). `settings.py` reads it, `dashboard_view` passes it to `geospatial_dashboard.html`, which assigns it to `window.CARTO_API_KEY` before `main.js` loads. `config.js` reads that global into `DEFAULT_LEAFLET_CONFIG.TILE_LAYER.options.key`, and `MapRenderer.js` passes it to `L.tileLayer(...)` so Leaflet substitutes it into the `{key}` placeholder in the tile URL.
+*   **If the map breaks again**: third-party tile providers change terms periodically. If the basemap stops rendering, check CARTO's basemap docs/terms (https://docs.carto.com/faqs/carto-basemaps) and the Leaflet/leaflet.heat CDN versions pinned in `geospatial_dashboard.html` for new requirements.
+
 ## 1. Data Architecture & Flow
 
 The dashboard relies on a decoupled architecture where the frontend `DataManager` orchestrates data retrieval and preparation for the visualization components.
